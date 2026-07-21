@@ -66,8 +66,9 @@ export async function GET(request: Request) {
       { onConflict: "store_id,date,platform" }
     );
 
+    let reviewsError: string | null = null;
     if (snapshot.reviews.length > 0) {
-      await supabase.from("reviews").upsert(
+      const { error } = await supabase.from("reviews").upsert(
         snapshot.reviews.map((r) => ({
           store_id: store.id,
           date: today,
@@ -78,10 +79,11 @@ export async function GET(request: Request) {
         })),
         { onConflict: "store_id,platform,source_review_id", ignoreDuplicates: true }
       );
+      reviewsError = error?.message ?? null;
     }
 
     results[store.name] =
-      `완료 (평점 ${snapshot.rating}, 총 ${snapshot.reviewCount}건, 증가 ${changeCount}건)`;
+      `완료 (평점 ${snapshot.rating}, 총 ${snapshot.reviewCount}건, 증가 ${changeCount}건, 리뷰수집 ${snapshot.reviews.length}건 시도${reviewsError ? `, 오류: ${reviewsError}` : ""})`;
   }
 
   return NextResponse.json({ ok: true, date: today, results });
