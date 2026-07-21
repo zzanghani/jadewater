@@ -1,24 +1,4 @@
-import webpush from "web-push";
-
 let configured = false;
-
-// VAPID 키가 설정된 경우에만 초기화한다. 로컬 개발 환경 등 키가 없는 곳에서는
-// 푸시 발송을 조용히 건너뛴다.
-function ensureConfigured(): boolean {
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
-  if (!publicKey || !privateKey) return false;
-
-  if (!configured) {
-    webpush.setVapidDetails(
-      "mailto:owner@jadewater.com",
-      publicKey,
-      privateKey
-    );
-    configured = true;
-  }
-  return true;
-}
 
 export type PushSubscriptionKeys = {
   endpoint: string;
@@ -32,13 +12,38 @@ export type PushPayload = {
   url?: string;
 };
 
+// web-push는 동적으로 불러온다. 모듈 로드나 VAPID 설정 자체가 실패해도
+// 요청완료 같은 핵심 흐름에는 절대 영향이 없어야 하기 때문이다.
+async function loadConfiguredWebPush() {
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!publicKey || !privateKey) return null;
+
+  try {
+    const { default: webpush } = await import("web-push");
+    if (!configured) {
+      webpush.setVapidDetails(
+        "mailto:owner@jadewater.com",
+        publicKey,
+        privateKey
+      );
+      configured = true;
+    }
+    return webpush;
+  } catch (err) {
+    console.error("[webpush] VAPID 설정 실패", err);
+    return null;
+  }
+}
+
 // 실패해도 상위 로직(요청완료 처리)이 깨지지 않도록 항상 조용히 실패한다.
 // 구독이 만료된 경우(404/410)에는 true를 반환해 호출부에서 DB 정리를 하게 한다.
 export async function sendPush(
   subscription: PushSubscriptionKeys,
   payload: PushPayload
 ): Promise<{ expired: boolean }> {
-  if (!ensureConfigured()) return { expired: false };
+  const webpush = await loadConfiguredWebPush();
+  if (!webpush) return { expired: false };
 
   try {
     await webpush.sendNotification(
@@ -50,6 +55,7 @@ export async function sendPush(
     );
     return { expired: false };
   } catch (err) {
+    console.error("[webpush] 발송 실패", err);
     const statusCode =
       err && typeof err === "object" && "statusCode" in err
         ? (err as { statusCode?: number }).statusCode

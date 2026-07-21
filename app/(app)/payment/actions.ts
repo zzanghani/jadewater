@@ -89,6 +89,19 @@ export async function completePaymentRequest(id: string): Promise<void> {
 
   if (!updated) return;
 
+  // 알림 발송은 부가 기능이므로, 여기서 어떤 문제가 생기더라도
+  // 요청완료 처리 자체는 이미 끝난 상태로 절대 실패하지 않게 한다.
+  try {
+    await notifyStoreOfCompletion(supabase, updated);
+  } catch (err) {
+    console.error("[completePaymentRequest] 알림 발송 중 오류", err);
+  }
+}
+
+async function notifyStoreOfCompletion(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  updated: { store_id: string; vendor_name: string; amount: number }
+) {
   const { data: subs } = await supabase
     .from("push_subscriptions")
     .select("*")
