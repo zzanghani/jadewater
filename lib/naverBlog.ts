@@ -67,19 +67,35 @@ const BRANCH_KEYWORDS: [string, string[]][] = [
   ["하남", ["하남", "스타필드"]],
 ];
 
-// storeName에 해당하는 지점 키워드가 아닌, 다른 지점 키워드가 제목이나 본문에 있으면 걸러낸다.
-// 또한 브랜드명("제이드")이 아예 안 들어간, 우연히 지점 키워드만 걸린 무관한 글도 걸러낸다.
+function countOccurrences(text: string, keywords: string[]): number {
+  return keywords.reduce((sum, k) => {
+    if (!k) return sum;
+    return sum + (text.split(k).length - 1);
+  }, 0);
+}
+
+// 브랜드명("제이드")이 아예 안 들어간 무관한 글은 제외한다.
+// 그리고 이 지점 키워드보다 "다른 지점" 키워드가 글 전체에서 더 많이 나오면
+// (예: 하남 얘기가 메인인데 배경설명으로 옥수가 한 번 언급된 경우) 그 지점 얘기로 보고 제외한다.
 export function filterPostsForStore(posts: NaverBlogPost[], storeName: string): NaverBlogPost[] {
-  const ownBranch = BRANCH_KEYWORDS.find(([key]) => storeName.includes(key))?.[0];
+  const ownEntry = BRANCH_KEYWORDS.find(([key]) => storeName.includes(key));
+  const ownBranch = ownEntry?.[0];
+  const ownKeywords = ownEntry?.[1] ?? [];
 
   return posts.filter((post) => {
     const text = `${post.title} ${post.body}`;
     if (!text.includes("제이드")) {
       return false;
     }
+
+    const ownCount = countOccurrences(text, ownKeywords);
+    if (ownCount === 0) {
+      return false;
+    }
+
     for (const [branch, keywords] of BRANCH_KEYWORDS) {
       if (branch === ownBranch) continue;
-      if (keywords.some((k) => text.includes(k))) {
+      if (countOccurrences(text, keywords) > ownCount) {
         return false;
       }
     }
