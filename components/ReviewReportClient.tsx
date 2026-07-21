@@ -19,8 +19,10 @@ export default function ReviewReportClient({
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() =>
     stores[0] ? { [stores[0].id]: true } : {}
   );
+  const [blogShowAll, setBlogShowAll] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState("");
+  const BLOG_PREVIEW_COUNT = 5;
 
   const report = reports[selectedDate];
   const selectedTitle = dates.find((d) => d.date === selectedDate)?.titleLabel ?? "";
@@ -176,26 +178,55 @@ export default function ReviewReportClient({
                   )}
 
                   {/* 블로그 후기 */}
-                  {data && data.blogPosts.length > 0 && (
-                    <div style={{ marginBottom: 12 }}>
-                      <div style={s.sectionLabel}>
-                        📝 새로 달린 블로그 후기 ({data.blogPosts.length}건)
-                      </div>
-                      {data.blogPosts.map((p) => (
-                        <div key={p.id} style={s.blogCard}>
-                          <div style={s.reviewMeta}>
-                            네이버 블로그 · {p.blogger_name ?? "익명"}
-                            {p.posted_at ? ` · ${p.posted_at}` : ""}
-                          </div>
-                          <div style={s.blogTitle}>{p.title}</div>
-                          {p.body && <div style={{ marginTop: 2 }}>{p.body}</div>}
-                          <a href={p.url} target="_blank" rel="noreferrer" style={s.blogLink}>
-                            📝 블로그 글 보러가기
-                          </a>
+                  {data && data.blogPosts.length > 0 && (() => {
+                    const showAll = !!blogShowAll[store.id];
+                    const visiblePosts = showAll
+                      ? data.blogPosts
+                      : data.blogPosts.slice(0, BLOG_PREVIEW_COUNT);
+                    const remaining = data.blogPosts.length - visiblePosts.length;
+                    return (
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={s.sectionLabel}>
+                          📝 새로 달린 블로그 후기 ({data.blogPosts.length}건)
                         </div>
-                      ))}
-                    </div>
-                  )}
+                        {visiblePosts.map((p) => (
+                          <div key={p.id} style={s.blogCard}>
+                            <div style={s.reviewMeta}>
+                              네이버 블로그 · {p.blogger_name ?? "익명"}
+                              {p.posted_at ? ` · ${p.posted_at}` : ""}
+                            </div>
+                            <div style={s.blogTitle}>{p.title}</div>
+                            {p.body && <div style={{ marginTop: 2 }}>{p.body}</div>}
+                            <a href={p.url} target="_blank" rel="noreferrer" style={s.blogLink}>
+                              📝 블로그 글 보러가기
+                            </a>
+                          </div>
+                        ))}
+                        {remaining > 0 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setBlogShowAll((p) => ({ ...p, [store.id]: true }))
+                            }
+                            style={s.blogMoreBtn}
+                          >
+                            + {remaining}개 더보기
+                          </button>
+                        )}
+                        {showAll && data.blogPosts.length > BLOG_PREVIEW_COUNT && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setBlogShowAll((p) => ({ ...p, [store.id]: false }))
+                            }
+                            style={s.blogMoreBtn}
+                          >
+                            접기
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* AI 분석 */}
                   {data?.analysis ? (
@@ -291,6 +322,18 @@ const s: Record<string, CSSProperties> = {
   blogCard: { background: "#fafafa", borderRadius: 8, padding: "10px 12px", marginBottom: 6, fontSize: 13, lineHeight: 1.6 },
   blogTitle: { fontWeight: 600, color: "#222" },
   blogLink: { display: "inline-block", marginTop: 6, fontSize: 12, color: "#2563eb", textDecoration: "none" },
+  blogMoreBtn: {
+    width: "100%",
+    padding: "8px",
+    marginTop: 2,
+    background: "#f0f0f0",
+    border: "none",
+    borderRadius: 8,
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#555",
+    cursor: "pointer",
+  },
 
   aiBox: { background: "#f0f4ff", borderRadius: 8, padding: "12px 14px", fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-line" },
   aiTitle: { fontWeight: 700, marginBottom: 6, fontSize: 13 },
