@@ -151,6 +151,7 @@ export type Review = {
   platform: ReviewPlatform
   rating: number
   body: string
+  source_review_id: string | null
   created_at: string
 }
 
