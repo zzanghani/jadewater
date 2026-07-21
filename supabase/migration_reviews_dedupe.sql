@@ -9,6 +9,14 @@
 alter table public.reviews
   add column if not exists source_review_id text;
 
-create unique index if not exists reviews_store_platform_source_idx
-  on public.reviews (store_id, platform, source_review_id)
-  where source_review_id is not null;
+-- 부분 인덱스(where ...)는 upsert의 ON CONFLICT 대상으로 쓸 수 없어서
+-- 조건 없는 진짜 unique 제약으로 만든다. NULL끼리는 서로 충돌하지 않으므로
+-- source_review_id가 없는 기존 리뷰들은 영향받지 않는다.
+drop index if exists public.reviews_store_platform_source_idx;
+
+alter table public.reviews
+  drop constraint if exists reviews_store_platform_source_key;
+
+alter table public.reviews
+  add constraint reviews_store_platform_source_key
+  unique (store_id, platform, source_review_id);
