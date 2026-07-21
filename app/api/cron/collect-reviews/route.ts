@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { fetchGooglePlaceSnapshot } from "@/lib/googlePlaces";
-import { fetchNaverBlogPosts, filterPostsForStore } from "@/lib/naverBlog";
+import { branchKeyForStoreName, classifyPostsByBranch, fetchNaverBlogPosts } from "@/lib/naverBlog";
 import { kstDateString } from "@/lib/date";
 
 // Vercel Cron이 매일 KST 06:00에 호출한다 (vercel.json 참고).
@@ -33,6 +33,15 @@ export async function GET(request: Request) {
   }
 
   const results: Record<string, string> = {};
+
+  // 매장별로 따로 검색하는 대신 "제이드앤워터"로 한 번에 넓게 검색한 뒤,
+  // 글마다 어느 지점 얘기가 가장 많이 나오는지로 분류한다.
+  // (매장별 검색은 결과 개수 제한 때문에 누락이 많았다.)
+  let postsByBranch: Record<string, ReturnType<typeof classifyPostsByBranch>[string]> = {};
+  if (naverClientId && naverClientSecret) {
+    const allPosts = await fetchNaverBlogPosts("제이드앤워터", naverClientId, naverClientSecret);
+    postsByBranch = classifyPostsByBranch(allPosts);
+  }
 
   for (const store of stores ?? []) {
     if (!store.google_place_id) {
@@ -87,9 +96,9 @@ export async function GET(request: Request) {
     }
 
     let blogSummary = "";
-    if (naverClientId && naverClientSecret) {
-      const rawPosts = await fetchNaverBlogPosts(store.name, naverClientId, naverClientSecret);
-      const posts = filterPostsForStore(rawPosts, store.name);
+    const branchKey = branchKeyForStoreName(store.name);
+    if (branchKey) {
+      const posts = postsByBranch[branchKey] ?? [];
       if (posts.length > 0) {
         const { error: blogError, count } = await supabase.from("blog_posts").upsert(
           posts.map((p) => ({
