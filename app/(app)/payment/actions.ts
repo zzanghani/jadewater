@@ -68,6 +68,22 @@ export async function savePaymentRequest(
   return { success: true };
 }
 
+export async function completePaymentRequest(id: string): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  await supabase
+    .from("payment_requests")
+    .update({ completed_at: new Date().toISOString() })
+    .eq("id", id);
+
+  revalidatePath("/payment");
+}
+
 export async function saveFieldExpense(
   _prevState: PaymentFormState,
   formData: FormData

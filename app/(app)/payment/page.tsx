@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { formatWon } from "@/lib/format";
-import { buildKakaoMessage } from "@/lib/kakao";
 import { getStoreContext } from "@/lib/store";
 import PaymentForm from "@/components/PaymentForm";
 import FieldExpenseForm from "@/components/FieldExpenseForm";
-import CopyButton from "@/components/CopyButton";
+import FieldExpenseList from "@/components/FieldExpenseList";
+import PaymentRequestList from "@/components/PaymentRequestList";
+import type { Store } from "@/lib/types";
 
 type Tab = "expense" | "request" | "confirm";
 
@@ -26,7 +26,7 @@ export default async function PaymentPage({
     : "expense";
 
   const supabase = await createClient();
-  const { storeId } = await getStoreContext(supabase);
+  const { storeId, stores } = await getStoreContext(supabase);
 
   return (
     <div className="flex flex-col gap-6">
@@ -47,8 +47,12 @@ export default async function PaymentPage({
       </div>
 
       {tab === "expense" && <FieldExpenseTab storeId={storeId} />}
-      {tab === "request" && <RequestTab storeId={storeId} />}
-      {tab === "confirm" && <ConfirmTab storeId={storeId} />}
+      {tab === "request" && (
+        <RequestTab storeId={storeId} stores={stores} />
+      )}
+      {tab === "confirm" && (
+        <ConfirmTab storeId={storeId} stores={stores} />
+      )}
     </div>
   );
 }
@@ -80,6 +84,13 @@ async function FieldExpenseTab({ storeId }: { storeId: string }) {
     }
   }
 
+  const rowsWithPhoto = rows.map((r) => ({
+    ...r,
+    photoUrl: r.receipt_photo_path
+      ? signedUrlByPath.get(r.receipt_photo_path)
+      : undefined,
+  }));
+
   return (
     <>
       <section>
@@ -91,109 +102,59 @@ async function FieldExpenseTab({ storeId }: { storeId: string }) {
         <h2 className="mb-3 text-sm font-semibold text-foreground">
           최근 등록 내역
         </h2>
-        {rows.length === 0 ? (
-          <p className="text-sm text-muted">아직 등록된 지출이 없습니다.</p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {rows.map((r) => {
-              const photoUrl = r.receipt_photo_path
-                ? signedUrlByPath.get(r.receipt_photo_path)
-                : undefined;
-              return (
-                <li
-                  key={r.id}
-                  className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4"
-                >
-                  {photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={photoUrl}
-                      alt="영수증"
-                      className="h-14 w-14 shrink-0 rounded-lg object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-background text-lg">
-                      🧾
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">
-                      {r.description}
-                    </p>
-                    <p className="text-xs text-muted">
-                      {r.date} · {r.category} · {r.payment_method}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-sm font-bold">
-                    {formatWon(r.amount)}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        <FieldExpenseList rows={rowsWithPhoto} />
       </section>
     </>
   );
 }
 
-async function RequestTab({ storeId }: { storeId: string }) {
+async function RequestTab({
+  storeId,
+  stores,
+}: {
+  storeId: string;
+  stores: Store[];
+}) {
   return (
     <section>
       <h1 className="mb-3 text-lg font-bold">입금요청</h1>
-      <PaymentForm storeId={storeId} />
+      <PaymentForm storeId={storeId} stores={stores} />
     </section>
   );
 }
 
-async function ConfirmTab({ storeId }: { storeId: string }) {
+async function ConfirmTab({
+  storeId,
+  stores,
+}: {
+  storeId: string;
+  stores: Store[];
+}) {
   const supabase = await createClient();
+  const isMaster = stores.length > 1;
 
-  const { data: history } = await supabase
+  let query = supabase
     .from("payment_requests")
     .select("*")
-    .eq("store_id", storeId)
-    .order("created_at", { ascending: false })
-    .limit(10);
+    .is("completed_at", null)
+    .order("created_at", { ascending: false });
+
+  if (!isMaster) {
+    query = query.eq("store_id", storeId);
+  }
+
+  const { data: history } = await query.limit(50);
+
+  const storeNameById = new Map(stores.map((s) => [s.id, s.name]));
+  const rows = (history ?? []).map((r) => ({
+    ...r,
+    storeName: storeNameById.get(r.store_id),
+  }));
 
   return (
     <section>
       <h1 className="mb-3 text-lg font-bold">요청확인</h1>
-      {!history?.length ? (
-        <p className="text-sm text-muted">아직 등록된 요청이 없습니다.</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {history.map((r) => {
-            const requestDate = new Date(r.created_at).toLocaleDateString(
-              "ko-KR",
-              { timeZone: "Asia/Seoul", month: "numeric", day: "numeric" }
-            );
-            const message = buildKakaoMessage({
-              vendorName: r.vendor_name,
-              amount: r.amount,
-              bankName: r.bank_name ?? undefined,
-              accountNumber: r.account_number ?? undefined,
-              date: requestDate,
-            });
-            return (
-              <li
-                key={r.id}
-                className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">
-                    {r.vendor_name}
-                  </p>
-                  <p className="text-xs text-muted">
-                    {formatWon(r.amount)} · {requestDate}
-                  </p>
-                </div>
-                <CopyButton text={message} />
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <PaymentRequestList requests={rows} showStore={isMaster} />
     </section>
   );
 }

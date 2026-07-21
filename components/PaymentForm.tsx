@@ -1,11 +1,16 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useState } from "react";
 import { savePaymentRequest } from "@/app/(app)/payment/actions";
-import { buildKakaoMessage } from "@/lib/kakao";
-import { kstDateLabel, kstDateString } from "@/lib/date";
+import type { Store } from "@/lib/types";
 
-export default function PaymentForm({ storeId }: { storeId: string }) {
+export default function PaymentForm({
+  storeId,
+  stores,
+}: {
+  storeId: string;
+  stores: Store[];
+}) {
   const [state, formAction, pending] = useActionState(
     savePaymentRequest,
     undefined
@@ -14,36 +19,32 @@ export default function PaymentForm({ storeId }: { storeId: string }) {
   const [amountRaw, setAmountRaw] = useState("");
   const [bankName, setBankName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
-  const [copied, setCopied] = useState(false);
-
-  const amount = amountRaw ? Number(amountRaw) : 0;
-  const today = kstDateString(0);
-
-  const message = useMemo(
-    () =>
-      buildKakaoMessage({
-        vendorName,
-        amount,
-        bankName,
-        accountNumber,
-        date: kstDateLabel(today),
-      }),
-    [vendorName, amount, bankName, accountNumber, today]
-  );
-
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(message);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      setCopied(false);
-    }
-  }
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
-      <input type="hidden" name="store_id" value={storeId} />
+      <label className="flex flex-col gap-1.5 text-sm font-medium">
+        지점
+        {stores.length > 1 ? (
+          <select
+            name="store_id"
+            defaultValue={storeId}
+            className="rounded-xl border border-border bg-card px-4 py-3 outline-none ring-brand/30 focus:ring-2"
+          >
+            {stores.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <>
+            <input type="hidden" name="store_id" value={storeId} />
+            <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground">
+              {stores[0]?.name ?? "-"}
+            </div>
+          </>
+        )}
+      </label>
 
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         거래처명
@@ -103,20 +104,6 @@ export default function PaymentForm({ storeId }: { storeId: string }) {
         />
       </label>
 
-      <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium">카카오톡 문구 미리보기</span>
-        <div className="rounded-2xl rounded-tl-none bg-[#FEE500]/90 px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap text-[#3c2f00]">
-          {message}
-        </div>
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="self-start rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:border-brand hover:text-brand"
-        >
-          {copied ? "복사됨 ✓" : "문구 복사하기"}
-        </button>
-      </div>
-
       {state?.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
           {state.error}
@@ -133,7 +120,7 @@ export default function PaymentForm({ storeId }: { storeId: string }) {
         disabled={pending}
         className="mt-1 rounded-xl bg-brand py-3 text-sm font-semibold text-white shadow-md shadow-brand/30 transition-opacity disabled:opacity-60"
       >
-        {pending ? "저장 중..." : "요청 내역 저장"}
+        {pending ? "저장 중..." : "입금요청"}
       </button>
     </form>
   );

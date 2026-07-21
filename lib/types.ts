@@ -67,6 +67,7 @@ export type PaymentRequest = {
   amount: number
   bank_name: string | null
   account_number: string | null
+  completed_at: string | null
   created_by: string
   created_at: string
 }
