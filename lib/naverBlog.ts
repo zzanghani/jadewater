@@ -67,7 +67,7 @@ const BRANCH_KEYWORDS: [string, string[]][] = [
   ["하남", ["하남", "스타필드"]],
 ];
 
-// storeName에 해당하는 지점 키워드가 아닌, 다른 지점 키워드가 제목에 있으면 걸러낸다.
+// storeName에 해당하는 지점 키워드가 아닌, 다른 지점 키워드가 제목이나 본문에 있으면 걸러낸다.
 // 또한 브랜드명("제이드")이 아예 안 들어간, 우연히 지점 키워드만 걸린 무관한 글도 걸러낸다.
 export function filterPostsForStore(posts: NaverBlogPost[], storeName: string): NaverBlogPost[] {
   const ownBranch = BRANCH_KEYWORDS.find(([key]) => storeName.includes(key))?.[0];
@@ -79,7 +79,7 @@ export function filterPostsForStore(posts: NaverBlogPost[], storeName: string): 
     }
     for (const [branch, keywords] of BRANCH_KEYWORDS) {
       if (branch === ownBranch) continue;
-      if (keywords.some((k) => post.title.includes(k))) {
+      if (keywords.some((k) => text.includes(k))) {
         return false;
       }
     }
