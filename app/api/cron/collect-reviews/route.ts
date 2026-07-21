@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { fetchGooglePlaceSnapshot } from "@/lib/googlePlaces";
-import { fetchNaverBlogPosts } from "@/lib/naverBlog";
+import { fetchNaverBlogPosts, filterPostsForStore } from "@/lib/naverBlog";
 import { kstDateString } from "@/lib/date";
 
 // Vercel Cron이 매일 KST 06:00에 호출한다 (vercel.json 참고).
@@ -88,7 +88,8 @@ export async function GET(request: Request) {
 
     let blogSummary = "";
     if (naverClientId && naverClientSecret) {
-      const posts = await fetchNaverBlogPosts(store.name, naverClientId, naverClientSecret);
+      const rawPosts = await fetchNaverBlogPosts(store.name, naverClientId, naverClientSecret);
+      const posts = filterPostsForStore(rawPosts, store.name);
       if (posts.length > 0) {
         const { error: blogError, count } = await supabase.from("blog_posts").upsert(
           posts.map((p) => ({

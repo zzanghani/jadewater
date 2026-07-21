@@ -57,3 +57,27 @@ export async function fetchNaverBlogPosts(
     postedAt: `${item.postdate.slice(0, 4)}-${item.postdate.slice(4, 6)}-${item.postdate.slice(6, 8)}`,
   }));
 }
+
+// 지점별 지역 키워드. "옥수" 매장을 검색했는데 제목에 "하남"이 크게 들어간
+// (다른 지점 얘기인) 글이 섞여 들어오는 걸 걸러내는 데 쓴다.
+const BRANCH_KEYWORDS: [string, string[]][] = [
+  ["옥수", ["옥수"]],
+  ["서울역", ["서울역"]],
+  ["성수", ["성수"]],
+  ["하남", ["하남", "스타필드"]],
+];
+
+// storeName에 해당하는 지점 키워드가 아닌, 다른 지점 키워드가 제목에 있으면 걸러낸다.
+export function filterPostsForStore(posts: NaverBlogPost[], storeName: string): NaverBlogPost[] {
+  const ownBranch = BRANCH_KEYWORDS.find(([key]) => storeName.includes(key))?.[0];
+
+  return posts.filter((post) => {
+    for (const [branch, keywords] of BRANCH_KEYWORDS) {
+      if (branch === ownBranch) continue;
+      if (keywords.some((k) => post.title.includes(k))) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
