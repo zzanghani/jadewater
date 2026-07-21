@@ -175,6 +175,30 @@ export type BlogPost = {
   created_at: string
 }
 
+export type FieldExpenseCategory =
+  | '식자재'
+  | '소모품'
+  | '유류비'
+  | '복리후생'
+  | '운영'
+  | '마케팅'
+  | '기타'
+
+export type FieldExpensePaymentMethod = '법인카드' | '현금' | '자동이체'
+
+export type FieldExpense = {
+  id: string
+  store_id: string
+  date: string
+  category: FieldExpenseCategory
+  description: string
+  amount: number
+  payment_method: FieldExpensePaymentMethod
+  receipt_photo_path: string | null
+  created_by: string
+  created_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -265,6 +289,20 @@ export type Database = {
         Row: BlogPost
         Insert: Partial<BlogPost> & { store_id: string; date: string; title: string; url: string }
         Update: Partial<BlogPost>
+        Relationships: []
+      }
+      field_expenses: {
+        Row: FieldExpense
+        Insert: Partial<FieldExpense> & {
+          store_id: string
+          date: string
+          category: FieldExpenseCategory
+          description: string
+          amount: number
+          payment_method: FieldExpensePaymentMethod
+          created_by: string
+        }
+        Update: Partial<FieldExpense>
         Relationships: []
       }
     }

@@ -15,13 +15,18 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "매장 정산",
   description: "매장 일 마감 · 정산 · 입금요청 관리",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "매장 정산",
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#7c3aed",
+  themeColor: "#86c1ae",
 };
 
 export default function RootLayout({
