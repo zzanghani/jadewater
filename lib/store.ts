@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Store } from "@/lib/types";
 
@@ -11,7 +12,10 @@ export type StoreContext = {
 };
 
 // 쿠키에 저장된 매장을 우선 사용하고, 없거나 유효하지 않으면 첫 번째 매장으로 대체한다.
-export async function getStoreContext(
+// React cache()로 감싸서 같은 요청 안에서 레이아웃/페이지가 각자 호출해도
+// stores 조회는 한 번만 나가게 한다 (createClient()도 cache()되어 있어
+// 같은 요청이면 매번 같은 supabase 인스턴스가 들어온다).
+export const getStoreContext = cache(async function getStoreContext(
   supabase: SupabaseClient<Database>
 ): Promise<StoreContext> {
   const { data } = await supabase
@@ -29,4 +33,4 @@ export async function getStoreContext(
     storeName: current?.name ?? "",
     stores,
   };
-}
+})

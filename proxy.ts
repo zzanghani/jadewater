@@ -29,9 +29,14 @@ export async function proxy(request: NextRequest) {
     }
   )
 
+  // getUser()는 매번 Supabase Auth 서버에 재검증 요청을 보내 왕복이 느리다.
+  // 여기서는 로그인 여부에 따른 리다이렉트만 결정하면 되고, 실제 데이터
+  // 접근 권한은 각 쿼리마다 RLS가 진짜 토큰으로 다시 검증하므로 이 경로에서는
+  // 로컬 쿠키만 읽는 getSession()으로 충분하다 (세션 만료 시 자동 갱신은 그대로 동작).
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
+  const user = session?.user ?? null
 
   const path = request.nextUrl.pathname
   const isPublicPath = PUBLIC_PATHS.some((p) => path.startsWith(p))

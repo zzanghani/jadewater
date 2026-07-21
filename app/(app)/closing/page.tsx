@@ -18,19 +18,20 @@ export default async function ClosingPage({
   const targetDate = isValidDate ? dateParam : today;
   const isEditingPast = targetDate !== today;
 
-  const { data: targetClosing } = await supabase
-    .from("daily_closings")
-    .select("*")
-    .eq("store_id", storeId)
-    .eq("date", targetDate)
-    .maybeSingle();
-
-  const { data: history } = await supabase
-    .from("daily_closings")
-    .select("*")
-    .eq("store_id", storeId)
-    .order("date", { ascending: false })
-    .limit(14);
+  const [{ data: targetClosing }, { data: history }] = await Promise.all([
+    supabase
+      .from("daily_closings")
+      .select("*")
+      .eq("store_id", storeId)
+      .eq("date", targetDate)
+      .maybeSingle(),
+    supabase
+      .from("daily_closings")
+      .select("*")
+      .eq("store_id", storeId)
+      .order("date", { ascending: false })
+      .limit(14),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">

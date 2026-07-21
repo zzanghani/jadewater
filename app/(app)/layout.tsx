@@ -13,21 +13,24 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createClient();
+  // proxy.ts가 이미 로그인 여부로 리다이렉트를 처리했으므로, 여기서는
+  // Auth 서버에 재검증 요청을 보내는 getUser() 대신 로컬 세션만 읽는다.
+  // (혹시 이 레이아웃에 프록시를 안 거치고 도달하는 경로가 생기더라도
+  // 아래 리다이렉트가 그대로 방어막 역할을 한다.)
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
   if (!user) {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("name")
-    .eq("id", user.id)
-    .single();
-
-  const { storeId, stores } = await getStoreContext(supabase);
+  const [{ data: profile }, storeContext] = await Promise.all([
+    supabase.from("profiles").select("name").eq("id", user.id).single(),
+    getStoreContext(supabase),
+  ]);
+  const { storeId, stores } = storeContext;
   const isMaster = stores.length > 1;
 
   const name = isMaster

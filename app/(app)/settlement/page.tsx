@@ -43,28 +43,29 @@ export default async function SettlementPage({
   // 지점 계정(store_id 있음)은 자기 매장 1개만 보이므로, 그 경우에만 비밀번호를 요구한다.
   const isMaster = stores.length > 1;
 
-  const { data: closingRows } = await supabase
-    .from("daily_closings")
-    .select(
-      "food_sales, beverage_sales, wine_sales, rental_sales, coupang_eats_sales, baemin_sales, grand_total, discount_amount"
-    )
-    .eq("store_id", storeId)
-    .gte("date", start)
-    .lte("date", end);
-
-  const { data: receiptRows } = await supabase
-    .from("receipts")
-    .select("amount, supplier")
-    .eq("store_id", storeId)
-    .gte("date", start)
-    .lte("date", end);
-
-  const { data: existing } = await supabase
-    .from("monthly_settlements")
-    .select("*")
-    .eq("store_id", storeId)
-    .eq("month", start)
-    .maybeSingle();
+  const [{ data: closingRows }, { data: receiptRows }, { data: existing }] =
+    await Promise.all([
+      supabase
+        .from("daily_closings")
+        .select(
+          "food_sales, beverage_sales, wine_sales, rental_sales, coupang_eats_sales, baemin_sales, grand_total, discount_amount"
+        )
+        .eq("store_id", storeId)
+        .gte("date", start)
+        .lte("date", end),
+      supabase
+        .from("receipts")
+        .select("amount, supplier")
+        .eq("store_id", storeId)
+        .gte("date", start)
+        .lte("date", end),
+      supabase
+        .from("monthly_settlements")
+        .select("*")
+        .eq("store_id", storeId)
+        .eq("month", start)
+        .maybeSingle(),
+    ]);
 
   const autoSales = {
     totalSales: sum((closingRows ?? []).map((c) => c.grand_total)),

@@ -40,26 +40,24 @@ export default async function StoreHistoryPage({
 
   const supabase = await createClient();
 
-  const { data: store } = await supabase
-    .from("stores")
-    .select("*")
-    .eq("id", storeId)
-    .maybeSingle();
+  const [{ data: store }, { storeId: ownStoreId, stores }, { data: rows }] =
+    await Promise.all([
+      supabase.from("stores").select("*").eq("id", storeId).maybeSingle(),
+      getStoreContext(supabase),
+      supabase
+        .from("daily_closings")
+        .select("*")
+        .eq("store_id", storeId)
+        .gte("date", start)
+        .lte("date", end),
+    ]);
 
   if (!store) {
     notFound();
   }
 
-  const { storeId: ownStoreId, stores } = await getStoreContext(supabase);
   const isMaster = stores.length > 1;
   const isOwnStore = !isMaster && ownStoreId === storeId;
-
-  const { data: rows } = await supabase
-    .from("daily_closings")
-    .select("*")
-    .eq("store_id", storeId)
-    .gte("date", start)
-    .lte("date", end);
 
   const recordsByDate: Record<string, DailyClosing> = Object.fromEntries(
     (rows ?? []).map((r) => [r.date, r])

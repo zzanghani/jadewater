@@ -1,10 +1,13 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { cache } from 'react'
 import type { Database } from '@/lib/types'
 
 // 서버 컴포넌트 / 서버 액션 / 라우트 핸들러에서 사용하는 Supabase 클라이언트.
 // Next.js 16에서 cookies()는 항상 비동기이므로 await 후 어댑터로 넘긴다.
-export async function createClient() {
+// React cache()로 감싸서 같은 요청(레이아웃 + 페이지 등) 안에서 여러 번
+// 호출돼도 클라이언트를 한 번만 만들고, 쿠키 파싱도 한 번만 하도록 한다.
+export const createClient = cache(async function createClient() {
   const cookieStore = await cookies()
 
   return createServerClient<Database>(
@@ -28,4 +31,4 @@ export async function createClient() {
       },
     }
   )
-}
+})

@@ -156,13 +156,21 @@ export default async function AnalysisPage() {
     );
   }
 
-  const { data: closingRows } = await supabase
-    .from("daily_closings")
-    .select("date, food_sales, beverage_sales, wine_sales")
-    .eq("store_id", storeId)
-    .gte("date", lastWeek[0])
-    .lte("date", thisWeek[6])
-    .order("date", { ascending: true });
+  const [{ data: closingRows }, { data: receiptRows }] = await Promise.all([
+    supabase
+      .from("daily_closings")
+      .select("date, food_sales, beverage_sales, wine_sales")
+      .eq("store_id", storeId)
+      .gte("date", lastWeek[0])
+      .lte("date", thisWeek[6])
+      .order("date", { ascending: true }),
+    supabase
+      .from("receipts")
+      .select("amount")
+      .eq("store_id", storeId)
+      .gte("date", thisWeek[0])
+      .lte("date", thisWeek[6]),
+  ]);
 
   const byDate = new Map<
     string,
@@ -179,13 +187,6 @@ export default async function AnalysisPage() {
     lastWeek.map((d) => byDate.get(d)?.beverage_sales ?? 0)
   );
   const lastWeekWine = sum(lastWeek.map((d) => byDate.get(d)?.wine_sales ?? 0));
-
-  const { data: receiptRows } = await supabase
-    .from("receipts")
-    .select("amount")
-    .eq("store_id", storeId)
-    .gte("date", thisWeek[0])
-    .lte("date", thisWeek[6]);
 
   const weeklyReceiptTotal = sum((receiptRows ?? []).map((r) => r.amount));
 
