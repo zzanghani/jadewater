@@ -8,3 +8,8 @@ const STORE_COLORS: [string, string][] = [
 export function storeColor(name: string): string {
   return STORE_COLORS.find(([key]) => name.includes(key))?.[1] ?? "#6b7280";
 }
+
+// 목록에서 매장명 라벨처럼 작은 텍스트에 쓰는, 원래 색보다 옅은 버전.
+export function storeColorSoft(name: string): string {
+  return `${storeColor(name)}99`;
+}

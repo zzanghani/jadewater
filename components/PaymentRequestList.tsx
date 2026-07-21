@@ -4,16 +4,35 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { completePaymentRequest } from "@/app/(app)/payment/actions";
 import { formatWon } from "@/lib/format";
+import { kstDateString } from "@/lib/date";
+import { storeColorSoft } from "@/lib/storeColors";
 import type { PaymentRequest } from "@/lib/types";
 
 type Row = PaymentRequest & { storeName?: string };
 
-function requestDateLabel(createdAt: string) {
-  return new Date(createdAt).toLocaleDateString("ko-KR", {
+function kstDateParts(iso: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
-    month: "numeric",
-    day: "numeric",
-  });
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(iso));
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  return { y: get("year"), m: get("month"), d: get("day") };
+}
+
+function requestDateLabel(iso: string) {
+  const { m, d } = kstDateParts(iso);
+  return `${m}월 ${d}일`;
+}
+
+// 요청일(KST 달력 날짜) 기준으로 오늘까지 며칠 지났는지. 당일이면 0.
+function daysSinceRequest(iso: string): number {
+  const { y, m, d } = kstDateParts(iso);
+  const requestUTC = Date.UTC(y, m - 1, d);
+  const [ty, tm, td] = kstDateString(0).split("-").map(Number);
+  const todayUTC = Date.UTC(ty, tm - 1, td);
+  return Math.round((todayUTC - requestUTC) / 86_400_000);
 }
 
 export default function PaymentRequestList({
@@ -46,40 +65,58 @@ export default function PaymentRequestList({
   return (
     <>
       <ul className="flex flex-col gap-2">
-        {requests.map((r) => (
-          <li
-            key={r.id}
-            className="flex items-center gap-2 rounded-2xl border border-border bg-card p-4"
-          >
-            <button
-              type="button"
-              onClick={() => setSelected(r)}
-              className="min-w-0 flex-1 text-left"
+        {requests.map((r) => {
+          const days = daysSinceRequest(r.created_at);
+          const isUrgent = days >= 3;
+          return (
+            <li
+              key={r.id}
+              className="flex items-center gap-2 rounded-2xl border border-border bg-card p-4"
             >
-              {isMaster && r.storeName && (
-                <p className="mb-0.5 text-[11px] font-semibold text-brand">
-                  {r.storeName}
-                </p>
-              )}
-              <p className="truncate text-sm font-semibold">
-                {r.vendor_name}
-              </p>
-              <p className="text-xs text-muted">
-                {formatWon(r.amount)} · {requestDateLabel(r.created_at)}
-              </p>
-            </button>
-            {isMaster && (
               <button
                 type="button"
-                onClick={(e) => handleComplete(r.id, e)}
-                disabled={pendingId === r.id}
-                className="shrink-0 rounded-full border border-brand bg-brand/10 px-3 py-1.5 text-xs font-semibold text-brand transition-opacity disabled:opacity-50"
+                onClick={() => setSelected(r)}
+                className="min-w-0 flex-1 text-left"
               >
-                {pendingId === r.id ? "처리 중..." : "요청완료"}
+                {isMaster && r.storeName && (
+                  <p
+                    className="mb-0.5 text-[11px] font-semibold"
+                    style={{ color: storeColorSoft(r.storeName) }}
+                  >
+                    {r.storeName}
+                  </p>
+                )}
+                <p className="truncate text-sm font-semibold">
+                  {r.vendor_name}
+                </p>
+                <p className="text-xs text-muted">
+                  {formatWon(r.amount)} · {requestDateLabel(r.created_at)}
+                  {days >= 1 && (
+                    <span
+                      className={`font-semibold ${
+                        isUrgent ? "text-red-600" : "text-amber-600"
+                      }`}
+                    >
+                      {" · "}
+                      D+{days}
+                    </span>
+                  )}
+                </p>
               </button>
-            )}
-          </li>
-        ))}
+              {isUrgent && <UrgentBadge />}
+              {isMaster && (
+                <button
+                  type="button"
+                  onClick={(e) => handleComplete(r.id, e)}
+                  disabled={pendingId === r.id}
+                  className="shrink-0 rounded-full border border-brand bg-brand/10 px-3 py-1.5 text-xs font-semibold text-brand transition-opacity disabled:opacity-50"
+                >
+                  {pendingId === r.id ? "처리 중..." : "요청완료"}
+                </button>
+              )}
+            </li>
+          );
+        })}
       </ul>
 
       {selected && (
@@ -103,7 +140,10 @@ export default function PaymentRequestList({
             </div>
 
             {isMaster && selected.storeName && (
-              <p className="text-sm font-semibold text-brand">
+              <p
+                className="text-sm font-semibold"
+                style={{ color: storeColorSoft(selected.storeName) }}
+              >
                 {selected.storeName}
               </p>
             )}
@@ -122,9 +162,21 @@ export default function PaymentRequestList({
               )}
               <DetailRow
                 label="요청일"
-                value={requestDateLabel(selected.created_at)}
+                value={
+                  requestDateLabel(selected.created_at) +
+                  (daysSinceRequest(selected.created_at) >= 1
+                    ? ` (D+${daysSinceRequest(selected.created_at)})`
+                    : "")
+                }
               />
             </div>
+
+            {daysSinceRequest(selected.created_at) >= 3 && (
+              <div className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+                🚨 긴급: 요청일로부터{" "}
+                {daysSinceRequest(selected.created_at)}일 경과했습니다
+              </div>
+            )}
 
             {isMaster && (
               <button
@@ -140,6 +192,14 @@ export default function PaymentRequestList({
         </div>
       )}
     </>
+  );
+}
+
+function UrgentBadge() {
+  return (
+    <span className="shrink-0 rounded-full bg-red-50 px-2.5 py-1.5 text-[11px] font-bold text-red-600">
+      🚨 긴급
+    </span>
   );
 }
 
