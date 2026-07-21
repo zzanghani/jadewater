@@ -24,9 +24,11 @@ export async function fetchNaverBlogPosts(
   clientSecret: string,
   display = 5
 ): Promise<NaverBlogPost[]> {
+  // sort=date(최신순)는 "하남"처럼 흔한 단어가 매장명에 들어가면 완전히 무관한
+  // 글(부동산/주식 등)까지 끌려온다. sort=sim(관련도순)이 훨씬 정확하다.
   const url = `https://openapi.naver.com/v1/search/blog.json?query=${encodeURIComponent(
     query
-  )}&display=${display}&sort=date`;
+  )}&display=${display}&sort=sim`;
 
   const res = await fetch(url, {
     headers: {
