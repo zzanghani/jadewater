@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "매장 일 마감 · 정산 · 입금요청 관리",
     start_url: "/",
     display: "standalone",
-    background_color: "#F4EFE3",
+    background_color: "#FFFFFF",
     theme_color: "#86c1ae",
     icons: [
       {
