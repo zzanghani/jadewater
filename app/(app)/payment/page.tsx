@@ -5,6 +5,7 @@ import PaymentForm from "@/components/PaymentForm";
 import FieldExpenseForm from "@/components/FieldExpenseForm";
 import FieldExpenseList from "@/components/FieldExpenseList";
 import PaymentRequestList from "@/components/PaymentRequestList";
+import PushSubscribeButton from "@/components/PushSubscribeButton";
 import type { Store } from "@/lib/types";
 
 type Tab = "expense" | "request" | "confirm";
@@ -166,7 +167,10 @@ async function ConfirmTab({
 
   return (
     <section>
-      <h1 className="mb-3 text-lg font-bold">요청확인</h1>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h1 className="text-lg font-bold">요청확인</h1>
+        {!isMaster && <PushSubscribeButton storeId={storeId} />}
+      </div>
       <PaymentRequestList requests={rows} isMaster={isMaster} />
     </section>
   );

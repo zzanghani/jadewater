@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { formatWon } from "@/lib/format";
+import { sendPush } from "@/lib/webpush";
 import type { FieldExpenseCategory, FieldExpensePaymentMethod } from "@/lib/types";
 
 export type PaymentFormState = { error?: string; success?: boolean } | undefined;
@@ -76,12 +78,44 @@ export async function completePaymentRequest(id: string): Promise<void> {
 
   if (!user) return;
 
-  await supabase
+  const { data: updated } = await supabase
     .from("payment_requests")
     .update({ completed_at: new Date().toISOString() })
-    .eq("id", id);
+    .eq("id", id)
+    .select()
+    .single();
 
   revalidatePath("/payment");
+
+  if (!updated) return;
+
+  const { data: subs } = await supabase
+    .from("push_subscriptions")
+    .select("*")
+    .eq("store_id", updated.store_id);
+
+  if (!subs?.length) return;
+
+  const payload = {
+    title: "입금요청 완료",
+    body: `${updated.vendor_name} · ${formatWon(updated.amount)} 요청이 완료 처리됐습니다.`,
+    url: "/payment?tab=confirm",
+  };
+
+  const expiredIds: string[] = [];
+  await Promise.all(
+    subs.map(async (s) => {
+      const { expired } = await sendPush(
+        { endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth },
+        payload
+      );
+      if (expired) expiredIds.push(s.id);
+    })
+  );
+
+  if (expiredIds.length > 0) {
+    await supabase.from("push_subscriptions").delete().in("id", expiredIds);
+  }
 }
 
 export async function saveFieldExpense(

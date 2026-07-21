@@ -176,6 +176,16 @@ export type BlogPost = {
   created_at: string
 }
 
+export type PushSubscriptionRow = {
+  id: string
+  user_id: string
+  store_id: string
+  endpoint: string
+  p256dh: string
+  auth: string
+  created_at: string
+}
+
 export type FieldExpenseCategory =
   | '식자재'
   | '소모품'
@@ -304,6 +314,18 @@ export type Database = {
           created_by: string
         }
         Update: Partial<FieldExpense>
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: PushSubscriptionRow
+        Insert: Partial<PushSubscriptionRow> & {
+          user_id: string
+          store_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+        }
+        Update: Partial<PushSubscriptionRow>
         Relationships: []
       }
     }
