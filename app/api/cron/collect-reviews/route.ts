@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { fetchGooglePlaceSnapshot } from "@/lib/googlePlaces";
+import { fetchNaverBlogPosts } from "@/lib/naverBlog";
 import { kstDateString } from "@/lib/date";
 
 // Vercel Cron이 매일 KST 06:00에 호출한다 (vercel.json 참고).
@@ -15,6 +16,9 @@ export async function GET(request: Request) {
   if (!apiKey) {
     return NextResponse.json({ error: "GOOGLE_PLACES_API_KEY not set" }, { status: 500 });
   }
+
+  const naverClientId = process.env.NAVER_CLIENT_ID;
+  const naverClientSecret = process.env.NAVER_CLIENT_SECRET;
 
   const supabase = createServiceClient();
   const today = kstDateString(0);
@@ -82,9 +86,31 @@ export async function GET(request: Request) {
       reviewsError = error?.message ?? null;
     }
 
+    let blogSummary = "";
+    if (naverClientId && naverClientSecret) {
+      const posts = await fetchNaverBlogPosts(store.name, naverClientId, naverClientSecret);
+      if (posts.length > 0) {
+        const { error: blogError, count } = await supabase.from("blog_posts").upsert(
+          posts.map((p) => ({
+            store_id: store.id,
+            date: today,
+            posted_at: p.postedAt,
+            title: p.title,
+            body: p.body,
+            blogger_name: p.bloggerName,
+            url: p.url,
+          })),
+          { onConflict: "store_id,url", ignoreDuplicates: true, count: "exact" }
+        );
+        blogSummary = blogError
+          ? `, 블로그 저장 오류: ${blogError.message}`
+          : `, 블로그 신규 ${count ?? posts.length}건`;
+      }
+    }
+
     results[store.name] = reviewsError
-      ? `완료 (평점 ${snapshot.rating}, 총 ${snapshot.reviewCount}건) — 리뷰 저장 오류: ${reviewsError}`
-      : `완료 (평점 ${snapshot.rating}, 총 ${snapshot.reviewCount}건, 증가 ${changeCount}건)`;
+      ? `완료 (평점 ${snapshot.rating}, 총 ${snapshot.reviewCount}건) — 리뷰 저장 오류: ${reviewsError}${blogSummary}`
+      : `완료 (평점 ${snapshot.rating}, 총 ${snapshot.reviewCount}건, 증가 ${changeCount}건${blogSummary})`;
   }
 
   return NextResponse.json({ ok: true, date: today, results });

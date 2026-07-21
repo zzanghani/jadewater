@@ -175,6 +175,28 @@ export default function ReviewReportClient({
                     </p>
                   )}
 
+                  {/* 블로그 후기 */}
+                  {data && data.blogPosts.length > 0 && (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={s.sectionLabel}>
+                        📝 새로 달린 블로그 후기 ({data.blogPosts.length}건)
+                      </div>
+                      {data.blogPosts.map((p) => (
+                        <div key={p.id} style={s.blogCard}>
+                          <div style={s.reviewMeta}>
+                            네이버 블로그 · {p.blogger_name ?? "익명"}
+                            {p.posted_at ? ` · ${p.posted_at}` : ""}
+                          </div>
+                          <div style={s.blogTitle}>{p.title}</div>
+                          {p.body && <div style={{ marginTop: 2 }}>{p.body}</div>}
+                          <a href={p.url} target="_blank" rel="noreferrer" style={s.blogLink}>
+                            📝 블로그 글 보러가기
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {/* AI 분석 */}
                   {data?.analysis ? (
                     <div style={s.aiBox}>
@@ -265,6 +287,10 @@ const s: Record<string, CSSProperties> = {
   sectionLabel: { fontWeight: 600, fontSize: 13, marginBottom: 8, color: "#333" },
   reviewCard: { background: "#fafafa", borderRadius: 8, padding: "10px 12px", marginBottom: 6, fontSize: 13, lineHeight: 1.6 },
   reviewMeta: { color: "#888", fontSize: 11, marginBottom: 4 },
+
+  blogCard: { background: "#fafafa", borderRadius: 8, padding: "10px 12px", marginBottom: 6, fontSize: 13, lineHeight: 1.6 },
+  blogTitle: { fontWeight: 600, color: "#222" },
+  blogLink: { display: "inline-block", marginTop: 6, fontSize: 12, color: "#2563eb", textDecoration: "none" },
 
   aiBox: { background: "#f0f4ff", borderRadius: 8, padding: "12px 14px", fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-line" },
   aiTitle: { fontWeight: 700, marginBottom: 6, fontSize: 13 },

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database, Review } from "./types";
+import type { BlogPost, Database, Review } from "./types";
 
 export type PlatformSummary = {
   name: string;
@@ -12,6 +12,7 @@ export type StoreReviewReport = {
   platforms: PlatformSummary[];
   newReviews: Review[];
   badReviews: Review[];
+  blogPosts: BlogPost[];
   analysis: string;
 };
 
@@ -27,7 +28,13 @@ export async function fetchReviewReports(
   for (const date of dates) {
     reports[date] = {};
     for (const storeId of storeIds) {
-      reports[date][storeId] = { platforms: [], newReviews: [], badReviews: [], analysis: "" };
+      reports[date][storeId] = {
+        platforms: [],
+        newReviews: [],
+        badReviews: [],
+        blogPosts: [],
+        analysis: "",
+      };
     }
   }
 
@@ -38,27 +45,35 @@ export async function fetchReviewReports(
   const startDate = dates.reduce((min, d) => (d < min ? d : min), dates[0]);
   const endDate = dates.reduce((max, d) => (d > max ? d : max), dates[0]);
 
-  const [{ data: statRows }, { data: reviewRows }, { data: summaryRows }] = await Promise.all([
-    supabase
-      .from("review_platform_stats")
-      .select("*")
-      .in("store_id", storeIds)
-      .gte("date", startDate)
-      .lte("date", endDate),
-    supabase
-      .from("reviews")
-      .select("*")
-      .in("store_id", storeIds)
-      .gte("date", startDate)
-      .lte("date", endDate)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("review_ai_summaries")
-      .select("*")
-      .in("store_id", storeIds)
-      .gte("date", startDate)
-      .lte("date", endDate),
-  ]);
+  const [{ data: statRows }, { data: reviewRows }, { data: summaryRows }, { data: blogRows }] =
+    await Promise.all([
+      supabase
+        .from("review_platform_stats")
+        .select("*")
+        .in("store_id", storeIds)
+        .gte("date", startDate)
+        .lte("date", endDate),
+      supabase
+        .from("reviews")
+        .select("*")
+        .in("store_id", storeIds)
+        .gte("date", startDate)
+        .lte("date", endDate)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("review_ai_summaries")
+        .select("*")
+        .in("store_id", storeIds)
+        .gte("date", startDate)
+        .lte("date", endDate),
+      supabase
+        .from("blog_posts")
+        .select("*")
+        .in("store_id", storeIds)
+        .gte("date", startDate)
+        .lte("date", endDate)
+        .order("posted_at", { ascending: false }),
+    ]);
 
   for (const row of statRows ?? []) {
     const cell = reports[row.date]?.[row.store_id];
@@ -84,6 +99,12 @@ export async function fetchReviewReports(
     const cell = reports[row.date]?.[row.store_id];
     if (!cell) continue;
     cell.analysis = row.summary;
+  }
+
+  for (const row of blogRows ?? []) {
+    const cell = reports[row.date]?.[row.store_id];
+    if (!cell) continue;
+    cell.blogPosts.push(row);
   }
 
   return reports;

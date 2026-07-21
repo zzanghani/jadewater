@@ -163,6 +163,18 @@ export type ReviewAiSummary = {
   created_at: string
 }
 
+export type BlogPost = {
+  id: string
+  store_id: string
+  date: string
+  posted_at: string | null
+  title: string
+  body: string | null
+  blogger_name: string | null
+  url: string
+  created_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -247,6 +259,12 @@ export type Database = {
         Row: ReviewAiSummary
         Insert: Partial<ReviewAiSummary> & { store_id: string; date: string }
         Update: Partial<ReviewAiSummary>
+        Relationships: []
+      }
+      blog_posts: {
+        Row: BlogPost
+        Insert: Partial<BlogPost> & { store_id: string; date: string; title: string; url: string }
+        Update: Partial<BlogPost>
         Relationships: []
       }
     }
