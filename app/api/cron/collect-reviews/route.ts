@@ -82,8 +82,9 @@ export async function GET(request: Request) {
       reviewsError = error?.message ?? null;
     }
 
-    results[store.name] =
-      `완료 (평점 ${snapshot.rating}, 총 ${snapshot.reviewCount}건, 증가 ${changeCount}건, 리뷰수집 ${snapshot.reviews.length}건 시도${reviewsError ? `, 오류: ${reviewsError}` : ""})`;
+    results[store.name] = reviewsError
+      ? `완료 (평점 ${snapshot.rating}, 총 ${snapshot.reviewCount}건) — 리뷰 저장 오류: ${reviewsError}`
+      : `완료 (평점 ${snapshot.rating}, 총 ${snapshot.reviewCount}건, 증가 ${changeCount}건)`;
   }
 
   return NextResponse.json({ ok: true, date: today, results });
