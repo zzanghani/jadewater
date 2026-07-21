@@ -154,7 +154,7 @@ async function ConfirmTab({
   return (
     <section>
       <h1 className="mb-3 text-lg font-bold">요청확인</h1>
-      <PaymentRequestList requests={rows} showStore={isMaster} />
+      <PaymentRequestList requests={rows} isMaster={isMaster} />
     </section>
   );
 }
