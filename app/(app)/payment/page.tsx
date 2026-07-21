@@ -21,12 +21,24 @@ export default async function PaymentPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { tab: tabParam } = await searchParams;
-  const tab: Tab = TABS.some((t) => t.key === tabParam)
-    ? (tabParam as Tab)
-    : "expense";
 
   const supabase = await createClient();
   const { storeId, stores } = await getStoreContext(supabase);
+  const isMaster = stores.length > 1;
+
+  // 마스터 계정은 각 매장이 올린 현장지출/입금요청을 직접 등록할 일이 없으므로
+  // 요청확인 화면만 보여준다.
+  if (isMaster) {
+    return (
+      <div className="flex flex-col gap-6">
+        <ConfirmTab storeId={storeId} stores={stores} isMaster={isMaster} />
+      </div>
+    );
+  }
+
+  const tab: Tab = TABS.some((t) => t.key === tabParam)
+    ? (tabParam as Tab)
+    : "expense";
 
   return (
     <div className="flex flex-col gap-6">
@@ -51,7 +63,7 @@ export default async function PaymentPage({
         <RequestTab storeId={storeId} stores={stores} />
       )}
       {tab === "confirm" && (
-        <ConfirmTab storeId={storeId} stores={stores} />
+        <ConfirmTab storeId={storeId} stores={stores} isMaster={isMaster} />
       )}
     </div>
   );
@@ -126,12 +138,13 @@ async function RequestTab({
 async function ConfirmTab({
   storeId,
   stores,
+  isMaster,
 }: {
   storeId: string;
   stores: Store[];
+  isMaster: boolean;
 }) {
   const supabase = await createClient();
-  const isMaster = stores.length > 1;
 
   let query = supabase
     .from("payment_requests")
