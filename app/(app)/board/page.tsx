@@ -78,7 +78,7 @@ export default async function BoardPage({
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold">게시판</h1>
         <Link
-          href={`/board/new?category=${category}`}
+          href={`/board/new?category=${encodeURIComponent(category)}`}
           className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-md shadow-brand/30"
         >
           글쓰기
@@ -89,7 +89,7 @@ export default async function BoardPage({
         {CATEGORIES.map((c) => (
           <Link
             key={c}
-            href={`/board?category=${c}`}
+            href={`/board?category=${encodeURIComponent(c)}`}
             className={`rounded-xl py-2.5 text-center text-xs font-semibold transition-colors ${
               category === c ? "bg-brand text-white shadow-sm" : "text-muted"
             }`}

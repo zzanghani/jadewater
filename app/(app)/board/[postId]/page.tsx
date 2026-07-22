@@ -97,7 +97,7 @@ export default async function BoardPostPage({
   return (
     <div className="flex flex-col gap-5">
       <Link
-        href={`/board?category=${post.category}`}
+        href={`/board?category=${encodeURIComponent(post.category)}`}
         className="flex items-center gap-1 text-sm font-medium text-muted"
       >
         <span aria-hidden>←</span> 목록으로
