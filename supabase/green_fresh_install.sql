@@ -537,10 +537,11 @@ create policy "receipts_delete_authenticated"
 -- --------------------------------------------------------------------------
 -- 입금요청 완료 알림 구독 (Web Push)
 -- --------------------------------------------------------------------------
+-- store_id가 NULL이면 마스터 계정의 구독(모든 매장의 새 요청 알림용)이다.
 create table if not exists public.push_subscriptions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles (id) on delete cascade,
-  store_id uuid not null references public.stores (id),
+  store_id uuid references public.stores (id),
   endpoint text not null unique,
   p256dh text not null,
   auth text not null,
@@ -552,7 +553,7 @@ alter table public.push_subscriptions enable row level security;
 create policy "push_subscriptions_select_authenticated"
   on public.push_subscriptions for select
   to authenticated
-  using (public.user_can_access_store(store_id));
+  using (store_id is null or public.user_can_access_store(store_id));
 
 create policy "push_subscriptions_insert_own"
   on public.push_subscriptions for insert
@@ -562,7 +563,7 @@ create policy "push_subscriptions_insert_own"
 create policy "push_subscriptions_delete_authenticated"
   on public.push_subscriptions for delete
   to authenticated
-  using (public.user_can_access_store(store_id));
+  using (store_id is null or public.user_can_access_store(store_id));
 
 create index if not exists push_subscriptions_store_id_idx on public.push_subscriptions (store_id);
 

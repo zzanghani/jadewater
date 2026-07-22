@@ -169,7 +169,7 @@ async function ConfirmTab({
     <section>
       <div className="mb-3 flex items-center justify-between gap-3">
         <h1 className="text-lg font-bold">요청확인</h1>
-        {!isMaster && <PushSubscribeButton storeId={storeId} />}
+        <PushSubscribeButton storeId={isMaster ? null : storeId} />
       </div>
       <PaymentRequestList requests={rows} isMaster={isMaster} />
     </section>

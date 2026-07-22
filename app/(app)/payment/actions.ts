@@ -53,21 +53,77 @@ export async function savePaymentRequest(
     return { error: "금액을 올바르게 입력해 주세요." };
   }
 
-  const { error } = await supabase.from("payment_requests").insert({
-    store_id: storeId,
-    vendor_name: vendorName,
-    amount,
-    bank_name: bankName,
-    account_number: accountNumber,
-    created_by: user.id,
-  });
+  const { data: inserted, error } = await supabase
+    .from("payment_requests")
+    .insert({
+      store_id: storeId,
+      vendor_name: vendorName,
+      amount,
+      bank_name: bankName,
+      account_number: accountNumber,
+      created_by: user.id,
+    })
+    .select()
+    .single();
 
-  if (error) {
+  if (error || !inserted) {
     return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
   revalidatePath("/payment");
+
+  // 알림 발송은 부가 기능이므로, 여기서 어떤 문제가 생기더라도
+  // 입금요청 저장 자체는 이미 끝난 상태로 절대 실패하지 않게 한다.
+  try {
+    await notifyMasterOfNewRequest(supabase, inserted);
+  } catch (err) {
+    console.error("[savePaymentRequest] 알림 발송 중 오류", err);
+  }
+
   return { success: true };
+}
+
+async function notifyMasterOfNewRequest(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  inserted: { store_id: string; vendor_name: string; amount: number }
+) {
+  const { data: subs } = await supabase
+    .from("push_subscriptions")
+    .select("*")
+    .is("store_id", null);
+
+  console.log(
+    `[savePaymentRequest] 마스터 구독 ${subs?.length ?? 0}건 발견`
+  );
+
+  if (!subs?.length) return;
+
+  const { data: store } = await supabase
+    .from("stores")
+    .select("name")
+    .eq("id", inserted.store_id)
+    .single();
+
+  const payload = {
+    title: "새 입금요청",
+    body: `${store?.name ?? "매장"} · ${inserted.vendor_name} · ${formatWon(inserted.amount)} 입금요청이 등록됐습니다.`,
+    url: "/payment?tab=confirm",
+  };
+
+  const expiredIds: string[] = [];
+  await Promise.all(
+    subs.map(async (s) => {
+      const { expired } = await sendPush(
+        { endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth },
+        payload
+      );
+      if (expired) expiredIds.push(s.id);
+    })
+  );
+
+  if (expiredIds.length > 0) {
+    await supabase.from("push_subscriptions").delete().in("id", expiredIds);
+  }
 }
 
 export async function completePaymentRequest(id: string): Promise<void> {

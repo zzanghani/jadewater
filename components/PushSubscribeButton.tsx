@@ -12,7 +12,11 @@ function urlBase64ToUint8Array(base64String: string) {
   return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
 }
 
-export default function PushSubscribeButton({ storeId }: { storeId: string }) {
+export default function PushSubscribeButton({
+  storeId,
+}: {
+  storeId: string | null;
+}) {
   const [status, setStatus] = useState<Status>("checking");
 
   useEffect(() => {
@@ -72,8 +76,13 @@ export default function PushSubscribeButton({ storeId }: { storeId: string }) {
 
   if (status === "checking" || status === "unsupported") return null;
 
+  const label = storeId ? "요청완료 알림 받기" : "새 입금요청 알림 받기";
+  const subscribedLabel = storeId
+    ? "🔔 요청완료 알림이 설정되어 있습니다."
+    : "🔔 새 입금요청 알림이 설정되어 있습니다.";
+
   if (status === "subscribed") {
-    return <p className="text-xs text-muted">🔔 요청완료 알림이 설정되어 있습니다.</p>;
+    return <p className="text-xs text-muted">{subscribedLabel}</p>;
   }
 
   return (
@@ -83,7 +92,7 @@ export default function PushSubscribeButton({ storeId }: { storeId: string }) {
         onClick={handleSubscribe}
         className="self-start rounded-full border border-brand bg-brand/10 px-4 py-2 text-xs font-semibold text-brand transition-colors hover:bg-brand/20"
       >
-        🔔 요청완료 알림 받기
+        🔔 {label}
       </button>
       {status === "denied" && (
         <p className="text-xs text-red-600">

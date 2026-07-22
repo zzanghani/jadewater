@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 
 export async function savePushSubscription(params: {
-  storeId: string;
+  storeId: string | null;
   endpoint: string;
   p256dh: string;
   auth: string;

@@ -179,7 +179,7 @@ export type BlogPost = {
 export type PushSubscriptionRow = {
   id: string
   user_id: string
-  store_id: string
+  store_id: string | null
   endpoint: string
   p256dh: string
   auth: string
@@ -320,7 +320,7 @@ export type Database = {
         Row: PushSubscriptionRow
         Insert: Partial<PushSubscriptionRow> & {
           user_id: string
-          store_id: string
+          store_id: string | null
           endpoint: string
           p256dh: string
           auth: string
