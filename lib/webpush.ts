@@ -17,7 +17,12 @@ export type PushPayload = {
 async function loadConfiguredWebPush() {
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
-  if (!publicKey || !privateKey) return null;
+  if (!publicKey || !privateKey) {
+    console.error(
+      `[webpush] VAPID 환경변수 없음 (public=${!!publicKey}, private=${!!privateKey})`
+    );
+    return null;
+  }
 
   try {
     const { default: webpush } = await import("web-push");
@@ -28,6 +33,9 @@ async function loadConfiguredWebPush() {
         privateKey
       );
       configured = true;
+      console.log(
+        `[webpush] VAPID 설정 완료 (public 길이=${publicKey.length}, private 길이=${privateKey.length})`
+      );
     }
     return webpush;
   } catch (err) {
@@ -42,24 +50,38 @@ export async function sendPush(
   subscription: PushSubscriptionKeys,
   payload: PushPayload
 ): Promise<{ expired: boolean }> {
+  const endpointTail = subscription.endpoint.slice(-12);
   const webpush = await loadConfiguredWebPush();
-  if (!webpush) return { expired: false };
+  if (!webpush) {
+    console.error(`[webpush] VAPID 미설정으로 발송 건너뜀 (endpoint ...${endpointTail})`);
+    return { expired: false };
+  }
 
   try {
-    await webpush.sendNotification(
+    const result = await webpush.sendNotification(
       {
         endpoint: subscription.endpoint,
         keys: { p256dh: subscription.p256dh, auth: subscription.auth },
       },
       JSON.stringify(payload)
     );
+    console.log(
+      `[webpush] 발송 성공 (endpoint ...${endpointTail}, statusCode=${result.statusCode})`
+    );
     return { expired: false };
   } catch (err) {
-    console.error("[webpush] 발송 실패", err);
     const statusCode =
       err && typeof err === "object" && "statusCode" in err
         ? (err as { statusCode?: number }).statusCode
         : undefined;
+    const body =
+      err && typeof err === "object" && "body" in err
+        ? (err as { body?: string }).body
+        : undefined;
+    console.error(
+      `[webpush] 발송 실패 (endpoint ...${endpointTail}, statusCode=${statusCode})`,
+      body ?? (err instanceof Error ? err.message : err)
+    );
     return { expired: statusCode === 404 || statusCode === 410 };
   }
 }

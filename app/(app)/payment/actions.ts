@@ -71,14 +71,18 @@ export async function savePaymentRequest(
 }
 
 export async function completePaymentRequest(id: string): Promise<void> {
+  console.log(`[completePaymentRequest] 호출됨 id=${id}`);
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return;
+  if (!user) {
+    console.error("[completePaymentRequest] 로그인 안 됨, 중단");
+    return;
+  }
 
-  const { data: updated } = await supabase
+  const { data: updated, error: updateError } = await supabase
     .from("payment_requests")
     .update({ completed_at: new Date().toISOString() })
     .eq("id", id)
@@ -87,7 +91,17 @@ export async function completePaymentRequest(id: string): Promise<void> {
 
   revalidatePath("/payment");
 
-  if (!updated) return;
+  if (!updated) {
+    console.error(
+      "[completePaymentRequest] 업데이트 실패 또는 RLS 차단",
+      updateError
+    );
+    return;
+  }
+
+  console.log(
+    `[completePaymentRequest] 완료 처리됨 store_id=${updated.store_id}`
+  );
 
   // 알림 발송은 부가 기능이므로, 여기서 어떤 문제가 생기더라도
   // 요청완료 처리 자체는 이미 끝난 상태로 절대 실패하지 않게 한다.
@@ -106,6 +120,10 @@ async function notifyStoreOfCompletion(
     .from("push_subscriptions")
     .select("*")
     .eq("store_id", updated.store_id);
+
+  console.log(
+    `[completePaymentRequest] store_id=${updated.store_id} 구독 ${subs?.length ?? 0}건 발견`
+  );
 
   if (!subs?.length) return;
 
