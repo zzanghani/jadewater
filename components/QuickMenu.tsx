@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 const ALL_ITEMS = [
+  { href: "/board", label: "게시판", icon: BoardIcon },
   { href: "/receipts", label: "입고 입력", icon: BoxIcon },
   { href: "/expense", label: "현장지출", icon: ReceiptIcon },
   { href: "/analysis", label: "주간 분석", icon: TrendIcon },
@@ -44,6 +45,15 @@ function BoxIcon() {
       <path d="M21 8 12 3 3 8v8l9 5 9-5Z" />
       <path d="M3 8l9 5 9-5" />
       <path d="M12 13v8" />
+    </svg>
+  );
+}
+
+function BoardIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4h16v13H8l-4 4Z" />
+      <path d="M8 9h8M8 13h5" />
     </svg>
   );
 }

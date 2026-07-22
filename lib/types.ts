@@ -210,6 +210,32 @@ export type FieldExpense = {
   created_at: string
 }
 
+export type BoardPost = {
+  id: string
+  title: string
+  body: string
+  created_by: string
+  created_at: string
+}
+
+export type BoardComment = {
+  id: string
+  post_id: string
+  body: string
+  created_by: string
+  created_at: string
+}
+
+export type BoardAttachment = {
+  id: string
+  post_id: string | null
+  comment_id: string | null
+  storage_path: string
+  file_name: string
+  created_by: string
+  created_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -328,6 +354,30 @@ export type Database = {
         Update: Partial<PushSubscriptionRow>
         Relationships: []
       }
+      board_posts: {
+        Row: BoardPost
+        Insert: Partial<BoardPost> & { title: string; body: string; created_by: string }
+        Update: Partial<BoardPost>
+        Relationships: []
+      }
+      board_comments: {
+        Row: BoardComment
+        Insert: Partial<BoardComment> & { post_id: string; body: string; created_by: string }
+        Update: Partial<BoardComment>
+        Relationships: []
+      }
+      board_attachments: {
+        Row: BoardAttachment
+        Insert: Partial<BoardAttachment> & {
+          post_id?: string | null
+          comment_id?: string | null
+          storage_path: string
+          file_name: string
+          created_by: string
+        }
+        Update: Partial<BoardAttachment>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -339,6 +389,12 @@ export type Database = {
           p_auth: string
         }
         Returns: void
+      }
+      get_push_subscriptions_for_user: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: PushSubscriptionRow[]
       }
     }
     Enums: Record<string, never>
