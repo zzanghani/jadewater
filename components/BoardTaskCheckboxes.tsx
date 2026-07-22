@@ -40,7 +40,7 @@ export default function BoardTaskCheckboxes({
             : "border-border bg-card text-muted"
         } ${!canConfirmRequester ? "opacity-70" : ""}`}
       >
-        {requesterConfirmed ? "✅" : "⬜"} 발제자 {requesterName}
+        {requesterConfirmed ? "✅" : "⬜"} Order {requesterName}
       </button>
       <button
         type="button"
@@ -52,7 +52,7 @@ export default function BoardTaskCheckboxes({
             : "border-border bg-card text-muted"
         } ${!canConfirmAssignee ? "opacity-70" : ""}`}
       >
-        {assigneeConfirmed ? "✅" : "⬜"} 담당자 {assigneeName}
+        {assigneeConfirmed ? "✅" : "⬜"} Follower {assigneeName}
       </button>
     </div>
   );

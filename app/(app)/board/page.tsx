@@ -85,7 +85,7 @@ export default async function BoardPage() {
                   {post.assignee_id && (
                     <>
                       <span>·</span>
-                      <span>담당 {nameById.get(post.assignee_id) ?? "알 수 없음"}</span>
+                      <span>Follower {nameById.get(post.assignee_id) ?? "알 수 없음"}</span>
                     </>
                   )}
                 </div>

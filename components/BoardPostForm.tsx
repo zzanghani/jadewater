@@ -47,7 +47,7 @@ export default function BoardPostForm({ profiles }: { profiles: Profile[] }) {
       </label>
 
       <label className="flex flex-col gap-1.5 text-sm font-medium">
-        담당자 <span className="font-normal text-muted">(업무 처리가 필요한 글이면 지정)</span>
+        Follower <span className="font-normal text-muted">(업무 처리가 필요한 글이면 지정)</span>
         <select
           name="assignee_id"
           defaultValue=""
