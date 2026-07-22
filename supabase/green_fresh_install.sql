@@ -621,6 +621,7 @@ grant execute on function public.upsert_push_subscription(uuid, text, text, text
 -- 목록에서 사라진다 (payment_requests의 completed_at 패턴과 동일).
 create table if not exists public.board_posts (
   id uuid primary key default gen_random_uuid(),
+  category text not null default '운영HR' check (category in ('마케팅', '운영HR', '디자인', 'R&D')),
   title text not null,
   body text not null,
   created_by uuid not null references public.profiles (id),
@@ -655,6 +656,7 @@ create policy "board_posts_delete_own"
 
 create index if not exists board_posts_created_at_idx on public.board_posts (created_at desc);
 create index if not exists board_posts_completed_at_idx on public.board_posts (completed_at);
+create index if not exists board_posts_category_idx on public.board_posts (category);
 
 create table if not exists public.board_post_followers (
   id uuid primary key default gen_random_uuid(),

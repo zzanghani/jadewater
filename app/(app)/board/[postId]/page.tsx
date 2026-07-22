@@ -96,14 +96,20 @@ export default async function BoardPostPage({
 
   return (
     <div className="flex flex-col gap-5">
-      <Link href="/board" className="flex items-center gap-1 text-sm font-medium text-muted">
+      <Link
+        href={`/board?category=${post.category}`}
+        className="flex items-center gap-1 text-sm font-medium text-muted"
+      >
         <span aria-hidden>←</span> 목록으로
       </Link>
 
       <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-lg font-bold">{post.title}</h1>
+            <span className="inline-block rounded-full bg-brand-light px-2.5 py-0.5 text-[11px] font-semibold text-brand">
+              {post.category}
+            </span>
+            <h1 className="mt-1.5 text-lg font-bold">{post.title}</h1>
             <p className="mt-1 text-xs text-muted">
               {nameById.get(post.created_by) ?? "알 수 없음"} · {dateTimeLabel(post.created_at)}
             </p>

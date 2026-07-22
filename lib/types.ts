@@ -210,8 +210,11 @@ export type FieldExpense = {
   created_at: string
 }
 
+export type BoardCategory = '마케팅' | '운영HR' | '디자인' | 'R&D'
+
 export type BoardPost = {
   id: string
+  category: BoardCategory
   title: string
   body: string
   created_by: string
@@ -366,7 +369,12 @@ export type Database = {
       }
       board_posts: {
         Row: BoardPost
-        Insert: Partial<BoardPost> & { title: string; body: string; created_by: string }
+        Insert: Partial<BoardPost> & {
+          category: BoardCategory
+          title: string
+          body: string
+          created_by: string
+        }
         Update: Partial<Pick<BoardPost, "requester_confirmed" | "completed_at">>
         Relationships: []
       }

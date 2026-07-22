@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import type { BoardCategory } from "@/lib/types";
+
+const CATEGORIES: BoardCategory[] = ["마케팅", "운영HR", "디자인", "R&D"];
 
 function timeAgoLabel(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -14,12 +17,22 @@ function timeAgoLabel(iso: string): string {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-export default async function BoardPage() {
+export default async function BoardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string }>;
+}) {
+  const { category: categoryParam } = await searchParams;
+  const category: BoardCategory = CATEGORIES.includes(categoryParam as BoardCategory)
+    ? (categoryParam as BoardCategory)
+    : CATEGORIES[0];
+
   const supabase = await createClient();
 
   const { data: posts } = await supabase
     .from("board_posts")
     .select("*")
+    .eq("category", category)
     .is("completed_at", null)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -65,11 +78,25 @@ export default async function BoardPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold">게시판</h1>
         <Link
-          href="/board/new"
+          href={`/board/new?category=${category}`}
           className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-md shadow-brand/30"
         >
           글쓰기
         </Link>
+      </div>
+
+      <div className="grid grid-cols-4 gap-2 rounded-2xl bg-card p-1.5">
+        {CATEGORIES.map((c) => (
+          <Link
+            key={c}
+            href={`/board?category=${c}`}
+            className={`rounded-xl py-2.5 text-center text-xs font-semibold transition-colors ${
+              category === c ? "bg-brand text-white shadow-sm" : "text-muted"
+            }`}
+          >
+            {c}
+          </Link>
+        ))}
       </div>
 
       {rows.length === 0 ? (

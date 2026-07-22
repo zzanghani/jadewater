@@ -2,10 +2,19 @@
 
 import { useActionState, useRef, useState } from "react";
 import { createBoardPost, type BoardFormState } from "@/app/(app)/board/actions";
+import type { BoardCategory } from "@/lib/types";
+
+const CATEGORIES: BoardCategory[] = ["마케팅", "운영HR", "디자인", "R&D"];
 
 type Profile = { id: string; name: string };
 
-export default function BoardPostForm({ profiles }: { profiles: Profile[] }) {
+export default function BoardPostForm({
+  profiles,
+  defaultCategory,
+}: {
+  profiles: Profile[];
+  defaultCategory: BoardCategory;
+}) {
   const [state, formAction, pending] = useActionState<BoardFormState, FormData>(
     createBoardPost,
     undefined
@@ -13,6 +22,7 @@ export default function BoardPostForm({ profiles }: { profiles: Profile[] }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileNames, setFileNames] = useState<string[]>([]);
   const [followerIds, setFollowerIds] = useState<string[]>([]);
+  const [category, setCategory] = useState<BoardCategory>(defaultCategory);
 
   function toggleFollower(id: string) {
     setFollowerIds((prev) =>
@@ -31,6 +41,27 @@ export default function BoardPostForm({ profiles }: { profiles: Profile[] }) {
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1.5 text-sm font-medium">
+        카테고리
+        <input type="hidden" name="category" value={category} />
+        <div className="grid grid-cols-4 gap-2">
+          {CATEGORIES.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setCategory(c)}
+              className={`rounded-xl py-2 text-center text-xs font-semibold transition-colors ${
+                category === c
+                  ? "bg-brand text-white shadow-sm"
+                  : "border border-border bg-card text-muted"
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         제목
         <input

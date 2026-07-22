@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { sendPush } from "@/lib/webpush";
+import type { BoardCategory } from "@/lib/types";
+
+const BOARD_CATEGORIES: BoardCategory[] = ["마케팅", "운영HR", "디자인", "R&D"];
 
 export type BoardFormState = { error?: string } | undefined;
 
@@ -42,17 +45,23 @@ export async function createBoardPost(
 
   if (!user) return { error: "로그인이 필요합니다." };
 
+  const categoryRaw = String(formData.get("category") ?? "");
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
   const followerIds = [...new Set(formData.getAll("follower_ids").map(String))];
   const files = formData.getAll("attachments").filter((f): f is File => f instanceof File);
 
+  if (!BOARD_CATEGORIES.includes(categoryRaw as BoardCategory)) {
+    return { error: "카테고리를 올바르게 선택해 주세요." };
+  }
   if (!title) return { error: "제목을 입력해 주세요." };
   if (!body) return { error: "내용을 입력해 주세요." };
 
+  const category = categoryRaw as BoardCategory;
+
   const { data: inserted, error } = await supabase
     .from("board_posts")
-    .insert({ title, body, created_by: user.id })
+    .insert({ category, title, body, created_by: user.id })
     .select()
     .single();
 
