@@ -4,7 +4,8 @@ import { useActionState, useRef, useState } from "react";
 import { createBoardPost, type BoardFormState } from "@/app/(app)/board/actions";
 import type { BoardCategory } from "@/lib/types";
 
-const CATEGORIES: BoardCategory[] = ["마케팅", "운영HR", "디자인", "R&D"];
+const NOTICE: BoardCategory = "공지사항";
+const WORK_CATEGORIES: BoardCategory[] = ["마케팅", "운영HR", "디자인", "R&D"];
 
 type Profile = { id: string; name: string };
 
@@ -44,8 +45,19 @@ export default function BoardPostForm({
       <div className="flex flex-col gap-1.5 text-sm font-medium">
         카테고리
         <input type="hidden" name="category" value={category} />
+        <button
+          type="button"
+          onClick={() => setCategory(NOTICE)}
+          className={`rounded-xl py-2 text-center text-xs font-semibold transition-colors ${
+            category === NOTICE
+              ? "bg-brand text-white shadow-sm"
+              : "border border-border bg-card text-muted"
+          }`}
+        >
+          공지사항
+        </button>
         <div className="grid grid-cols-4 gap-2">
-          {CATEGORIES.map((c) => (
+          {WORK_CATEGORIES.map((c) => (
             <button
               key={c}
               type="button"

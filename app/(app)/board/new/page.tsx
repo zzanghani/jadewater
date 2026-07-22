@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import BoardPostForm from "@/components/BoardPostForm";
 import type { BoardCategory } from "@/lib/types";
 
-const CATEGORIES: BoardCategory[] = ["마케팅", "운영HR", "디자인", "R&D"];
+const CATEGORIES: BoardCategory[] = ["공지사항", "마케팅", "운영HR", "디자인", "R&D"];
 
 export default async function NewBoardPostPage({
   searchParams,

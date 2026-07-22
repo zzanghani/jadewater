@@ -2,7 +2,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { BoardCategory } from "@/lib/types";
 
-const CATEGORIES: BoardCategory[] = ["마케팅", "운영HR", "디자인", "R&D"];
+const NOTICE: BoardCategory = "공지사항";
+const WORK_CATEGORIES: BoardCategory[] = ["마케팅", "운영HR", "디자인", "R&D"];
+const ALL_CATEGORIES: BoardCategory[] = [NOTICE, ...WORK_CATEGORIES];
 
 function timeAgoLabel(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -23,9 +25,10 @@ export default async function BoardPage({
   searchParams: Promise<{ category?: string; status?: string }>;
 }) {
   const { category: categoryParam, status: statusParam } = await searchParams;
-  const category: BoardCategory = CATEGORIES.includes(categoryParam as BoardCategory)
+  const category: BoardCategory = ALL_CATEGORIES.includes(categoryParam as BoardCategory)
     ? (categoryParam as BoardCategory)
-    : CATEGORIES[0];
+    : NOTICE;
+  const isWorkSection = category !== NOTICE;
   const showDone = statusParam === "done";
 
   const supabase = await createClient();
@@ -72,6 +75,8 @@ export default async function BoardPage({
     followerNamesByPost.set(f.post_id, list);
   }
 
+  const statusSuffix = showDone ? "&status=done" : "";
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -84,19 +89,40 @@ export default async function BoardPage({
         </Link>
       </div>
 
-      <div className="grid grid-cols-4 gap-2 rounded-2xl bg-card p-1.5">
-        {CATEGORIES.map((c) => (
-          <Link
-            key={c}
-            href={`/board?category=${encodeURIComponent(c)}${showDone ? "&status=done" : ""}`}
-            className={`rounded-xl py-2.5 text-center text-xs font-semibold transition-colors ${
-              category === c ? "bg-brand text-white shadow-sm" : "text-muted"
-            }`}
-          >
-            {c}
-          </Link>
-        ))}
+      <div className="grid grid-cols-2 gap-2 rounded-2xl bg-card p-1.5">
+        <Link
+          href={`/board?category=${encodeURIComponent(NOTICE)}${statusSuffix}`}
+          className={`rounded-xl py-2.5 text-center text-sm font-semibold transition-colors ${
+            !isWorkSection ? "bg-brand text-white shadow-sm" : "text-muted"
+          }`}
+        >
+          공지사항
+        </Link>
+        <Link
+          href={`/board?category=${encodeURIComponent(WORK_CATEGORIES[0])}${statusSuffix}`}
+          className={`rounded-xl py-2.5 text-center text-sm font-semibold transition-colors ${
+            isWorkSection ? "bg-brand text-white shadow-sm" : "text-muted"
+          }`}
+        >
+          업무게시판
+        </Link>
       </div>
+
+      {isWorkSection && (
+        <div className="grid grid-cols-4 gap-2 rounded-2xl bg-card p-1.5">
+          {WORK_CATEGORIES.map((c) => (
+            <Link
+              key={c}
+              href={`/board?category=${encodeURIComponent(c)}${statusSuffix}`}
+              className={`rounded-xl py-2 text-center text-xs font-semibold transition-colors ${
+                category === c ? "bg-brand text-white shadow-sm" : "text-muted"
+              }`}
+            >
+              {c}
+            </Link>
+          ))}
+        </div>
+      )}
 
       <Link
         href={

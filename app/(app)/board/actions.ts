@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sendPush } from "@/lib/webpush";
 import type { BoardCategory } from "@/lib/types";
 
-const BOARD_CATEGORIES: BoardCategory[] = ["마케팅", "운영HR", "디자인", "R&D"];
+const BOARD_CATEGORIES: BoardCategory[] = ["공지사항", "마케팅", "운영HR", "디자인", "R&D"];
 
 export type BoardFormState = { error?: string } | undefined;
 

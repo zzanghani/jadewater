@@ -210,7 +210,7 @@ export type FieldExpense = {
   created_at: string
 }
 
-export type BoardCategory = '마케팅' | '운영HR' | '디자인' | 'R&D'
+export type BoardCategory = '공지사항' | '마케팅' | '운영HR' | '디자인' | 'R&D'
 
 export type BoardPost = {
   id: string
