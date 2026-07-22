@@ -41,7 +41,7 @@ export default async function ExpensePage() {
   return (
     <div className="flex flex-col gap-6">
       <section>
-        <h1 className="mb-3 text-lg font-bold">지출결의</h1>
+        <h1 className="mb-3 text-lg font-bold">현장지출</h1>
         <FieldExpenseForm storeId={storeId} />
       </section>
 

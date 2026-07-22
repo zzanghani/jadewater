@@ -2,7 +2,7 @@ import Link from "next/link";
 
 const ALL_ITEMS = [
   { href: "/receipts", label: "입고 입력", icon: BoxIcon },
-  { href: "/expense", label: "지출결의", icon: ReceiptIcon },
+  { href: "/expense", label: "현장지출", icon: ReceiptIcon },
   { href: "/analysis", label: "주간 분석", icon: TrendIcon },
   { href: "/monthly-analysis", label: "월간 분석", icon: CalendarIcon },
   { href: "/cost", label: "실시간 코스트", icon: GaugeIcon },
