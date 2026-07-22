@@ -576,6 +576,41 @@ create policy "push_subscriptions_delete_authenticated"
 
 create index if not exists push_subscriptions_store_id_idx on public.push_subscriptions (store_id);
 
+-- INSERT ... ON CONFLICT DO UPDATE(upsert)는, 충돌 대상인 기존 행이 현재
+-- 사용자에게 SELECT 정책상 보이지 않으면(다른 매장 소유였다면) RLS가 충돌
+-- 해소를 막아버린다. 그래서 기기 재구독은 테이블 RLS를 우회하는 SECURITY
+-- DEFINER 함수로 감싸고, 인증/매장 접근 권한 검사는 함수 안에서 직접 한다.
+create or replace function public.upsert_push_subscription(
+  p_store_id uuid,
+  p_endpoint text,
+  p_p256dh text,
+  p_auth text
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'not authenticated';
+  end if;
+
+  if not public.user_can_access_store(p_store_id) then
+    raise exception 'access denied for store';
+  end if;
+
+  insert into public.push_subscriptions (user_id, store_id, endpoint, p256dh, auth)
+  values (auth.uid(), p_store_id, p_endpoint, p_p256dh, p_auth)
+  on conflict (endpoint) do update
+    set user_id = excluded.user_id,
+        store_id = excluded.store_id,
+        p256dh = excluded.p256dh,
+        auth = excluded.auth;
+end;
+$$;
+
+grant execute on function public.upsert_push_subscription(uuid, text, text, text) to authenticated;
+
 -- --------------------------------------------------------------------------
 -- 인덱스 (기본 테이블)
 -- --------------------------------------------------------------------------

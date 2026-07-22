@@ -330,7 +330,17 @@ export type Database = {
       }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      upsert_push_subscription: {
+        Args: {
+          p_store_id: string | null
+          p_endpoint: string
+          p_p256dh: string
+          p_auth: string
+        }
+        Returns: void
+      }
+    }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
   }
