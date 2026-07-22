@@ -560,6 +560,15 @@ create policy "push_subscriptions_insert_own"
   to authenticated
   with check (auth.uid() = user_id and public.user_can_access_store(store_id));
 
+-- endpoint가 unique라서 같은 기기가 다른 계정으로 재구독하면 upsert가
+-- update로 처리된다. using(true)로 기존 소유자와 무관하게 재등록을 허용하고,
+-- with check로 결과가 항상 "로그인한 본인 + 접근 가능한 매장"이 되도록 제한한다.
+create policy "push_subscriptions_update_authenticated"
+  on public.push_subscriptions for update
+  to authenticated
+  using (true)
+  with check (auth.uid() = user_id and public.user_can_access_store(store_id));
+
 create policy "push_subscriptions_delete_authenticated"
   on public.push_subscriptions for delete
   to authenticated
