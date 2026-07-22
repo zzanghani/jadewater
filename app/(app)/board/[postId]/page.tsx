@@ -36,11 +36,15 @@ export default async function BoardPostPage({
   const commentRows = comments ?? [];
   const commentIds = commentRows.map((c) => c.id);
 
+  const { data: postFollowers } = await supabase
+    .from("board_post_followers")
+    .select("*")
+    .eq("post_id", postId);
+  const followerRows = postFollowers ?? [];
+
   const authorIds = [
     ...new Set(
-      [post.created_by, post.assignee_id, ...commentRows.map((c) => c.created_by)].filter(
-        (id): id is string => !!id
-      )
+      [post.created_by, ...followerRows.map((f) => f.user_id), ...commentRows.map((c) => c.created_by)]
     ),
   ];
 
@@ -55,6 +59,12 @@ export default async function BoardPostPage({
     ]);
 
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name]));
+
+  const followers = followerRows.map((f) => ({
+    userId: f.user_id,
+    name: nameById.get(f.user_id) ?? "알 수 없음",
+    confirmed: f.confirmed,
+  }));
 
   const allAttachments = [...(postAttachments ?? []), ...(commentAttachments ?? [])];
   const signedUrlByPath = new Map<string, string>();
@@ -98,15 +108,14 @@ export default async function BoardPostPage({
               {nameById.get(post.created_by) ?? "알 수 없음"} · {dateTimeLabel(post.created_at)}
             </p>
           </div>
-          {post.assignee_id && (
+          {followers.length > 0 && (
             <BoardTaskCheckboxes
               postId={post.id}
               requesterConfirmed={post.requester_confirmed}
-              assigneeConfirmed={post.assignee_confirmed}
               requesterName={nameById.get(post.created_by) ?? "알 수 없음"}
-              assigneeName={nameById.get(post.assignee_id) ?? "알 수 없음"}
               canConfirmRequester={user?.id === post.created_by}
-              canConfirmAssignee={user?.id === post.assignee_id}
+              followers={followers}
+              currentUserId={user?.id}
             />
           )}
         </div>

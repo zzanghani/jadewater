@@ -1,30 +1,31 @@
 "use client";
 
 import { useTransition } from "react";
-import { toggleBoardTaskConfirm } from "@/app/(app)/board/actions";
+import { toggleRequesterConfirm, toggleFollowerConfirm } from "@/app/(app)/board/actions";
+
+type Follower = { userId: string; name: string; confirmed: boolean };
 
 export default function BoardTaskCheckboxes({
   postId,
   requesterConfirmed,
-  assigneeConfirmed,
   requesterName,
-  assigneeName,
   canConfirmRequester,
-  canConfirmAssignee,
+  followers,
+  currentUserId,
 }: {
   postId: string;
   requesterConfirmed: boolean;
-  assigneeConfirmed: boolean;
   requesterName: string;
-  assigneeName: string;
   canConfirmRequester: boolean;
-  canConfirmAssignee: boolean;
+  followers: Follower[];
+  currentUserId?: string;
 }) {
   const [pending, startTransition] = useTransition();
 
-  function toggle(role: "requester" | "assignee") {
+  function toggle(kind: "requester" | "follower") {
     startTransition(() => {
-      toggleBoardTaskConfirm(postId, role);
+      if (kind === "requester") toggleRequesterConfirm(postId);
+      else toggleFollowerConfirm(postId);
     });
   }
 
@@ -42,18 +43,22 @@ export default function BoardTaskCheckboxes({
       >
         {requesterConfirmed ? "✅" : "⬜"} Order {requesterName}
       </button>
-      <button
-        type="button"
-        disabled={!canConfirmAssignee || pending}
-        onClick={() => toggle("assignee")}
-        className={`flex items-center gap-1 rounded-full border px-2.5 py-1 font-medium transition-colors ${
-          assigneeConfirmed
-            ? "border-brand bg-brand/10 text-brand"
-            : "border-border bg-card text-muted"
-        } ${!canConfirmAssignee ? "opacity-70" : ""}`}
-      >
-        {assigneeConfirmed ? "✅" : "⬜"} Follower {assigneeName}
-      </button>
+
+      {followers.map((f) => (
+        <button
+          key={f.userId}
+          type="button"
+          disabled={f.userId !== currentUserId || pending}
+          onClick={() => toggle("follower")}
+          className={`flex items-center gap-1 rounded-full border px-2.5 py-1 font-medium transition-colors ${
+            f.confirmed
+              ? "border-brand bg-brand/10 text-brand"
+              : "border-border bg-card text-muted"
+          } ${f.userId !== currentUserId ? "opacity-70" : ""}`}
+        >
+          {f.confirmed ? "✅" : "⬜"} Follower {f.name}
+        </button>
+      ))}
     </div>
   );
 }

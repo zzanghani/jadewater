@@ -25,27 +25,39 @@ export default async function BoardPage() {
     .limit(50);
 
   const rows = posts ?? [];
-
-  const authorIds = [
-    ...new Set(
-      rows.flatMap((p) => (p.assignee_id ? [p.created_by, p.assignee_id] : [p.created_by]))
-    ),
-  ];
   const postIds = rows.map((p) => p.id);
 
-  const [{ data: profiles }, { data: comments }] = await Promise.all([
-    authorIds.length > 0
-      ? supabase.from("profiles").select("id, name").in("id", authorIds)
-      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+  const [{ data: followerRows }, { data: comments }] = await Promise.all([
+    postIds.length > 0
+      ? supabase.from("board_post_followers").select("post_id, user_id").in("post_id", postIds)
+      : Promise.resolve({ data: [] as { post_id: string; user_id: string }[] }),
     postIds.length > 0
       ? supabase.from("board_comments").select("post_id").in("post_id", postIds)
       : Promise.resolve({ data: [] as { post_id: string }[] }),
   ]);
 
+  const authorIds = [
+    ...new Set([
+      ...rows.map((p) => p.created_by),
+      ...(followerRows ?? []).map((f) => f.user_id),
+    ]),
+  ];
+
+  const { data: profiles } =
+    authorIds.length > 0
+      ? await supabase.from("profiles").select("id, name").in("id", authorIds)
+      : { data: [] as { id: string; name: string }[] };
+
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name]));
   const commentCountByPost = new Map<string, number>();
   for (const c of comments ?? []) {
     commentCountByPost.set(c.post_id, (commentCountByPost.get(c.post_id) ?? 0) + 1);
+  }
+  const followerNamesByPost = new Map<string, string[]>();
+  for (const f of followerRows ?? []) {
+    const list = followerNamesByPost.get(f.post_id) ?? [];
+    list.push(nameById.get(f.user_id) ?? "알 수 없음");
+    followerNamesByPost.set(f.post_id, list);
   }
 
   return (
@@ -82,10 +94,10 @@ export default async function BoardPage() {
                       <span>댓글 {commentCountByPost.get(post.id)}</span>
                     </>
                   )}
-                  {post.assignee_id && (
+                  {(followerNamesByPost.get(post.id)?.length ?? 0) > 0 && (
                     <>
                       <span>·</span>
-                      <span>Follower {nameById.get(post.assignee_id) ?? "알 수 없음"}</span>
+                      <span>Follower {followerNamesByPost.get(post.id)!.join(", ")}</span>
                     </>
                   )}
                 </div>

@@ -12,6 +12,13 @@ export default function BoardPostForm({ profiles }: { profiles: Profile[] }) {
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileNames, setFileNames] = useState<string[]>([]);
+  const [followerIds, setFollowerIds] = useState<string[]>([]);
+
+  function toggleFollower(id: string) {
+    setFollowerIds((prev) =>
+      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
+    );
+  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     setFileNames(Array.from(e.target.files ?? []).map((f) => f.name));
@@ -46,21 +53,31 @@ export default function BoardPostForm({ profiles }: { profiles: Profile[] }) {
         />
       </label>
 
-      <label className="flex flex-col gap-1.5 text-sm font-medium">
-        Follower <span className="font-normal text-muted">(업무 처리가 필요한 글이면 지정)</span>
-        <select
-          name="assignee_id"
-          defaultValue=""
-          className="rounded-xl border border-border bg-card px-4 py-3 outline-none ring-brand/30 focus:ring-2"
-        >
-          <option value="">지정 안 함</option>
-          {profiles.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="flex flex-col gap-1.5 text-sm font-medium">
+        Follower <span className="font-normal text-muted">(업무 처리가 필요한 글이면 여러 명 지정 가능)</span>
+        <div className="flex flex-wrap gap-2">
+          {profiles.map((p) => {
+            const selected = followerIds.includes(p.id);
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => toggleFollower(p.id)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  selected
+                    ? "border-brand bg-brand/10 text-brand"
+                    : "border-border bg-card text-muted"
+                }`}
+              >
+                {p.name}
+              </button>
+            );
+          })}
+        </div>
+        {followerIds.map((id) => (
+          <input key={id} type="hidden" name="follower_ids" value={id} />
+        ))}
+      </div>
 
       <div className="flex flex-col gap-1.5 text-sm font-medium">
         파일/사진 첨부

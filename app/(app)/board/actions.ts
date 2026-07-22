@@ -44,7 +44,7 @@ export async function createBoardPost(
 
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
-  const assigneeId = String(formData.get("assignee_id") ?? "").trim() || null;
+  const followerIds = [...new Set(formData.getAll("follower_ids").map(String))];
   const files = formData.getAll("attachments").filter((f): f is File => f instanceof File);
 
   if (!title) return { error: "제목을 입력해 주세요." };
@@ -52,7 +52,7 @@ export async function createBoardPost(
 
   const { data: inserted, error } = await supabase
     .from("board_posts")
-    .insert({ title, body, created_by: user.id, assignee_id: assigneeId })
+    .insert({ title, body, created_by: user.id })
     .select()
     .single();
 
@@ -62,22 +62,35 @@ export async function createBoardPost(
 
   await uploadAttachments(supabase, user.id, files, { post_id: inserted.id });
 
+  if (followerIds.length > 0) {
+    await supabase.from("board_post_followers").insert(
+      followerIds.map((userId) => ({ post_id: inserted.id, user_id: userId }))
+    );
+  }
+
   revalidatePath("/board");
 
-  if (assigneeId && assigneeId !== user.id) {
+  if (followerIds.length > 0) {
     try {
       const { data: authorProfile } = await supabase
         .from("profiles")
         .select("name")
         .eq("id", user.id)
         .single();
-      await sendPushToUser(supabase, assigneeId, {
-        title: `${authorProfile?.name ?? "누군가"}님이 업무를 요청했습니다`,
-        body: title,
-        url: `/board/${inserted.id}`,
-      });
+      const authorName = authorProfile?.name ?? "누군가";
+      await Promise.all(
+        followerIds
+          .filter((id) => id !== user.id)
+          .map((followerId) =>
+            sendPushToUser(supabase, followerId, {
+              title: `${authorName}님이 업무를 요청했습니다`,
+              body: title,
+              url: `/board/${inserted.id}`,
+            })
+          )
+      );
     } catch (err) {
-      console.error("[createBoardPost] 담당자 알림 발송 중 오류", err);
+      console.error("[createBoardPost] Follower 알림 발송 중 오류", err);
     }
   }
 
@@ -229,10 +242,33 @@ async function notifyMentionedUsers(
   );
 }
 
-export async function toggleBoardTaskConfirm(
-  postId: string,
-  role: "requester" | "assignee"
-): Promise<void> {
+// Order 확인과 Follower 전원 확인이 모두 끝났는지 다시 계산해서
+// completed_at을 갱신한다. Follower가 한 명도 없으면(공지성 글) 업무
+// 체크리스트 자체가 없는 글이므로 완료 처리하지 않는다.
+async function recomputePostCompletion(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  postId: string
+) {
+  const [{ data: post }, { data: followers }] = await Promise.all([
+    supabase.from("board_posts").select("requester_confirmed").eq("id", postId).single(),
+    supabase.from("board_post_followers").select("confirmed").eq("post_id", postId),
+  ]);
+  if (!post) return;
+
+  const hasFollowers = (followers?.length ?? 0) > 0;
+  const allFollowersConfirmed = hasFollowers && followers!.every((f) => f.confirmed);
+  const bothConfirmed = post.requester_confirmed && allFollowersConfirmed;
+
+  await supabase
+    .from("board_posts")
+    .update({ completed_at: bothConfirmed ? new Date().toISOString() : null })
+    .eq("id", postId);
+
+  revalidatePath(`/board/${postId}`);
+  revalidatePath("/board");
+}
+
+export async function toggleRequesterConfirm(postId: string): Promise<void> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -241,29 +277,38 @@ export async function toggleBoardTaskConfirm(
 
   const { data: post } = await supabase
     .from("board_posts")
-    .select("created_by, assignee_id, requester_confirmed, assignee_confirmed")
+    .select("created_by, requester_confirmed")
     .eq("id", postId)
     .single();
-  if (!post) return;
-
-  if (role === "requester" && user.id !== post.created_by) return;
-  if (role === "assignee" && user.id !== post.assignee_id) return;
-
-  const requesterConfirmed =
-    role === "requester" ? !post.requester_confirmed : post.requester_confirmed;
-  const assigneeConfirmed =
-    role === "assignee" ? !post.assignee_confirmed : post.assignee_confirmed;
-  const bothConfirmed = requesterConfirmed && assigneeConfirmed;
+  if (!post || user.id !== post.created_by) return;
 
   await supabase
     .from("board_posts")
-    .update({
-      requester_confirmed: requesterConfirmed,
-      assignee_confirmed: assigneeConfirmed,
-      completed_at: bothConfirmed ? new Date().toISOString() : null,
-    })
+    .update({ requester_confirmed: !post.requester_confirmed })
     .eq("id", postId);
 
-  revalidatePath(`/board/${postId}`);
-  revalidatePath("/board");
+  await recomputePostCompletion(supabase, postId);
+}
+
+export async function toggleFollowerConfirm(postId: string): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: follower } = await supabase
+    .from("board_post_followers")
+    .select("id, confirmed")
+    .eq("post_id", postId)
+    .eq("user_id", user.id)
+    .single();
+  if (!follower) return;
+
+  await supabase
+    .from("board_post_followers")
+    .update({ confirmed: !follower.confirmed })
+    .eq("id", follower.id);
+
+  await recomputePostCompletion(supabase, postId);
 }
