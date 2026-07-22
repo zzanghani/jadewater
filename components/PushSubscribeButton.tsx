@@ -34,10 +34,31 @@ export default function PushSubscribeButton({
       .register("/sw.js")
       .then(async (reg) => {
         const sub = await reg.pushManager.getSubscription();
-        setStatus(sub ? "subscribed" : "idle");
+        if (!sub) {
+          setStatus("idle");
+          return;
+        }
+
+        // 브라우저의 푸시 구독(endpoint)은 기기/브라우저 단위로 유지되므로,
+        // 같은 기기에서 다른 계정으로 로그인해도 그대로 남아 있다.
+        // 그래서 구독이 이미 있어도 매번 현재 로그인된 계정/매장 기준으로
+        // 다시 저장(upsert)해 push_subscriptions의 소유자를 최신 상태로 맞춘다.
+        const json = sub.toJSON();
+        if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+          setStatus("subscribed");
+          return;
+        }
+
+        const result = await savePushSubscription({
+          storeId,
+          endpoint: json.endpoint,
+          p256dh: json.keys.p256dh,
+          auth: json.keys.auth,
+        });
+        setStatus(result.error ? "error" : "subscribed");
       })
       .catch(() => setStatus("error"));
-  }, []);
+  }, [storeId]);
 
   async function handleSubscribe() {
     try {
