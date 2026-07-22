@@ -20,22 +20,21 @@ function timeAgoLabel(iso: string): string {
 export default async function BoardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<{ category?: string; status?: string }>;
 }) {
-  const { category: categoryParam } = await searchParams;
+  const { category: categoryParam, status: statusParam } = await searchParams;
   const category: BoardCategory = CATEGORIES.includes(categoryParam as BoardCategory)
     ? (categoryParam as BoardCategory)
     : CATEGORIES[0];
+  const showDone = statusParam === "done";
 
   const supabase = await createClient();
 
-  const { data: posts } = await supabase
-    .from("board_posts")
-    .select("*")
-    .eq("category", category)
-    .is("completed_at", null)
-    .order("created_at", { ascending: false })
-    .limit(50);
+  let query = supabase.from("board_posts").select("*").eq("category", category);
+  query = showDone
+    ? query.not("completed_at", "is", null).order("completed_at", { ascending: false })
+    : query.is("completed_at", null).order("created_at", { ascending: false });
+  const { data: posts } = await query.limit(50);
 
   const rows = posts ?? [];
   const postIds = rows.map((p) => p.id);
@@ -89,7 +88,7 @@ export default async function BoardPage({
         {CATEGORIES.map((c) => (
           <Link
             key={c}
-            href={`/board?category=${encodeURIComponent(c)}`}
+            href={`/board?category=${encodeURIComponent(c)}${showDone ? "&status=done" : ""}`}
             className={`rounded-xl py-2.5 text-center text-xs font-semibold transition-colors ${
               category === c ? "bg-brand text-white shadow-sm" : "text-muted"
             }`}
@@ -99,8 +98,21 @@ export default async function BoardPage({
         ))}
       </div>
 
+      <Link
+        href={
+          showDone
+            ? `/board?category=${encodeURIComponent(category)}`
+            : `/board?category=${encodeURIComponent(category)}&status=done`
+        }
+        className="self-end text-xs font-medium text-muted underline-offset-2 hover:underline"
+      >
+        {showDone ? "진행중인 글 보기" : "완료된 글 보기"}
+      </Link>
+
       {rows.length === 0 ? (
-        <p className="text-sm text-muted">아직 등록된 글이 없습니다.</p>
+        <p className="text-sm text-muted">
+          {showDone ? "완료된 글이 없습니다." : "아직 등록된 글이 없습니다."}
+        </p>
       ) : (
         <ul className="flex flex-col gap-2">
           {rows.map((post) => (
