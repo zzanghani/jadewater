@@ -6,6 +6,7 @@ import { getStoreContext } from "@/lib/store";
 import BottomNav from "@/components/BottomNav";
 import LogoutButton from "@/components/LogoutButton";
 import StoreSwitcher from "@/components/StoreSwitcher";
+import PullToRefresh from "@/components/PullToRefresh";
 
 export default async function AppLayout({
   children,
@@ -60,7 +61,9 @@ export default async function AppLayout({
         <StoreSwitcher stores={stores} current={storeId} />
       </header>
 
-      <main className="flex-1 px-4 pb-6 pt-4">{children}</main>
+      <main className="flex-1 px-4 pb-6 pt-4">
+        <PullToRefresh>{children}</PullToRefresh>
+      </main>
 
       <BottomNav isMaster={isMaster} />
     </>
