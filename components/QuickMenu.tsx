@@ -2,18 +2,23 @@ import Link from "next/link";
 
 const ALL_ITEMS = [
   { href: "/receipts", label: "입고 입력", icon: BoxIcon },
+  { href: "/expense", label: "지출결의", icon: ReceiptIcon },
   { href: "/analysis", label: "주간 분석", icon: TrendIcon },
   { href: "/monthly-analysis", label: "월간 분석", icon: CalendarIcon },
   { href: "/cost", label: "실시간 코스트", icon: GaugeIcon },
 ] as const;
 
+const MASTER_EXCLUDED_HREFS: string[] = ["/receipts", "/expense"];
+
 export default function QuickMenu({ isMaster = false }: { isMaster?: boolean }) {
-  const items = isMaster ? ALL_ITEMS.filter((i) => i.href !== "/receipts") : ALL_ITEMS;
+  const items = isMaster
+    ? ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href))
+    : ALL_ITEMS;
 
   return (
     <section>
       <h2 className="mb-3 text-sm font-semibold text-foreground">빠른 메뉴</h2>
-      <div className={`grid gap-2 ${items.length === 3 ? "grid-cols-3" : "grid-cols-4"}`}>
+      <div className="grid grid-cols-3 gap-2">
         {items.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
@@ -39,6 +44,15 @@ function BoxIcon() {
       <path d="M21 8 12 3 3 8v8l9 5 9-5Z" />
       <path d="M3 8l9 5 9-5" />
       <path d="M12 13v8" />
+    </svg>
+  );
+}
+
+function ReceiptIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z" />
+      <path d="M9 8h6M9 12h6" />
     </svg>
   );
 }
