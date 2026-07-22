@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import BoardAttachmentList from "@/components/BoardAttachmentList";
@@ -37,13 +38,14 @@ export default async function BoardPostPage({
 
   const authorIds = [...new Set([post.created_by, ...commentRows.map((c) => c.created_by)])];
 
-  const [{ data: profiles }, { data: postAttachments }, { data: commentAttachments }] =
+  const [{ data: profiles }, { data: postAttachments }, { data: commentAttachments }, { data: allProfiles }] =
     await Promise.all([
       supabase.from("profiles").select("id, name").in("id", authorIds),
       supabase.from("board_attachments").select("*").eq("post_id", postId),
       commentIds.length > 0
         ? supabase.from("board_attachments").select("*").in("comment_id", commentIds)
         : Promise.resolve({ data: [] as { id: string; comment_id: string | null; storage_path: string; file_name: string }[] }),
+      supabase.from("profiles").select("id, name"),
     ]);
 
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name]));
@@ -78,6 +80,10 @@ export default async function BoardPostPage({
 
   return (
     <div className="flex flex-col gap-5">
+      <Link href="/board" className="flex items-center gap-1 text-sm font-medium text-muted">
+        <span aria-hidden>←</span> 목록으로
+      </Link>
+
       <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
         <div>
           <h1 className="text-lg font-bold">{post.title}</h1>
@@ -109,7 +115,7 @@ export default async function BoardPostPage({
           </ul>
         )}
 
-        <BoardCommentForm postId={postId} />
+        <BoardCommentForm postId={postId} profiles={allProfiles ?? []} />
       </section>
     </div>
   );

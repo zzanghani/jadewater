@@ -100,43 +100,22 @@ export async function createBoardComment(
   // 알림 발송은 부가 기능이므로, 여기서 어떤 문제가 생기더라도
   // 댓글 저장 자체는 이미 끝난 상태로 절대 실패하지 않게 한다.
   try {
-    await notifyPostAuthorOfComment(supabase, postId, user.id, body);
+    const notifiedIds = await notifyPostAuthorOfComment(supabase, postId, user.id, body);
+    await notifyMentionedUsers(supabase, postId, user.id, body, notifiedIds);
   } catch (err) {
     console.error("[createBoardComment] 알림 발송 중 오류", err);
   }
 }
 
-async function notifyPostAuthorOfComment(
+async function sendPushToUser(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  postId: string,
-  commenterId: string,
-  commentBody: string
+  userId: string,
+  payload: { title: string; body: string; url: string }
 ) {
-  const { data: post } = await supabase
-    .from("board_posts")
-    .select("title, created_by")
-    .eq("id", postId)
-    .single();
-
-  if (!post || post.created_by === commenterId) return;
-
-  const [{ data: commenterProfile }, { data: subs }] = await Promise.all([
-    supabase.from("profiles").select("name").eq("id", commenterId).single(),
-    supabase.rpc("get_push_subscriptions_for_user", { p_user_id: post.created_by }),
-  ]);
-
-  console.log(
-    `[createBoardComment] post_id=${postId} 작성자 구독 ${subs?.length ?? 0}건 발견`
-  );
-
+  const { data: subs } = await supabase.rpc("get_push_subscriptions_for_user", {
+    p_user_id: userId,
+  });
   if (!subs?.length) return;
-
-  const commenterName = commenterProfile?.name ?? "누군가";
-  const payload = {
-    title: `${commenterName}님이 댓글을 남겼습니다`,
-    body: `"${post.title}" · ${commentBody.slice(0, 60)}`,
-    url: `/board/${postId}`,
-  };
 
   const expiredIds: string[] = [];
   await Promise.all(
@@ -152,4 +131,81 @@ async function notifyPostAuthorOfComment(
   if (expiredIds.length > 0) {
     await supabase.from("push_subscriptions").delete().in("id", expiredIds);
   }
+}
+
+// 게시글 작성자에게 알림을 보내고, 실제로 보낸 대상 user_id 집합을 반환한다
+// (태그 알림에서 중복 발송을 피하기 위해 사용).
+async function notifyPostAuthorOfComment(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  postId: string,
+  commenterId: string,
+  commentBody: string
+): Promise<Set<string>> {
+  const notified = new Set<string>();
+
+  const { data: post } = await supabase
+    .from("board_posts")
+    .select("title, created_by")
+    .eq("id", postId)
+    .single();
+
+  if (!post || post.created_by === commenterId) return notified;
+
+  const { data: commenterProfile } = await supabase
+    .from("profiles")
+    .select("name")
+    .eq("id", commenterId)
+    .single();
+
+  console.log(`[createBoardComment] post_id=${postId} 작성자에게 알림 발송 시도`);
+
+  const commenterName = commenterProfile?.name ?? "누군가";
+  await sendPushToUser(supabase, post.created_by, {
+    title: `${commenterName}님이 댓글을 남겼습니다`,
+    body: `"${post.title}" · ${commentBody.slice(0, 60)}`,
+    url: `/board/${postId}`,
+  });
+
+  notified.add(post.created_by);
+  return notified;
+}
+
+// 댓글 본문에 "@이름"으로 태그된 사람들에게 별도 알림을 보낸다.
+// 이미 글쓴이 알림으로 발송된 사람(alreadyNotified)과 댓글 작성자 본인은 제외한다.
+async function notifyMentionedUsers(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  postId: string,
+  commenterId: string,
+  commentBody: string,
+  alreadyNotified: Set<string>
+) {
+  const { data: profiles } = await supabase.from("profiles").select("id, name");
+  if (!profiles?.length) return;
+
+  const { data: commenterProfile } = await supabase
+    .from("profiles")
+    .select("name")
+    .eq("id", commenterId)
+    .single();
+  const commenterName = commenterProfile?.name ?? "누군가";
+
+  const mentionedIds = new Set<string>();
+  for (const p of profiles) {
+    if (p.id === commenterId || alreadyNotified.has(p.id)) continue;
+    if (commentBody.includes(`@${p.name}`)) mentionedIds.add(p.id);
+  }
+
+  if (mentionedIds.size === 0) return;
+
+  console.log(`[createBoardComment] post_id=${postId} 태그 알림 대상 ${mentionedIds.size}명`);
+
+  await Promise.all(
+    [...mentionedIds].map((userId) =>
+      sendPushToUser(supabase, userId, {
+        title: `${commenterName}님이 회원님을 태그했습니다`,
+        body: commentBody.slice(0, 80),
+        url: `/board/${postId}`,
+      })
+    )
+  );
 }
