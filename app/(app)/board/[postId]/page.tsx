@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import BoardAttachmentList from "@/components/BoardAttachmentList";
 import BoardCommentForm from "@/components/BoardCommentForm";
+import BoardTaskCheckboxes from "@/components/BoardTaskCheckboxes";
 
 function dateTimeLabel(iso: string): string {
   const d = new Date(iso);
@@ -19,11 +20,10 @@ export default async function BoardPostPage({
   const { postId } = await params;
   const supabase = await createClient();
 
-  const { data: post } = await supabase
-    .from("board_posts")
-    .select("*")
-    .eq("id", postId)
-    .single();
+  const [{ data: post }, { data: { user } }] = await Promise.all([
+    supabase.from("board_posts").select("*").eq("id", postId).single(),
+    supabase.auth.getUser(),
+  ]);
 
   if (!post) notFound();
 
@@ -36,7 +36,13 @@ export default async function BoardPostPage({
   const commentRows = comments ?? [];
   const commentIds = commentRows.map((c) => c.id);
 
-  const authorIds = [...new Set([post.created_by, ...commentRows.map((c) => c.created_by)])];
+  const authorIds = [
+    ...new Set(
+      [post.created_by, post.assignee_id, ...commentRows.map((c) => c.created_by)].filter(
+        (id): id is string => !!id
+      )
+    ),
+  ];
 
   const [{ data: profiles }, { data: postAttachments }, { data: commentAttachments }, { data: allProfiles }] =
     await Promise.all([
@@ -85,11 +91,24 @@ export default async function BoardPostPage({
       </Link>
 
       <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
-        <div>
-          <h1 className="text-lg font-bold">{post.title}</h1>
-          <p className="mt-1 text-xs text-muted">
-            {nameById.get(post.created_by) ?? "알 수 없음"} · {dateTimeLabel(post.created_at)}
-          </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-bold">{post.title}</h1>
+            <p className="mt-1 text-xs text-muted">
+              {nameById.get(post.created_by) ?? "알 수 없음"} · {dateTimeLabel(post.created_at)}
+            </p>
+          </div>
+          {post.assignee_id && (
+            <BoardTaskCheckboxes
+              postId={post.id}
+              requesterConfirmed={post.requester_confirmed}
+              assigneeConfirmed={post.assignee_confirmed}
+              requesterName={nameById.get(post.created_by) ?? "알 수 없음"}
+              assigneeName={nameById.get(post.assignee_id) ?? "알 수 없음"}
+              canConfirmRequester={user?.id === post.created_by}
+              canConfirmAssignee={user?.id === post.assignee_id}
+            />
+          )}
         </div>
         <p className="whitespace-pre-wrap text-sm text-foreground">{post.body}</p>
         <BoardAttachmentList attachments={postAttachmentRows} />

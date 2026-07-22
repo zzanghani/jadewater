@@ -615,11 +615,18 @@ grant execute on function public.upsert_push_subscription(uuid, text, text, text
 -- 사내 게시판(미니 슬랙): 게시글 + 댓글(1단계 스레드) + 파일/사진 첨부
 -- 매장 간 소통용이라 매장 접근제어 없이 로그인한 모든 사용자에게 공개된다.
 -- --------------------------------------------------------------------------
+-- assignee_id가 지정된 글은 "업무" 성격으로 보고, 발제자(작성자)와
+-- 담당자 둘 다 확인 체크하면 completed_at이 채워져 목록에서 사라진다
+-- (payment_requests의 completed_at 패턴과 동일).
 create table if not exists public.board_posts (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   body text not null,
   created_by uuid not null references public.profiles (id),
+  assignee_id uuid references public.profiles (id),
+  requester_confirmed boolean not null default false,
+  assignee_confirmed boolean not null default false,
+  completed_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -635,12 +642,20 @@ create policy "board_posts_insert_own"
   to authenticated
   with check (auth.uid() = created_by);
 
+-- 발제자 본인 또는 담당자 본인만 확인 체크를 업데이트할 수 있다.
+create policy "board_posts_update_participant"
+  on public.board_posts for update
+  to authenticated
+  using (auth.uid() = created_by or auth.uid() = assignee_id)
+  with check (auth.uid() = created_by or auth.uid() = assignee_id);
+
 create policy "board_posts_delete_own"
   on public.board_posts for delete
   to authenticated
   using (auth.uid() = created_by);
 
 create index if not exists board_posts_created_at_idx on public.board_posts (created_at desc);
+create index if not exists board_posts_completed_at_idx on public.board_posts (completed_at);
 
 create table if not exists public.board_comments (
   id uuid primary key default gen_random_uuid(),

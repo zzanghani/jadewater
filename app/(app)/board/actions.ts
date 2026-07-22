@@ -44,6 +44,7 @@ export async function createBoardPost(
 
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
+  const assigneeId = String(formData.get("assignee_id") ?? "").trim() || null;
   const files = formData.getAll("attachments").filter((f): f is File => f instanceof File);
 
   if (!title) return { error: "제목을 입력해 주세요." };
@@ -51,7 +52,7 @@ export async function createBoardPost(
 
   const { data: inserted, error } = await supabase
     .from("board_posts")
-    .insert({ title, body, created_by: user.id })
+    .insert({ title, body, created_by: user.id, assignee_id: assigneeId })
     .select()
     .single();
 
@@ -62,6 +63,24 @@ export async function createBoardPost(
   await uploadAttachments(supabase, user.id, files, { post_id: inserted.id });
 
   revalidatePath("/board");
+
+  if (assigneeId && assigneeId !== user.id) {
+    try {
+      const { data: authorProfile } = await supabase
+        .from("profiles")
+        .select("name")
+        .eq("id", user.id)
+        .single();
+      await sendPushToUser(supabase, assigneeId, {
+        title: `${authorProfile?.name ?? "누군가"}님이 업무를 요청했습니다`,
+        body: title,
+        url: `/board/${inserted.id}`,
+      });
+    } catch (err) {
+      console.error("[createBoardPost] 담당자 알림 발송 중 오류", err);
+    }
+  }
+
   redirect(`/board/${inserted.id}`);
 }
 
@@ -208,4 +227,43 @@ async function notifyMentionedUsers(
       })
     )
   );
+}
+
+export async function toggleBoardTaskConfirm(
+  postId: string,
+  role: "requester" | "assignee"
+): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: post } = await supabase
+    .from("board_posts")
+    .select("created_by, assignee_id, requester_confirmed, assignee_confirmed")
+    .eq("id", postId)
+    .single();
+  if (!post) return;
+
+  if (role === "requester" && user.id !== post.created_by) return;
+  if (role === "assignee" && user.id !== post.assignee_id) return;
+
+  const requesterConfirmed =
+    role === "requester" ? !post.requester_confirmed : post.requester_confirmed;
+  const assigneeConfirmed =
+    role === "assignee" ? !post.assignee_confirmed : post.assignee_confirmed;
+  const bothConfirmed = requesterConfirmed && assigneeConfirmed;
+
+  await supabase
+    .from("board_posts")
+    .update({
+      requester_confirmed: requesterConfirmed,
+      assignee_confirmed: assigneeConfirmed,
+      completed_at: bothConfirmed ? new Date().toISOString() : null,
+    })
+    .eq("id", postId);
+
+  revalidatePath(`/board/${postId}`);
+  revalidatePath("/board");
 }

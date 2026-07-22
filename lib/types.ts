@@ -215,6 +215,10 @@ export type BoardPost = {
   title: string
   body: string
   created_by: string
+  assignee_id: string | null
+  requester_confirmed: boolean
+  assignee_confirmed: boolean
+  completed_at: string | null
   created_at: string
 }
 
@@ -357,7 +361,7 @@ export type Database = {
       board_posts: {
         Row: BoardPost
         Insert: Partial<BoardPost> & { title: string; body: string; created_by: string }
-        Update: Partial<BoardPost>
+        Update: Partial<Pick<BoardPost, "requester_confirmed" | "assignee_confirmed" | "completed_at">>
         Relationships: []
       }
       board_comments: {

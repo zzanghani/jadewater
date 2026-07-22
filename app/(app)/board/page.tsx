@@ -20,12 +20,17 @@ export default async function BoardPage() {
   const { data: posts } = await supabase
     .from("board_posts")
     .select("*")
+    .is("completed_at", null)
     .order("created_at", { ascending: false })
     .limit(50);
 
   const rows = posts ?? [];
 
-  const authorIds = [...new Set(rows.map((p) => p.created_by))];
+  const authorIds = [
+    ...new Set(
+      rows.flatMap((p) => (p.assignee_id ? [p.created_by, p.assignee_id] : [p.created_by]))
+    ),
+  ];
   const postIds = rows.map((p) => p.id);
 
   const [{ data: profiles }, { data: comments }] = await Promise.all([
@@ -75,6 +80,12 @@ export default async function BoardPage() {
                     <>
                       <span>·</span>
                       <span>댓글 {commentCountByPost.get(post.id)}</span>
+                    </>
+                  )}
+                  {post.assignee_id && (
+                    <>
+                      <span>·</span>
+                      <span>담당 {nameById.get(post.assignee_id) ?? "알 수 없음"}</span>
                     </>
                   )}
                 </div>

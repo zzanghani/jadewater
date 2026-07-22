@@ -3,7 +3,9 @@
 import { useActionState, useRef, useState } from "react";
 import { createBoardPost, type BoardFormState } from "@/app/(app)/board/actions";
 
-export default function BoardPostForm() {
+type Profile = { id: string; name: string };
+
+export default function BoardPostForm({ profiles }: { profiles: Profile[] }) {
   const [state, formAction, pending] = useActionState<BoardFormState, FormData>(
     createBoardPost,
     undefined
@@ -42,6 +44,22 @@ export default function BoardPostForm() {
           placeholder="내용을 입력하세요"
           className="rounded-xl border border-border bg-card px-4 py-3 outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
         />
+      </label>
+
+      <label className="flex flex-col gap-1.5 text-sm font-medium">
+        담당자 <span className="font-normal text-muted">(업무 처리가 필요한 글이면 지정)</span>
+        <select
+          name="assignee_id"
+          defaultValue=""
+          className="rounded-xl border border-border bg-card px-4 py-3 outline-none ring-brand/30 focus:ring-2"
+        >
+          <option value="">지정 안 함</option>
+          {profiles.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
       </label>
 
       <div className="flex flex-col gap-1.5 text-sm font-medium">
