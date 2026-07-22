@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "매장 정산 - JADE & WATER",
-    short_name: "매장 정산",
+    short_name: "JADE & WATER",
     description: "매장 일 마감 · 정산 · 입금요청 관리",
     start_url: "/",
     display: "standalone",

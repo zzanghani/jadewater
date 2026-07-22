@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "매장 정산",
+    title: "JADE & WATER",
   },
 };
 
