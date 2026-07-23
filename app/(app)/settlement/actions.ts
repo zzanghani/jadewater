@@ -2,11 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { APP_ADMIN_PASSWORD } from "@/lib/appPassword";
 import type { LaborItem, LineItem, UtilityItem } from "@/lib/types";
 
 export type SettlementFormState = { error?: string; success?: boolean } | undefined;
-
-const SETTLEMENT_PASSWORD = "Jadewater0609!";
 
 export type UnlockFormState = { error?: string; success?: boolean } | undefined;
 
@@ -16,7 +15,7 @@ export async function unlockSettlement(
 ): Promise<UnlockFormState> {
   const password = String(formData.get("password") ?? "");
 
-  if (password !== SETTLEMENT_PASSWORD) {
+  if (password !== APP_ADMIN_PASSWORD) {
     return { error: "비밀번호가 올바르지 않습니다." };
   }
 

@@ -1,7 +1,10 @@
 import { roleColor } from "@/lib/scheduleColors";
 import type { ScheduleShift } from "@/lib/types";
 
-const HOUR_MARKS = [0, 6, 12, 18, 24];
+const RANGE_START = 9 * 60; // 09:00
+const RANGE_END = 21 * 60; // 21:00
+const RANGE_SPAN = RANGE_END - RANGE_START;
+const HOUR_MARKS = Array.from({ length: 13 }, (_, i) => 9 + i); // 9~21시, 1시간 단위
 
 function toMinutes(t: string): number {
   const [h, m] = t.split(":").map(Number);
@@ -14,18 +17,20 @@ export default function ScheduleDayTimeline({ shifts }: { shifts: ScheduleShift[
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
       <h2 className="mb-3 text-sm font-semibold text-foreground">근무 시간표</h2>
-      <div className="mb-1.5 flex justify-between pl-16 text-[10px] text-muted">
+      <div className="mb-1.5 flex justify-between pl-16 text-[9px] text-muted">
         {HOUR_MARKS.map((h) => (
-          <span key={h}>{h}시</span>
+          <span key={h}>{h}</span>
         ))}
       </div>
       <div className="flex flex-col gap-1.5">
         {shifts.map((s) => {
-          const start = toMinutes(s.start_time);
-          const rawEnd = toMinutes(s.end_time);
-          const end = rawEnd <= start ? 1440 : rawEnd;
-          const left = (start / 1440) * 100;
-          const width = Math.max(((end - start) / 1440) * 100, 2);
+          const rawStart = toMinutes(s.start_time);
+          const rawEndRaw = toMinutes(s.end_time);
+          const rawEnd = rawEndRaw <= rawStart ? rawEndRaw + 24 * 60 : rawEndRaw;
+          const start = Math.min(Math.max(rawStart, RANGE_START), RANGE_END);
+          const end = Math.min(Math.max(rawEnd, RANGE_START), RANGE_END);
+          const left = ((start - RANGE_START) / RANGE_SPAN) * 100;
+          const width = Math.max(((end - start) / RANGE_SPAN) * 100, 2);
           return (
             <div key={s.id} className="flex items-center gap-2">
               <span className="w-14 shrink-0 truncate text-[11px] font-medium text-foreground">

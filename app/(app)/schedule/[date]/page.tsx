@@ -3,10 +3,9 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
 import { kstDateLabel } from "@/lib/date";
-import { roleColor } from "@/lib/scheduleColors";
 import ScheduleShiftForm from "@/components/ScheduleShiftForm";
 import ScheduleDayTimeline from "@/components/ScheduleDayTimeline";
-import DeleteShiftButton from "@/components/DeleteShiftButton";
+import ScheduleShiftList from "@/components/ScheduleShiftList";
 
 export default async function ScheduleDayPage({
   params,
@@ -19,12 +18,14 @@ export default async function ScheduleDayPage({
   const supabase = await createClient();
   const { storeId } = await getStoreContext(supabase);
 
+  // 새로 등록되는 근무자가 항상 아래쪽에 쌓이도록 근무 시간이 아닌
+  // 등록된 순서(created_at) 기준으로 정렬한다.
   const { data: shifts } = await supabase
     .from("schedule_shifts")
     .select("*")
     .eq("store_id", storeId)
     .eq("date", date)
-    .order("start_time", { ascending: true });
+    .order("created_at", { ascending: true });
 
   const rows = shifts ?? [];
 
@@ -41,33 +42,7 @@ export default async function ScheduleDayPage({
 
       <ScheduleDayTimeline shifts={rows} />
 
-      {rows.length === 0 ? (
-        <p className="text-sm text-muted">등록된 근무자가 없습니다.</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {rows.map((s) => (
-            <li
-              key={s.id}
-              className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3"
-            >
-              <span
-                className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold text-white"
-                style={{ backgroundColor: roleColor(s.role) }}
-              >
-                {s.role}
-              </span>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-foreground">{s.employee_name}</p>
-                <p className="text-xs text-muted">
-                  {s.start_time.slice(0, 5)} ~ {s.end_time.slice(0, 5)}
-                  {s.notes ? ` · ${s.notes}` : ""}
-                </p>
-              </div>
-              <DeleteShiftButton id={s.id} date={date} />
-            </li>
-          ))}
-        </ul>
-      )}
+      <ScheduleShiftList shifts={rows} date={date} />
 
       <ScheduleShiftForm date={date} />
     </div>
