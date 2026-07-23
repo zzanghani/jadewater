@@ -1,10 +1,10 @@
 import { roleColor } from "@/lib/scheduleColors";
 import type { ScheduleShift } from "@/lib/types";
 
-const RANGE_START = 9 * 60; // 09:00
-const RANGE_END = 21 * 60; // 21:00
+const RANGE_START = 7 * 60; // 07:00
+const RANGE_END = 22 * 60; // 22:00
 const RANGE_SPAN = RANGE_END - RANGE_START;
-const HOUR_MARKS = Array.from({ length: 13 }, (_, i) => 9 + i); // 9~21시, 1시간 단위
+const HOUR_MARKS = Array.from({ length: 16 }, (_, i) => 7 + i); // 7~22시, 1시간 단위
 
 function toMinutes(t: string): number {
   const [h, m] = t.split(":").map(Number);

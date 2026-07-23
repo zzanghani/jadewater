@@ -9,6 +9,7 @@ import {
   shiftMonthString,
 } from "@/lib/date";
 import { SCHEDULE_ROLES, roleColor } from "@/lib/scheduleColors";
+import ScheduleDayTimeline from "@/components/ScheduleDayTimeline";
 import type { ScheduleRole } from "@/lib/types";
 
 const WEEKDAY_HEADER = ["일", "월", "화", "수", "목", "금", "토"];
@@ -27,12 +28,20 @@ export default async function SchedulePage({
   const supabase = await createClient();
   const { storeId } = await getStoreContext(supabase);
 
-  const { data: shifts } = await supabase
-    .from("schedule_shifts")
-    .select("date, role")
-    .eq("store_id", storeId)
-    .gte("date", range.start)
-    .lte("date", range.end);
+  const [{ data: shifts }, { data: todayShifts }] = await Promise.all([
+    supabase
+      .from("schedule_shifts")
+      .select("date, role")
+      .eq("store_id", storeId)
+      .gte("date", range.start)
+      .lte("date", range.end),
+    supabase
+      .from("schedule_shifts")
+      .select("*")
+      .eq("store_id", storeId)
+      .eq("date", today)
+      .order("created_at", { ascending: true }),
+  ]);
 
   const rolesByDate = new Map<string, Set<ScheduleRole>>();
   for (const s of shifts ?? []) {
@@ -53,6 +62,13 @@ export default async function SchedulePage({
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold">스케줄러</h1>
       </div>
+
+      {(todayShifts?.length ?? 0) > 0 && (
+        <div>
+          <p className="mb-1.5 text-xs font-medium text-muted">오늘의 스케줄</p>
+          <ScheduleDayTimeline shifts={todayShifts ?? []} />
+        </div>
+      )}
 
       <div className="flex items-center justify-between rounded-2xl bg-card p-1.5">
         <Link
