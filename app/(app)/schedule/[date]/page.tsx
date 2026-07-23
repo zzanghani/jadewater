@@ -5,6 +5,7 @@ import { getStoreContext } from "@/lib/store";
 import { kstDateLabel } from "@/lib/date";
 import { roleColor } from "@/lib/scheduleColors";
 import ScheduleShiftForm from "@/components/ScheduleShiftForm";
+import ScheduleDayTimeline from "@/components/ScheduleDayTimeline";
 import DeleteShiftButton from "@/components/DeleteShiftButton";
 
 export default async function ScheduleDayPage({
@@ -37,6 +38,8 @@ export default async function ScheduleDayPage({
       </Link>
 
       <h1 className="text-lg font-bold">{kstDateLabel(date)} 근무자</h1>
+
+      <ScheduleDayTimeline shifts={rows} />
 
       {rows.length === 0 ? (
         <p className="text-sm text-muted">등록된 근무자가 없습니다.</p>

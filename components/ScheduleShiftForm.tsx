@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { addShift, type ScheduleFormState } from "@/app/(app)/schedule/actions";
 import { SCHEDULE_ROLES, roleColor } from "@/lib/scheduleColors";
+import AmPmTimeSelect from "@/components/AmPmTimeSelect";
 import type { ScheduleRole } from "@/lib/types";
 
 export default function ScheduleShiftForm({ date }: { date: string }) {
@@ -62,25 +63,13 @@ export default function ScheduleShiftForm({ date }: { date: string }) {
         />
       </label>
 
-      <div className="flex gap-2">
-        <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium">
-          출근
-          <input
-            type="time"
-            name="start_time"
-            required
-            className="rounded-xl border border-border bg-background px-4 py-2.5 outline-none ring-brand/30 focus:ring-2"
-          />
-        </label>
-        <label className="flex flex-1 flex-col gap-1.5 text-sm font-medium">
-          퇴근
-          <input
-            type="time"
-            name="end_time"
-            required
-            className="rounded-xl border border-border bg-background px-4 py-2.5 outline-none ring-brand/30 focus:ring-2"
-          />
-        </label>
+      <div className="flex flex-col gap-1.5 text-sm font-medium">
+        출근
+        <AmPmTimeSelect name="start_time" defaultPeriod="오전" defaultHour={9} defaultMinute={0} />
+      </div>
+      <div className="flex flex-col gap-1.5 text-sm font-medium">
+        퇴근
+        <AmPmTimeSelect name="end_time" defaultPeriod="오후" defaultHour={6} defaultMinute={0} />
       </div>
 
       <label className="flex flex-col gap-1.5 text-sm font-medium">
