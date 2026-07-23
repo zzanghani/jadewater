@@ -4,16 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const ALL_TABS = [
-  { href: "/closing", label: "마감입력", icon: PencilIcon },
   { href: "/board", label: "게시판", icon: BoardIcon },
   { href: "/settlement", label: "월말정산", icon: ReportIcon },
   { href: "/review-report", label: "리뷰리포트", icon: StarIcon },
   { href: "/payment", label: "입금요청", icon: SendIcon },
 ] as const;
 
-export default function BottomNav({ isMaster = false }: { isMaster?: boolean }) {
+export default function BottomNav() {
   const pathname = usePathname();
-  const tabs = isMaster ? ALL_TABS.filter((t) => t.href !== "/closing") : ALL_TABS;
+  const tabs = ALL_TABS;
 
   return (
     <nav className="sticky bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
@@ -44,15 +43,6 @@ function BoardIcon({ active }: { active: boolean }) {
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 1.8} strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 4h16v13H8l-4 4Z" />
       <path d="M8 9h8M8 13h5" />
-    </svg>
-  );
-}
-
-function PencilIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 1.8} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
     </svg>
   );
 }
