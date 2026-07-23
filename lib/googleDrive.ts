@@ -30,6 +30,8 @@ function getDriveClient() {
   return google.drive({ version: "v3", auth: client });
 }
 
+// 공유 드라이브(Shared Drive) 안의 폴더에 만들 때는 supportsAllDrives를
+// 켜줘야 한다 (안 켜면 "내 드라이브"만 대상으로 동작해서 실패한다).
 export async function createDriveFolder(
   name: string,
   parentId?: string
@@ -42,6 +44,7 @@ export async function createDriveFolder(
       parents: parentId ? [parentId] : undefined,
     },
     fields: "id, webViewLink",
+    supportsAllDrives: true,
   });
   return { id: res.data.id!, webViewLink: res.data.webViewLink! };
 }
@@ -58,6 +61,7 @@ export async function uploadFileToDrive(params: {
     requestBody: { name: params.name, parents: [params.parentId] },
     media: { mimeType: params.mimeType, body: Readable.from(params.buffer) },
     fields: "id",
+    supportsAllDrives: true,
   });
   return res.data.id!;
 }
