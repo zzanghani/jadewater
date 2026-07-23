@@ -1,4 +1,4 @@
-import { createDriveFolder, uploadFileToDrive } from "@/lib/googleDrive";
+import { findOrCreateFolder, uploadFileToDrive } from "@/lib/googleDrive";
 import type { createClient } from "@/lib/supabase/server";
 
 function dateTimeLabel(iso: string): string {
@@ -14,7 +14,7 @@ function dateTimeLabel(iso: string): string {
 export async function archiveBoardPostToDrive(
   supabase: Awaited<ReturnType<typeof createClient>>,
   postId: string
-): Promise<{ folderLink: string; storagePaths: string[] }> {
+): Promise<{ storagePaths: string[] }> {
   const { data: post, error: postError } = await supabase
     .from("board_posts")
     .select("*")
@@ -44,9 +44,11 @@ export async function archiveBoardPostToDrive(
   const { data: profiles } = await supabase.from("profiles").select("id, name").in("id", allUserIds);
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name]));
 
-  const folderName = `[${post.category}] ${post.title} (${dateTimeLabel(post.created_at).slice(0, 10)})`;
-  const parentId = process.env.GOOGLE_DRIVE_ARCHIVE_FOLDER_ID || undefined;
-  const folder = await createDriveFolder(folderName, parentId);
+  // 카테고리(마케팅/운영HR/...)당 폴더 하나를 계속 재사용한다. 글마다 폴더를
+  // 새로 만들지 않고, 그 카테고리 폴더 안에 파일명으로 구분해서 쌓는다.
+  const rootParentId = process.env.GOOGLE_DRIVE_ARCHIVE_FOLDER_ID || "root";
+  const categoryFolderId = await findOrCreateFolder(post.category, rootParentId);
+  const filePrefix = `[${dateTimeLabel(post.created_at).slice(0, 10)}] ${post.title} - `;
 
   const lines: string[] = [];
   lines.push(`[${post.category}] ${post.title}`);
@@ -74,10 +76,10 @@ export async function archiveBoardPostToDrive(
 
   const summaryBuffer = Buffer.from(lines.join("\n"), "utf-8");
   await uploadFileToDrive({
-    name: "요약.txt",
+    name: `${filePrefix}요약.txt`,
     mimeType: "text/plain",
     buffer: summaryBuffer,
-    parentId: folder.id,
+    parentId: categoryFolderId,
   });
 
   const allAttachments = [...(postAttachments ?? []), ...(commentAttachments ?? [])];
@@ -91,13 +93,13 @@ export async function archiveBoardPostToDrive(
 
     const buffer = Buffer.from(await fileBlob.arrayBuffer());
     await uploadFileToDrive({
-      name: attachment.file_name,
+      name: `${filePrefix}${attachment.file_name}`,
       mimeType: fileBlob.type || "application/octet-stream",
       buffer,
-      parentId: folder.id,
+      parentId: categoryFolderId,
     });
     storagePaths.push(attachment.storage_path);
   }
 
-  return { folderLink: folder.webViewLink, storagePaths };
+  return { storagePaths };
 }

@@ -49,6 +49,33 @@ export async function createDriveFolder(
   return { id: res.data.id!, webViewLink: res.data.webViewLink! };
 }
 
+// 같은 이름의 폴더가 parentId 밑에 이미 있으면 그걸 재사용하고, 없으면
+// 새로 만든다. 카테고리별 폴더(마케팅/운영HR/...)를 매번 새로 만들지 않고
+// 계속 같은 폴더에 쌓기 위해 쓴다.
+export async function findOrCreateFolder(name: string, parentId: string): Promise<string> {
+  const drive = getDriveClient();
+  const escapedName = name.replace(/'/g, "\\'");
+  const q = `name = '${escapedName}' and mimeType = 'application/vnd.google-apps.folder' and '${parentId}' in parents and trashed = false`;
+
+  const existing = await drive.files.list({
+    q,
+    fields: "files(id, name)",
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+    corpora: "allDrives",
+  });
+  if (existing.data.files && existing.data.files.length > 0) {
+    return existing.data.files[0].id!;
+  }
+
+  const created = await drive.files.create({
+    requestBody: { name, mimeType: "application/vnd.google-apps.folder", parents: [parentId] },
+    fields: "id",
+    supportsAllDrives: true,
+  });
+  return created.data.id!;
+}
+
 export async function uploadFileToDrive(params: {
   name: string;
   mimeType: string;

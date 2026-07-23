@@ -324,7 +324,7 @@ export async function toggleFollowerConfirm(postId: string): Promise<void> {
   await recomputePostCompletion(supabase, postId);
 }
 
-export type ArchiveState = { error?: string; success?: boolean; folderLink?: string } | undefined;
+export type ArchiveState = { error?: string; success?: boolean } | undefined;
 
 // 완료된 글을 구글드라이브로 옮기고 Supabase에서는 지운다 (되돌릴 수 없음).
 // 마스터 계정만 할 수 있다.
@@ -340,11 +340,9 @@ export async function archiveBoardPostAction(postId: string): Promise<ArchiveSta
     return { error: "마스터 계정만 보관할 수 있습니다." };
   }
 
-  let folderLink: string;
   let storagePaths: string[];
   try {
     const result = await archiveBoardPostToDrive(supabase, postId);
-    folderLink = result.folderLink;
     storagePaths = result.storagePaths;
   } catch (err) {
     console.error("[archiveBoardPostAction] 드라이브 업로드 실패", err);
@@ -360,10 +358,9 @@ export async function archiveBoardPostAction(postId: string): Promise<ArchiveSta
     console.error("[archiveBoardPostAction] Supabase 삭제 실패", deleteError);
     return {
       error: "드라이브 업로드는 됐지만 Supabase에서 삭제하는 중 오류가 발생했습니다.",
-      folderLink,
     };
   }
 
   revalidatePath("/board");
-  return { success: true, folderLink };
+  return { success: true };
 }
