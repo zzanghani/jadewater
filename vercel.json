@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/collect-reviews",
       "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/board-reminders",
+      "schedule": "0 21 * * *"
     }
   ]
 }

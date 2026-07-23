@@ -18,6 +18,15 @@ export function kstDateString(daysAgo = 0): string {
   return KST_DATE_FORMAT.format(new Date(Date.now() - daysAgo * 86_400_000));
 }
 
+// KST 달력 날짜 기준으로 iso 시각으로부터 오늘까지 며칠 지났는지. 당일이면 0.
+export function daysSinceKST(iso: string): number {
+  const [y, m, d] = KST_DATE_FORMAT.format(new Date(iso)).split("-").map(Number);
+  const targetUTC = Date.UTC(y, m - 1, d);
+  const [ty, tm, td] = kstDateString(0).split("-").map(Number);
+  const todayUTC = Date.UTC(ty, tm - 1, td);
+  return Math.round((todayUTC - targetUTC) / 86_400_000);
+}
+
 export function kstDateLabel(dateStr: string): string {
   return KST_LABEL_FORMAT.format(new Date(`${dateStr}T00:00:00+09:00`));
 }

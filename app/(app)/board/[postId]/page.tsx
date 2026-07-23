@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import BoardAttachmentList from "@/components/BoardAttachmentList";
 import BoardCommentForm from "@/components/BoardCommentForm";
 import BoardTaskCheckboxes from "@/components/BoardTaskCheckboxes";
+import { daysSinceKST } from "@/lib/date";
 
 function dateTimeLabel(iso: string): string {
   const d = new Date(iso);
@@ -127,6 +128,12 @@ export default async function BoardPostPage({
         </div>
         <p className="whitespace-pre-wrap text-sm text-foreground">{post.body}</p>
         <BoardAttachmentList attachments={postAttachmentRows} />
+
+        {followers.length > 0 && !post.completed_at && daysSinceKST(post.created_at) >= 3 && (
+          <div className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+            🚨 긴급: 게시일로부터 {daysSinceKST(post.created_at)}일 경과했습니다
+          </div>
+        )}
       </section>
 
       <section className="flex flex-col gap-3">

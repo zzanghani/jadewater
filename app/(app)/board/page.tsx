@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { daysSinceKST } from "@/lib/date";
 import type { BoardCategory } from "@/lib/types";
 
 const NOTICE: BoardCategory = "공지사항";
@@ -141,12 +142,21 @@ export default async function BoardPage({
         </p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {rows.map((post) => (
-            <li key={post.id}>
+          {rows.map((post) => {
+            const followerCount = followerNamesByPost.get(post.id)?.length ?? 0;
+            const days = daysSinceKST(post.created_at);
+            const isUrgent = !showDone && followerCount > 0 && days >= 3;
+            return (
+            <li key={post.id} className="relative">
               <Link
                 href={`/board/${post.id}`}
                 className="flex flex-col gap-1 rounded-2xl border border-border bg-card p-4"
               >
+                {isUrgent && (
+                  <span className="absolute right-3 top-3 rounded-full bg-red-50 px-2 py-1 text-[10px] font-bold text-red-600">
+                    🚨 긴급
+                  </span>
+                )}
                 <p className="truncate text-sm font-semibold">{post.title}</p>
                 <p className="line-clamp-2 text-xs text-muted">{post.body}</p>
                 <div className="mt-1 flex items-center gap-2 text-[11px] text-muted">
@@ -159,16 +169,25 @@ export default async function BoardPage({
                       <span>댓글 {commentCountByPost.get(post.id)}</span>
                     </>
                   )}
-                  {(followerNamesByPost.get(post.id)?.length ?? 0) > 0 && (
+                  {followerCount > 0 && (
                     <>
                       <span>·</span>
                       <span>Follower {followerNamesByPost.get(post.id)!.join(", ")}</span>
                     </>
                   )}
+                  {!showDone && followerCount > 0 && days >= 1 && (
+                    <>
+                      <span>·</span>
+                      <span className={`font-semibold ${isUrgent ? "text-red-600" : "text-amber-600"}`}>
+                        D+{days}
+                      </span>
+                    </>
+                  )}
                 </div>
               </Link>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </div>
