@@ -272,6 +272,23 @@ export type WeeklyReport = {
   updated_at: string
 }
 
+export type ScheduleRole = '점장' | '부점장' | '팀장' | '사원' | '파트타이머'
+
+export type ScheduleShift = {
+  id: string
+  store_id: string
+  date: string
+  role: ScheduleRole
+  employee_name: string
+  start_time: string
+  end_time: string
+  notes: string | null
+  created_by: string
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -382,6 +399,20 @@ export type Database = {
         Row: WeeklyReport
         Insert: Partial<WeeklyReport> & { store_id: string; week_start: string; created_by: string }
         Update: Partial<WeeklyReport>
+        Relationships: []
+      }
+      schedule_shifts: {
+        Row: ScheduleShift
+        Insert: Partial<ScheduleShift> & {
+          store_id: string
+          date: string
+          role: ScheduleRole
+          employee_name: string
+          start_time: string
+          end_time: string
+          created_by: string
+        }
+        Update: Partial<ScheduleShift>
         Relationships: []
       }
       push_subscriptions: {

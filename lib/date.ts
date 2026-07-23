@@ -97,6 +97,28 @@ export function monthRangeKST(monthsAgo = 0): {
   return { start, end, label };
 }
 
+// 'YYYY-MM' 문자열 기준 그 달의 첫날/마지막날/라벨.
+export function monthRangeFromMonthString(monthStr: string): {
+  start: string;
+  end: string;
+  label: string;
+} {
+  const [y, m] = monthStr.split("-").map(Number);
+  const start = `${monthStr}-01`;
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const end = `${monthStr}-${String(lastDay).padStart(2, "0")}`;
+  return { start, end, label: `${y}년 ${m}월` };
+}
+
+// 'YYYY-MM' 문자열에 delta개월을 더한 'YYYY-MM' 문자열.
+export function shiftMonthString(monthStr: string, delta: number): string {
+  const [y, m] = monthStr.split("-").map(Number);
+  const total = y * 12 + (m - 1) + delta;
+  const ny = Math.floor(total / 12);
+  const nm = ((total % 12) + 12) % 12;
+  return `${ny}-${String(nm + 1).padStart(2, "0")}`;
+}
+
 // month('YYYY-MM-DD' 아무 날짜)가 속한 달의 1일부터 마지막 날까지 'YYYY-MM-DD' 배열.
 export function daysInMonthKST(dateInMonth: string): string[] {
   const [y, m] = dateInMonth.split("-").map(Number);

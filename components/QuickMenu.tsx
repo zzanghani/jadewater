@@ -2,6 +2,7 @@ import Link from "next/link";
 
 const ALL_ITEMS = [
   { href: "/closing", label: "마감입력", icon: PencilIcon },
+  { href: "/schedule", label: "스케줄러", icon: ScheduleIcon },
   { href: "/receipts", label: "입고 입력", icon: BoxIcon },
   { href: "/expense", label: "현장지출", icon: ReceiptIcon },
   { href: "/analysis", label: "주간 분석", icon: TrendIcon },
@@ -9,7 +10,7 @@ const ALL_ITEMS = [
   { href: "/cost", label: "실시간 코스트", icon: GaugeIcon },
 ] as const;
 
-const MASTER_EXCLUDED_HREFS: string[] = ["/closing", "/receipts", "/expense"];
+const MASTER_EXCLUDED_HREFS: string[] = ["/closing", "/schedule", "/receipts", "/expense"];
 
 export default function QuickMenu({ isMaster = false }: { isMaster?: boolean }) {
   const items = isMaster
@@ -44,6 +45,16 @@ function PencilIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 20h9" />
       <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+function ScheduleIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
+      <path d="M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01" />
     </svg>
   );
 }
