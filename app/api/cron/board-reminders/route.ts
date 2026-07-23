@@ -21,8 +21,11 @@ export async function GET(request: Request) {
     .lt("created_at", todayMidnightKST);
 
   if (error) {
+    console.error("[board-reminders] 대상 글 조회 실패", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  console.log(`[board-reminders] 리마인드 대상 글 ${posts?.length ?? 0}건`);
 
   const results: Record<string, string> = {};
 
@@ -35,8 +38,11 @@ export async function GET(request: Request) {
 
     if (!followers?.length) {
       results[post.id] = "확인 안 한 Follower 없음";
+      console.log(`[board-reminders] post_id=${post.id} 확인 안 한 Follower 없음`);
       continue;
     }
+
+    console.log(`[board-reminders] post_id=${post.id} 미확인 Follower ${followers.length}명`);
 
     const payload = {
       title: "체크리스트 확인 요청",
@@ -71,6 +77,7 @@ export async function GET(request: Request) {
     }
 
     results[post.id] = `${sent}건 발송`;
+    console.log(`[board-reminders] post_id=${post.id} ${sent}건 발송 완료`);
   }
 
   return NextResponse.json({ results });
