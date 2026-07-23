@@ -643,11 +643,25 @@ create policy "board_posts_insert_own"
   with check (auth.uid() = created_by);
 
 -- 작성자 본인만 자신의 확인(requester_confirmed) 체크를 업데이트할 수 있다.
+-- 작성자뿐 아니라 그 글의 Follower도 (완료 여부 기록을 위해) 수정할 수 있어야
+-- Follower의 체크로 완료 조건이 채워질 때 completed_at 기록이 막히지 않는다.
 create policy "board_posts_update_own"
   on public.board_posts for update
   to authenticated
-  using (auth.uid() = created_by)
-  with check (auth.uid() = created_by);
+  using (
+    auth.uid() = created_by
+    or exists (
+      select 1 from public.board_post_followers
+      where post_id = board_posts.id and user_id = auth.uid()
+    )
+  )
+  with check (
+    auth.uid() = created_by
+    or exists (
+      select 1 from public.board_post_followers
+      where post_id = board_posts.id and user_id = auth.uid()
+    )
+  );
 
 create policy "board_posts_delete_own"
   on public.board_posts for delete
