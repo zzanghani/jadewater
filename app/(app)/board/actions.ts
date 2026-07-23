@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
 import { sendPush } from "@/lib/webpush";
 import { archiveBoardPostToDrive } from "@/lib/boardArchive";
+import { NOTICE } from "@/lib/board";
 import type { BoardCategory } from "@/lib/types";
 
 const BOARD_CATEGORIES: BoardCategory[] = ["공지사항", "마케팅", "운영HR", "디자인", "R&D"];
@@ -81,28 +82,54 @@ export async function createBoardPost(
 
   revalidatePath("/board");
 
-  if (followerIds.length > 0) {
-    try {
-      const { data: authorProfile } = await supabase
-        .from("profiles")
-        .select("name")
-        .eq("id", user.id)
-        .single();
-      const authorName = authorProfile?.name ?? "누군가";
+  try {
+    const { data: authorProfile } = await supabase
+      .from("profiles")
+      .select("name")
+      .eq("id", user.id)
+      .single();
+    const authorName = authorProfile?.name ?? "누군가";
+    const notified = new Set<string>([user.id]);
+
+    if (followerIds.length > 0) {
       await Promise.all(
         followerIds
-          .filter((id) => id !== user.id)
-          .map((followerId) =>
-            sendPushToUser(supabase, followerId, {
+          .filter((id) => !notified.has(id))
+          .map((followerId) => {
+            notified.add(followerId);
+            return sendPushToUser(supabase, followerId, {
               title: `${authorName}님이 업무를 요청했습니다`,
               body: title,
               url: `/board/${inserted.id}`,
-            })
-          )
+            });
+          })
       );
-    } catch (err) {
-      console.error("[createBoardPost] Follower 알림 발송 중 오류", err);
     }
+
+    // 마스터 계정이 공지사항을 등록하면 개별 Follower 지정 여부와 상관없이
+    // 전 계정에 알림을 보낸다.
+    if (category === NOTICE) {
+      const { stores } = await getStoreContext(supabase);
+      const isMaster = stores.length > 1;
+      if (isMaster) {
+        const { data: allProfiles } = await supabase.from("profiles").select("id");
+        const targets = (allProfiles ?? [])
+          .map((p) => p.id)
+          .filter((id) => !notified.has(id));
+        await Promise.all(
+          targets.map((id) => {
+            notified.add(id);
+            return sendPushToUser(supabase, id, {
+              title: `${authorName}님이 공지사항을 등록했습니다`,
+              body: title,
+              url: `/board/${inserted.id}`,
+            });
+          })
+        );
+      }
+    }
+  } catch (err) {
+    console.error("[createBoardPost] 알림 발송 중 오류", err);
   }
 
   redirect(`/board/${inserted.id}`);
