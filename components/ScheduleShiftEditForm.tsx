@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { updateShift, type ScheduleFormState } from "@/app/(app)/schedule/actions";
-import { SCHEDULE_ROLES, roleColor } from "@/lib/scheduleColors";
+import { BREAK_MINUTE_OPTIONS, SCHEDULE_ROLES, roleColor } from "@/lib/scheduleColors";
 import AmPmTimeSelect from "@/components/AmPmTimeSelect";
 import type { ScheduleRole, ScheduleShift } from "@/lib/types";
 
@@ -94,6 +94,18 @@ export default function ScheduleShiftEditForm({
           defaultMinute={end.minute}
         />
       </div>
+
+      <select
+        name="break_minutes"
+        defaultValue={shift.break_minutes}
+        className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none ring-brand/30 focus:ring-2"
+      >
+        {BREAK_MINUTE_OPTIONS.map((m) => (
+          <option key={m} value={m}>
+            {m === 0 ? "휴게시간 없음" : `휴게시간 ${m}분`}
+          </option>
+        ))}
+      </select>
 
       <input
         type="text"

@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { addShift, type ScheduleFormState } from "@/app/(app)/schedule/actions";
-import { SCHEDULE_ROLES, roleColor } from "@/lib/scheduleColors";
+import { BREAK_MINUTE_OPTIONS, SCHEDULE_ROLES, roleColor } from "@/lib/scheduleColors";
 import AmPmTimeSelect from "@/components/AmPmTimeSelect";
 import type { ScheduleRole } from "@/lib/types";
 
@@ -71,6 +71,21 @@ export default function ScheduleShiftForm({ date }: { date: string }) {
         퇴근
         <AmPmTimeSelect name="end_time" defaultPeriod="오후" defaultHour={6} defaultMinute={0} />
       </div>
+
+      <label className="flex flex-col gap-1.5 text-sm font-medium">
+        휴게시간
+        <select
+          name="break_minutes"
+          defaultValue={0}
+          className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none ring-brand/30 focus:ring-2"
+        >
+          {BREAK_MINUTE_OPTIONS.map((m) => (
+            <option key={m} value={m}>
+              {m === 0 ? "없음" : `${m}분`}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         메모 <span className="font-normal text-muted">(선택)</span>

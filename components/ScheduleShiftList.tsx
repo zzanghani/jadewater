@@ -100,6 +100,7 @@ export default function ScheduleShiftList({
                   <p className="text-sm font-semibold text-foreground">{s.employee_name}</p>
                   <p className="text-xs text-muted">
                     {s.start_time.slice(0, 5)} ~ {s.end_time.slice(0, 5)}
+                    {s.break_minutes > 0 ? ` · 휴게 ${s.break_minutes}분` : ""}
                     {s.notes ? ` · ${s.notes}` : ""}
                   </p>
                 </div>

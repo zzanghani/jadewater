@@ -282,6 +282,7 @@ export type ScheduleShift = {
   employee_name: string
   start_time: string
   end_time: string
+  break_minutes: number
   notes: string | null
   created_by: string
   updated_by: string | null

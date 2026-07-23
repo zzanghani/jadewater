@@ -885,6 +885,7 @@ create table if not exists public.schedule_shifts (
   employee_name text not null,
   start_time time not null,
   end_time time not null,
+  break_minutes integer not null default 0,
   notes text,
 
   created_by uuid not null references public.profiles (id),

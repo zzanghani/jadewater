@@ -38,6 +38,7 @@ export async function addShift(
   const employeeName = String(formData.get("employee_name") ?? "").trim();
   const startTime = String(formData.get("start_time") ?? "");
   const endTime = String(formData.get("end_time") ?? "");
+  const breakMinutes = Number(formData.get("break_minutes") ?? 0);
   const notes = String(formData.get("notes") ?? "").trim();
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "잘못된 요청입니다." };
@@ -46,6 +47,9 @@ export async function addShift(
   }
   if (!employeeName) return { error: "이름을 입력해 주세요." };
   if (!startTime || !endTime) return { error: "근무 시간을 입력해 주세요." };
+  if (!Number.isFinite(breakMinutes) || breakMinutes < 0) {
+    return { error: "휴게시간을 올바르게 입력해 주세요." };
+  }
 
   const { storeId } = await getStoreContext(supabase);
 
@@ -56,6 +60,7 @@ export async function addShift(
     employee_name: employeeName,
     start_time: startTime,
     end_time: endTime,
+    break_minutes: breakMinutes,
     notes: notes || null,
     created_by: user.id,
   });
@@ -85,6 +90,7 @@ export async function updateShift(
   const employeeName = String(formData.get("employee_name") ?? "").trim();
   const startTime = String(formData.get("start_time") ?? "");
   const endTime = String(formData.get("end_time") ?? "");
+  const breakMinutes = Number(formData.get("break_minutes") ?? 0);
   const notes = String(formData.get("notes") ?? "").trim();
 
   if (!id) return { error: "잘못된 요청입니다." };
@@ -93,6 +99,9 @@ export async function updateShift(
   }
   if (!employeeName) return { error: "이름을 입력해 주세요." };
   if (!startTime || !endTime) return { error: "근무 시간을 입력해 주세요." };
+  if (!Number.isFinite(breakMinutes) || breakMinutes < 0) {
+    return { error: "휴게시간을 올바르게 입력해 주세요." };
+  }
 
   const { error } = await supabase
     .from("schedule_shifts")
@@ -101,6 +110,7 @@ export async function updateShift(
       employee_name: employeeName,
       start_time: startTime,
       end_time: endTime,
+      break_minutes: breakMinutes,
       notes: notes || null,
       updated_by: user.id,
     })
