@@ -652,7 +652,7 @@ create policy "board_posts_update_own"
 create policy "board_posts_delete_own"
   on public.board_posts for delete
   to authenticated
-  using (auth.uid() = created_by);
+  using (auth.uid() = created_by or public.user_is_master());
 
 create index if not exists board_posts_created_at_idx on public.board_posts (created_at desc);
 create index if not exists board_posts_completed_at_idx on public.board_posts (completed_at);
@@ -692,6 +692,11 @@ create policy "board_post_followers_update_own"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+create policy "board_post_followers_delete_master"
+  on public.board_post_followers for delete
+  to authenticated
+  using (public.user_is_master());
+
 create index if not exists board_post_followers_post_id_idx on public.board_post_followers (post_id);
 create index if not exists board_post_followers_user_id_idx on public.board_post_followers (user_id);
 
@@ -718,7 +723,7 @@ create policy "board_comments_insert_own"
 create policy "board_comments_delete_own"
   on public.board_comments for delete
   to authenticated
-  using (auth.uid() = created_by);
+  using (auth.uid() = created_by or public.user_is_master());
 
 create index if not exists board_comments_post_id_idx on public.board_comments (post_id, created_at);
 
@@ -749,6 +754,11 @@ create policy "board_attachments_insert_own"
   to authenticated
   with check (auth.uid() = created_by);
 
+create policy "board_attachments_delete_authenticated"
+  on public.board_attachments for delete
+  to authenticated
+  using (auth.uid() = created_by or public.user_is_master());
+
 create index if not exists board_attachments_post_id_idx on public.board_attachments (post_id);
 create index if not exists board_attachments_comment_id_idx on public.board_attachments (comment_id);
 
@@ -763,6 +773,11 @@ create policy "board_files_insert_authenticated"
 
 create policy "board_files_select_authenticated"
   on storage.objects for select
+  to authenticated
+  using (bucket_id = 'board');
+
+create policy "board_files_delete_authenticated"
+  on storage.objects for delete
   to authenticated
   using (bucket_id = 'board');
 

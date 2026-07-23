@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getStoreContext } from "@/lib/store";
 import { daysSinceKST } from "@/lib/date";
+import BoardArchiveButton from "@/components/BoardArchiveButton";
 import type { BoardCategory } from "@/lib/types";
 
 const NOTICE: BoardCategory = "공지사항";
@@ -33,6 +35,8 @@ export default async function BoardPage({
   const showDone = statusParam === "done";
 
   const supabase = await createClient();
+  const { stores } = await getStoreContext(supabase);
+  const isMaster = stores.length > 1;
 
   let query = supabase.from("board_posts").select("*").eq("category", category);
   query = showDone
@@ -147,10 +151,10 @@ export default async function BoardPage({
             const days = daysSinceKST(post.created_at);
             const isUrgent = !showDone && followerCount > 0 && days >= 3;
             return (
-            <li key={post.id} className="relative">
+            <li key={post.id} className="relative flex items-stretch gap-2">
               <Link
                 href={`/board/${post.id}`}
-                className="flex flex-col gap-1 rounded-2xl border border-border bg-card p-4"
+                className="flex flex-1 flex-col gap-1 rounded-2xl border border-border bg-card p-4"
               >
                 {isUrgent && (
                   <span className="absolute right-3 top-3 rounded-full bg-red-50 px-2 py-1 text-[10px] font-bold text-red-600">
@@ -185,6 +189,11 @@ export default async function BoardPage({
                   )}
                 </div>
               </Link>
+              {showDone && isMaster && (
+                <div className="flex items-center">
+                  <BoardArchiveButton postId={post.id} />
+                </div>
+              )}
             </li>
             );
           })}
