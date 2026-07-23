@@ -41,7 +41,22 @@ export async function addShift(
   const breakMinutes = Number(formData.get("break_minutes") ?? 0);
   const notes = String(formData.get("notes") ?? "").trim();
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "잘못된 요청입니다." };
+  let dates: string[] = [];
+  try {
+    const parsed = JSON.parse(String(formData.get("dates_json") ?? "[]"));
+    if (Array.isArray(parsed)) {
+      dates = parsed.filter(
+        (d): d is string => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)
+      );
+    }
+  } catch {
+    dates = [];
+  }
+  if (dates.length === 0 && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    dates = [date];
+  }
+
+  if (dates.length === 0) return { error: "날짜를 선택해 주세요." };
   if (!SCHEDULE_ROLES.includes(roleRaw as ScheduleRole)) {
     return { error: "직급을 선택해 주세요." };
   }
@@ -53,23 +68,27 @@ export async function addShift(
 
   const { storeId } = await getStoreContext(supabase);
 
-  const { error } = await supabase.from("schedule_shifts").insert({
-    store_id: storeId,
-    date,
-    role: roleRaw as ScheduleRole,
-    employee_name: employeeName,
-    start_time: startTime,
-    end_time: endTime,
-    break_minutes: breakMinutes,
-    notes: notes || null,
-    created_by: user.id,
-  });
+  const { error } = await supabase.from("schedule_shifts").insert(
+    dates.map((d) => ({
+      store_id: storeId,
+      date: d,
+      role: roleRaw as ScheduleRole,
+      employee_name: employeeName,
+      start_time: startTime,
+      end_time: endTime,
+      break_minutes: breakMinutes,
+      notes: notes || null,
+      created_by: user.id,
+    }))
+  );
 
   if (error) {
     return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
-  revalidatePath(`/schedule/${date}`);
+  for (const d of new Set(dates)) {
+    revalidatePath(`/schedule/${d}`);
+  }
   revalidatePath("/schedule");
   return { success: true };
 }

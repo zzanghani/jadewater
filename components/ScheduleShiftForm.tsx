@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { addShift, type ScheduleFormState } from "@/app/(app)/schedule/actions";
 import { BREAK_MINUTE_OPTIONS, SCHEDULE_ROLES, roleColor } from "@/lib/scheduleColors";
 import AmPmTimeSelect from "@/components/AmPmTimeSelect";
+import ScheduleMultiDatePicker from "@/components/ScheduleMultiDatePicker";
 import type { ScheduleRole } from "@/lib/types";
 
 export default function ScheduleShiftForm({ date }: { date: string }) {
@@ -12,6 +13,7 @@ export default function ScheduleShiftForm({ date }: { date: string }) {
     undefined
   );
   const [role, setRole] = useState<ScheduleRole>(SCHEDULE_ROLES[0]);
+  const [dates, setDates] = useState<string[]>([date]);
   const [resetKey, setResetKey] = useState(0);
 
   useEffect(() => {
@@ -26,7 +28,10 @@ export default function ScheduleShiftForm({ date }: { date: string }) {
       className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4"
     >
       <input type="hidden" name="date" value={date} />
+      <input type="hidden" name="dates_json" value={JSON.stringify(dates)} />
       <input type="hidden" name="role" value={role} />
+
+      <ScheduleMultiDatePicker initialDate={date} dates={dates} onChange={setDates} />
 
       <div className="flex flex-col gap-1.5 text-sm font-medium">
         직급
@@ -106,7 +111,7 @@ export default function ScheduleShiftForm({ date }: { date: string }) {
         disabled={pending}
         className="rounded-xl bg-brand py-3 text-sm font-semibold text-white shadow-md shadow-brand/30 transition-opacity disabled:opacity-60"
       >
-        {pending ? "추가 중..." : "근무자 추가"}
+        {pending ? "추가 중..." : dates.length > 1 ? `${dates.length}일에 근무자 추가` : "근무자 추가"}
       </button>
     </form>
   );
