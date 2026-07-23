@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
 import { weekRangeLabel } from "@/lib/date";
+import BoardTopTabs from "@/components/BoardTopTabs";
 
 export default async function WeeklyReportPage() {
   const supabase = await createClient();
@@ -35,6 +36,8 @@ export default async function WeeklyReportPage() {
           </Link>
         )}
       </div>
+
+      <BoardTopTabs active="weekly" />
 
       {rows.length === 0 ? (
         <p className="text-sm text-muted">아직 등록된 주간보고가 없습니다.</p>

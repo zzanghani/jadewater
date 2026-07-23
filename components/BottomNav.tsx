@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 const ALL_TABS = [
   { href: "/closing", label: "마감입력", icon: PencilIcon },
   { href: "/board", label: "게시판", icon: BoardIcon },
-  { href: "/weekly-report", label: "주간보고", icon: CalendarIcon },
   { href: "/settlement", label: "월말정산", icon: ReportIcon },
   { href: "/review-report", label: "리뷰리포트", icon: StarIcon },
   { href: "/payment", label: "입금요청", icon: SendIcon },
@@ -20,7 +19,8 @@ export default function BottomNav({ isMaster = false }: { isMaster?: boolean }) 
     <nav className="sticky bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
       <div className="mx-auto flex max-w-md items-stretch justify-around px-2 pb-[env(safe-area-inset-bottom)]">
         {tabs.map(({ href, label, icon: Icon }) => {
-          const active = pathname.startsWith(href);
+          const active =
+            pathname.startsWith(href) || (href === "/board" && pathname.startsWith("/weekly-report"));
           return (
             <Link
               key={href}
@@ -44,16 +44,6 @@ function BoardIcon({ active }: { active: boolean }) {
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 1.8} strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 4h16v13H8l-4 4Z" />
       <path d="M8 9h8M8 13h5" />
-    </svg>
-  );
-}
-
-function CalendarIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 1.8} strokeLinecap="round" strokeLinejoin="round">
-      <rect x="4" y="5" width="16" height="15" rx="2" />
-      <path d="M4 10h16M8 3v4M16 3v4" />
-      <path d="M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01" />
     </svg>
   );
 }

@@ -3,11 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
 import { daysSinceKST } from "@/lib/date";
 import BoardArchiveButton from "@/components/BoardArchiveButton";
+import BoardTopTabs from "@/components/BoardTopTabs";
+import { NOTICE, WORK_CATEGORIES, ALL_CATEGORIES } from "@/lib/board";
 import type { BoardCategory } from "@/lib/types";
-
-const NOTICE: BoardCategory = "공지사항";
-const WORK_CATEGORIES: BoardCategory[] = ["마케팅", "운영HR", "디자인", "R&D"];
-const ALL_CATEGORIES: BoardCategory[] = [NOTICE, ...WORK_CATEGORIES];
 
 function timeAgoLabel(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -94,24 +92,7 @@ export default async function BoardPage({
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 rounded-2xl bg-card p-1.5">
-        <Link
-          href={`/board?category=${encodeURIComponent(NOTICE)}${statusSuffix}`}
-          className={`rounded-xl py-2.5 text-center text-sm font-semibold transition-colors ${
-            !isWorkSection ? "bg-brand text-white shadow-sm" : "text-muted"
-          }`}
-        >
-          공지사항
-        </Link>
-        <Link
-          href={`/board?category=${encodeURIComponent(WORK_CATEGORIES[0])}${statusSuffix}`}
-          className={`rounded-xl py-2.5 text-center text-sm font-semibold transition-colors ${
-            isWorkSection ? "bg-brand text-white shadow-sm" : "text-muted"
-          }`}
-        >
-          업무게시판
-        </Link>
-      </div>
+      <BoardTopTabs active={isWorkSection ? "work" : "notice"} statusSuffix={statusSuffix} />
 
       {isWorkSection && (
         <div className="grid grid-cols-4 gap-2 rounded-2xl bg-card p-1.5">
