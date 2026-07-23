@@ -37,6 +37,11 @@ export default function ScheduleMultiDatePicker({
 
   function toggleDate(d: string) {
     if (selectedSet.has(d)) {
+      // 마지막 남은 날짜는 탭 한 번으로 사라지지 않게 막는다.
+      // (0일 선택 상태가 되면 어떤 날짜가 원래 선택돼 있었는지 화면에서
+      // 전혀 알 수 없게 되어버리는 문제가 있었다. 완전히 비우려면
+      // "전체 해제" 버튼을 쓰도록 유도한다.)
+      if (dates.length === 1) return;
       onChange(dates.filter((x) => x !== d));
     } else {
       onChange([...dates, d]);
