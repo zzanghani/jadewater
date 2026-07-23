@@ -61,6 +61,15 @@ export function kstWeekdayShortLabel(dateStr: string): string {
   return WEEKDAY_LABELS[(kstWeekdayIndex(dateStr) + 6) % 7];
 }
 
+// 'YYYY-MM-DD'(월요일) → "7/21 ~ 7/27" 형태의 주간 라벨.
+export function weekRangeLabel(weekStart: string): string {
+  const [y, m, d] = weekStart.split("-").map(Number);
+  const monday = new Date(Date.UTC(y, m - 1, d));
+  const sunday = new Date(monday);
+  sunday.setUTCDate(sunday.getUTCDate() + 6);
+  return `${monday.getUTCMonth() + 1}/${monday.getUTCDate()} ~ ${sunday.getUTCMonth() + 1}/${sunday.getUTCDate()}`;
+}
+
 // weeksAgo=0(이번주) 기준 월~일 7일치 'YYYY-MM-DD' 배열(KST).
 export function weekDatesKST(weeksAgo = 0): string[] {
   const today = kstDateString(0);

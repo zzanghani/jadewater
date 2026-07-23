@@ -249,6 +249,29 @@ export type BoardAttachment = {
   created_at: string
 }
 
+export type WeeklySalesRow = {
+  label: string
+  lastWeek: string
+  thisWeek: string
+}
+
+export type WeeklyReport = {
+  id: string
+  store_id: string
+  week_start: string
+  goals: string[]
+  hr_items: string[]
+  sales_notes: string[]
+  sales_table: WeeklySalesRow[]
+  issues: string[]
+  kitchen_items: string[]
+  hall_items: string[]
+  created_by: string
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -353,6 +376,12 @@ export type Database = {
           created_by: string
         }
         Update: Partial<FieldExpense>
+        Relationships: []
+      }
+      weekly_reports: {
+        Row: WeeklyReport
+        Insert: Partial<WeeklyReport> & { store_id: string; week_start: string; created_by: string }
+        Update: Partial<WeeklyReport>
         Relationships: []
       }
       push_subscriptions: {
