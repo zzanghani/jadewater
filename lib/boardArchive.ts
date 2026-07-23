@@ -1,4 +1,4 @@
-import { findOrCreateFolder, uploadFileToDrive } from "@/lib/googleDrive";
+import { findOrCreateFolder, uploadFileToDrive, uploadTextAsPdf } from "@/lib/googleDrive";
 import type { createClient } from "@/lib/supabase/server";
 
 function dateTimeLabel(iso: string): string {
@@ -74,11 +74,9 @@ export async function archiveBoardPostToDrive(
     lines.push("");
   });
 
-  const summaryBuffer = Buffer.from(lines.join("\n"), "utf-8");
-  await uploadFileToDrive({
-    name: `${filePrefix}요약.txt`,
-    mimeType: "text/plain",
-    buffer: summaryBuffer,
+  await uploadTextAsPdf({
+    name: `${filePrefix}요약`,
+    text: lines.join("\n"),
     parentId: categoryFolderId,
   });
 

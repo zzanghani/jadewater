@@ -92,3 +92,46 @@ export async function uploadFileToDrive(params: {
   });
   return res.data.id!;
 }
+
+// 한글을 포함한 텍스트를 PDF로 저장한다. pdf 라이브러리로 직접 그리면
+// 한글 폰트를 따로 내장해야 해서, 대신 구글 자체 변환기를 빌린다:
+// 텍스트 → 임시 구글독스 문서로 업로드(자동 변환) → PDF로 내보내기(export)
+// → 최종 PDF만 남기고 임시 문서는 지운다.
+export async function uploadTextAsPdf(params: {
+  name: string; // 확장자 없이 (자동으로 .pdf 붙음)
+  text: string;
+  parentId: string;
+}): Promise<string> {
+  const drive = getDriveClient();
+  const { Readable } = await import("node:stream");
+
+  const tempDoc = await drive.files.create({
+    requestBody: {
+      name: `__temp_${params.name}`,
+      mimeType: "application/vnd.google-apps.document",
+      parents: [params.parentId],
+    },
+    media: { mimeType: "text/plain", body: Readable.from(Buffer.from(params.text, "utf-8")) },
+    fields: "id",
+    supportsAllDrives: true,
+  });
+  const tempDocId = tempDoc.data.id!;
+
+  try {
+    const exported = await drive.files.export(
+      { fileId: tempDocId, mimeType: "application/pdf" },
+      { responseType: "arraybuffer" }
+    );
+    const pdfBuffer = Buffer.from(exported.data as ArrayBuffer);
+
+    const finalFile = await drive.files.create({
+      requestBody: { name: `${params.name}.pdf`, parents: [params.parentId] },
+      media: { mimeType: "application/pdf", body: Readable.from(pdfBuffer) },
+      fields: "id",
+      supportsAllDrives: true,
+    });
+    return finalFile.data.id!;
+  } finally {
+    await drive.files.delete({ fileId: tempDocId, supportsAllDrives: true }).catch(() => {});
+  }
+}
