@@ -16,9 +16,10 @@ const TABS: { key: Tab; label: string }[] = [
 export default async function PaymentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; status?: string }>;
 }) {
-  const { tab: tabParam } = await searchParams;
+  const { tab: tabParam, status: statusParam } = await searchParams;
+  const showDone = statusParam === "done";
 
   const supabase = await createClient();
   const { storeId, stores } = await getStoreContext(supabase);
@@ -29,7 +30,7 @@ export default async function PaymentPage({
   if (isMaster) {
     return (
       <div className="flex flex-col gap-6">
-        <ConfirmTab storeId={storeId} stores={stores} isMaster={isMaster} />
+        <ConfirmTab storeId={storeId} stores={stores} isMaster={isMaster} showDone={showDone} />
       </div>
     );
   }
@@ -60,7 +61,7 @@ export default async function PaymentPage({
         <RequestTab storeId={storeId} stores={stores} />
       )}
       {tab === "confirm" && (
-        <ConfirmTab storeId={storeId} stores={stores} isMaster={isMaster} />
+        <ConfirmTab storeId={storeId} stores={stores} isMaster={isMaster} showDone={showDone} />
       )}
     </div>
   );
@@ -85,18 +86,21 @@ async function ConfirmTab({
   storeId,
   stores,
   isMaster,
+  showDone,
 }: {
   storeId: string;
   stores: Store[];
   isMaster: boolean;
+  showDone: boolean;
 }) {
   const supabase = await createClient();
 
   let query = supabase
     .from("payment_requests")
     .select("*")
-    .is("completed_at", null)
-    .order("created_at", { ascending: false });
+    .order(showDone ? "completed_at" : "created_at", { ascending: false });
+
+  query = showDone ? query.not("completed_at", "is", null) : query.is("completed_at", null);
 
   if (!isMaster) {
     query = query.eq("store_id", storeId);
@@ -110,13 +114,23 @@ async function ConfirmTab({
     storeName: storeNameById.get(r.store_id),
   }));
 
+  const tabQuery = isMaster ? "" : "&tab=confirm";
+
   return (
     <section>
       <div className="mb-3 flex items-center justify-between gap-3">
         <h1 className="text-lg font-bold">요청확인</h1>
         <PushSubscribeButton storeId={isMaster ? null : storeId} />
       </div>
-      <PaymentRequestList requests={rows} isMaster={isMaster} />
+      <div className="mb-3 flex justify-end">
+        <Link
+          href={showDone ? `/payment?status=open${tabQuery}` : `/payment?status=done${tabQuery}`}
+          className="text-xs font-medium text-muted underline-offset-2 hover:underline"
+        >
+          {showDone ? "진행중인 요청 보기" : "완료된 요청 보기"}
+        </Link>
+      </div>
+      <PaymentRequestList requests={rows} isMaster={isMaster} showDone={showDone} />
     </section>
   );
 }

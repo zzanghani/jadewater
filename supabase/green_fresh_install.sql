@@ -271,7 +271,10 @@ create policy "payment_requests_insert_authenticated"
 create policy "payment_requests_delete_own"
   on public.payment_requests for delete
   to authenticated
-  using (public.user_can_access_store(store_id) and auth.uid() = created_by);
+  using (
+    (public.user_can_access_store(store_id) and auth.uid() = created_by)
+    or public.user_is_master()
+  );
 
 create policy "payment_requests_update_authenticated"
   on public.payment_requests for update

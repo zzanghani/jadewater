@@ -6,6 +6,7 @@ import { completePaymentRequest } from "@/app/(app)/payment/actions";
 import { formatWon } from "@/lib/format";
 import { kstDateString } from "@/lib/date";
 import { storeColorSoft } from "@/lib/storeColors";
+import PaymentArchiveButton from "@/components/PaymentArchiveButton";
 import type { PaymentRequest } from "@/lib/types";
 
 type Row = PaymentRequest & { storeName?: string };
@@ -38,9 +39,11 @@ function daysSinceRequest(iso: string): number {
 export default function PaymentRequestList({
   requests,
   isMaster,
+  showDone = false,
 }: {
   requests: Row[];
   isMaster: boolean;
+  showDone?: boolean;
 }) {
   const [selected, setSelected] = useState<Row | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -67,7 +70,7 @@ export default function PaymentRequestList({
       <ul className="flex flex-col gap-2">
         {requests.map((r) => {
           const days = daysSinceRequest(r.created_at);
-          const isUrgent = days >= 3;
+          const isUrgent = !showDone && days >= 3;
           return (
             <li
               key={r.id}
@@ -104,7 +107,8 @@ export default function PaymentRequestList({
                 </p>
               </button>
               {isUrgent && <UrgentBadge />}
-              {isMaster && (
+              {isMaster && showDone && <PaymentArchiveButton requestId={r.id} />}
+              {isMaster && !showDone && (
                 <button
                   type="button"
                   onClick={(e) => handleComplete(r.id, e)}
@@ -178,7 +182,7 @@ export default function PaymentRequestList({
               </div>
             )}
 
-            {isMaster && (
+            {isMaster && !showDone && (
               <button
                 type="button"
                 onClick={(e) => handleComplete(selected.id, e)}

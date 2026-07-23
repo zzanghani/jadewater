@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getStoreContext } from "@/lib/store";
 import { formatWon } from "@/lib/format";
 import { sendPush } from "@/lib/webpush";
+import { archivePaymentRequestToDrive } from "@/lib/paymentArchive";
 import type { FieldExpenseCategory, FieldExpensePaymentMethod } from "@/lib/types";
 
 export type PaymentFormState = { error?: string; success?: boolean } | undefined;
@@ -281,5 +283,45 @@ export async function saveFieldExpense(
   }
 
   revalidatePath("/expense");
+  return { success: true };
+}
+
+export type ArchivePaymentState = { error?: string; success?: boolean } | undefined;
+
+// 완료된 입금요청을 구글드라이브로 옮기고 Supabase에서는 지운다 (되돌릴 수 없음).
+// 마스터 계정만 할 수 있다.
+export async function archivePaymentRequestAction(
+  requestId: string
+): Promise<ArchivePaymentState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "로그인이 필요합니다." };
+
+  const { stores } = await getStoreContext(supabase);
+  if (stores.length <= 1) {
+    return { error: "마스터 계정만 보관할 수 있습니다." };
+  }
+
+  try {
+    await archivePaymentRequestToDrive(supabase, requestId);
+  } catch (err) {
+    console.error("[archivePaymentRequestAction] 드라이브 업로드 실패", err);
+    return { error: "구글드라이브 업로드 중 오류가 발생했습니다." };
+  }
+
+  const { error: deleteError } = await supabase
+    .from("payment_requests")
+    .delete()
+    .eq("id", requestId);
+  if (deleteError) {
+    console.error("[archivePaymentRequestAction] Supabase 삭제 실패", deleteError);
+    return {
+      error: "드라이브 업로드는 됐지만 Supabase에서 삭제하는 중 오류가 발생했습니다.",
+    };
+  }
+
+  revalidatePath("/payment");
   return { success: true };
 }
