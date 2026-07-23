@@ -46,7 +46,7 @@ export async function GET(request: Request) {
 
     const payload = {
       title: "체크리스트 확인 요청",
-      body: `"${post.title}" 글을 아직 확인하지 않으셨어요.`,
+      body: `"${post.title}" 요청사항을 읽고 진행해주세요.`,
       url: `/board/${post.id}`,
     };
 
