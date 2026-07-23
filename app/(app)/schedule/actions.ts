@@ -10,6 +10,24 @@ import type { ScheduleRole } from "@/lib/types";
 export type ScheduleFormState = { error?: string; success?: boolean } | undefined;
 export type UnlockFormState = { error?: string; success?: boolean } | undefined;
 
+function parseDatesField(formData: FormData, fallbackDate: string): string[] {
+  let dates: string[] = [];
+  try {
+    const parsed = JSON.parse(String(formData.get("dates_json") ?? "[]"));
+    if (Array.isArray(parsed)) {
+      dates = parsed.filter(
+        (d): d is string => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)
+      );
+    }
+  } catch {
+    dates = [];
+  }
+  if (dates.length === 0 && /^\d{4}-\d{2}-\d{2}$/.test(fallbackDate)) {
+    dates = [fallbackDate];
+  }
+  return dates;
+}
+
 export async function unlockScheduleAdmin(
   _prevState: UnlockFormState,
   formData: FormData
@@ -41,20 +59,7 @@ export async function addShift(
   const breakMinutes = Number(formData.get("break_minutes") ?? 0);
   const notes = String(formData.get("notes") ?? "").trim();
 
-  let dates: string[] = [];
-  try {
-    const parsed = JSON.parse(String(formData.get("dates_json") ?? "[]"));
-    if (Array.isArray(parsed)) {
-      dates = parsed.filter(
-        (d): d is string => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)
-      );
-    }
-  } catch {
-    dates = [];
-  }
-  if (dates.length === 0 && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    dates = [date];
-  }
+  const dates = parseDatesField(formData, date);
 
   if (dates.length === 0) return { error: "날짜를 선택해 주세요." };
   if (!SCHEDULE_ROLES.includes(roleRaw as ScheduleRole)) {
@@ -111,8 +116,10 @@ export async function updateShift(
   const endTime = String(formData.get("end_time") ?? "");
   const breakMinutes = Number(formData.get("break_minutes") ?? 0);
   const notes = String(formData.get("notes") ?? "").trim();
+  const dates = parseDatesField(formData, date);
 
   if (!id) return { error: "잘못된 요청입니다." };
+  if (dates.length === 0) return { error: "날짜를 선택해 주세요." };
   if (!SCHEDULE_ROLES.includes(roleRaw as ScheduleRole)) {
     return { error: "직급을 선택해 주세요." };
   }
@@ -122,9 +129,14 @@ export async function updateShift(
     return { error: "휴게시간을 올바르게 입력해 주세요." };
   }
 
-  const { error } = await supabase
+  // 팝업 달력에서 선택한 날짜 중 첫 번째는 기존 행의 날짜를 바꾸는 데 쓰고,
+  // 추가로 더 선택한 날짜가 있으면 같은 내용으로 새 행을 만들어준다.
+  const [primaryDate, ...extraDates] = dates;
+
+  const { error: updateError } = await supabase
     .from("schedule_shifts")
     .update({
+      date: primaryDate,
       role: roleRaw as ScheduleRole,
       employee_name: employeeName,
       start_time: startTime,
@@ -135,11 +147,33 @@ export async function updateShift(
     })
     .eq("id", id);
 
-  if (error) {
+  if (updateError) {
     return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
-  revalidatePath(`/schedule/${date}`);
+  if (extraDates.length > 0) {
+    const { storeId } = await getStoreContext(supabase);
+    const { error: insertError } = await supabase.from("schedule_shifts").insert(
+      extraDates.map((d) => ({
+        store_id: storeId,
+        date: d,
+        role: roleRaw as ScheduleRole,
+        employee_name: employeeName,
+        start_time: startTime,
+        end_time: endTime,
+        break_minutes: breakMinutes,
+        notes: notes || null,
+        created_by: user.id,
+      }))
+    );
+    if (insertError) {
+      return { error: "일부 날짜 추가 중 오류가 발생했습니다." };
+    }
+  }
+
+  for (const d of new Set([date, ...dates])) {
+    revalidatePath(`/schedule/${d}`);
+  }
   revalidatePath("/schedule");
   return { success: true };
 }

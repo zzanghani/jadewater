@@ -17,10 +17,26 @@ export default function ScheduleDayTimeline({ shifts }: { shifts: ScheduleShift[
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
       <h2 className="mb-3 text-sm font-semibold text-foreground">근무 시간표</h2>
-      <div className="mb-1.5 flex justify-between pl-16 text-[9px] text-muted">
-        {HOUR_MARKS.map((h) => (
-          <span key={h}>{h}</span>
-        ))}
+      {/* 눈금과 근무 막대가 같은 좌표계를 쓰도록, 이름 칸 너비(w-14)+간격(gap-2)을
+          그대로 맞춘 뒤 그 안에서 막대와 동일한 퍼센트 공식으로 눈금을 배치한다.
+          (예전엔 눈금을 flex justify-between으로 따로 배치해서 숫자 자릿수 차이
+          때문에 막대 위치와 살짝씩 어긋났다.) */}
+      <div className="mb-1.5 flex items-center gap-2 text-[9px] text-muted">
+        <span className="w-14 shrink-0" aria-hidden />
+        <div className="relative h-3 flex-1">
+          {HOUR_MARKS.map((h) => {
+            const pct = ((h * 60 - RANGE_START) / RANGE_SPAN) * 100;
+            return (
+              <span
+                key={h}
+                className="absolute -translate-x-1/2"
+                style={{ left: `${pct}%` }}
+              >
+                {h}
+              </span>
+            );
+          })}
+        </div>
       </div>
       <div className="flex flex-col gap-1.5">
         {shifts.map((s) => {

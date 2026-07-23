@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { updateShift, type ScheduleFormState } from "@/app/(app)/schedule/actions";
 import { BREAK_MINUTE_OPTIONS, SCHEDULE_ROLES, roleColor } from "@/lib/scheduleColors";
 import AmPmTimeSelect from "@/components/AmPmTimeSelect";
+import ScheduleMultiDatePicker from "@/components/ScheduleMultiDatePicker";
 import type { ScheduleRole, ScheduleShift } from "@/lib/types";
 
 function splitTime(t: string): { period: "오전" | "오후"; hour: number; minute: number } {
@@ -29,6 +30,7 @@ export default function ScheduleShiftEditForm({
     undefined
   );
   const [role, setRole] = useState<ScheduleRole>(shift.role);
+  const [dates, setDates] = useState<string[]>([shift.date]);
 
   useEffect(() => {
     if (state?.success) onSaved();
@@ -45,7 +47,10 @@ export default function ScheduleShiftEditForm({
     >
       <input type="hidden" name="id" value={shift.id} />
       <input type="hidden" name="date" value={date} />
+      <input type="hidden" name="dates_json" value={JSON.stringify(dates)} />
       <input type="hidden" name="role" value={role} />
+
+      <ScheduleMultiDatePicker initialDate={shift.date} dates={dates} onChange={setDates} />
 
       <div className="flex flex-wrap gap-1.5">
         {SCHEDULE_ROLES.map((r) => {
@@ -132,7 +137,11 @@ export default function ScheduleShiftEditForm({
           disabled={pending}
           className="flex-1 rounded-xl bg-brand py-2.5 text-sm font-semibold text-white shadow-md shadow-brand/30 disabled:opacity-60"
         >
-          {pending ? "저장 중..." : "저장"}
+          {pending
+            ? "저장 중..."
+            : dates.length > 1
+            ? `${dates.length}일로 저장`
+            : "저장"}
         </button>
       </div>
     </form>
