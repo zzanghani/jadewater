@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { archiveWeeklyReportToDrive } from "@/lib/weeklyReportArchive";
-import { kstDateString } from "@/lib/date";
+import { kstDateString, shiftDateString } from "@/lib/date";
 
 // Vercel Cron이 매일 KST 06:00에 호출한다 (vercel.json 참고).
 // 작성 기간(월~일)이 완전히 지난 주간보고 중, 아직 백업 안 한 것을
@@ -28,12 +28,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const targets = (reports ?? []).filter((r) => {
-    const weekEndNextDay = new Date(`${r.week_start}T00:00:00+09:00`);
-    weekEndNextDay.setDate(weekEndNextDay.getDate() + 7);
-    const cutoff = weekEndNextDay.toISOString().slice(0, 10);
-    return today >= cutoff;
-  });
+  console.log(
+    `[weekly-report-archive] 오늘(KST)=${today}, 미백업 전체=${reports?.length ?? 0}건`
+  );
+
+  // week_start + 7일(다음주 월요일) 이하로 오늘이 지났으면 그 주는 끝난 것.
+  // Date의 setDate/getDate는 런타임 로컬 타임존(UTC) 기준이라 KST 날짜 문자열에
+  // 직접 쓰면 하루가 밀릴 수 있어, 순수 문자열 계산인 shiftDateString을 쓴다.
+  const targets = (reports ?? []).filter((r) => today >= shiftDateString(r.week_start, 7));
 
   console.log(`[weekly-report-archive] 백업 대상 ${targets.length}건`);
 
