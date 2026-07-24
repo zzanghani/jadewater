@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
@@ -26,11 +27,20 @@ export default async function WeeklyReportWritePage({
     .maybeSingle();
 
   return (
-    <WeeklyReportForm
-      storeId={storeId}
-      weekStart={weekStart}
-      weekLabel={weekRangeLabel(weekStart)}
-      existing={existing ?? undefined}
-    />
+    <div className="flex flex-col gap-4">
+      <Link
+        href="/weekly-report"
+        className="flex items-center gap-1 text-sm font-medium text-muted"
+      >
+        <span aria-hidden>←</span> 목록으로
+      </Link>
+
+      <WeeklyReportForm
+        storeId={storeId}
+        weekStart={weekStart}
+        weekLabel={weekRangeLabel(weekStart)}
+        existing={existing ?? undefined}
+      />
+    </div>
   );
 }
