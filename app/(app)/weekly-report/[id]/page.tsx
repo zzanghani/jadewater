@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
 import { weekRangeLabel } from "@/lib/date";
-import WeeklyReportImage from "@/components/WeeklyReportImage";
 
 function ReportSection({
   icon,
@@ -127,8 +126,6 @@ export default async function WeeklyReportDetailPage({
       <ReportSection icon="⭐" label="주간이슈" items={report.issues} />
       <ReportSection icon="🍳" label="키친" items={report.kitchen_items} />
       <ReportSection icon="🍽️" label="홀" items={report.hall_items} />
-
-      <WeeklyReportImage storeName={storeName} report={report} />
     </div>
   );
 }

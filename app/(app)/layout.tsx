@@ -65,7 +65,7 @@ export default async function AppLayout({
         <PullToRefresh>{children}</PullToRefresh>
       </main>
 
-      <BottomNav />
+      <BottomNav isMaster={isMaster} />
     </>
   );
 }

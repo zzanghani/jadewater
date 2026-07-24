@@ -135,3 +135,48 @@ export async function uploadTextAsPdf(params: {
     await drive.files.delete({ fileId: tempDocId, supportsAllDrives: true }).catch(() => {});
   }
 }
+
+// 서버(크론)에는 브라우저가 없어서 html2canvas 같은 화면 캡처는 못 쓴다.
+// 대신 HTML을 올리면 구글독스가 자동 변환하면서 제목/굵게/표/색 같은
+// 서식을 상당 부분 그대로 살려주기 때문에, 텍스트만 나열하는 것보다
+// 화면에 보이는 모습에 훨씬 가까운 PDF가 나온다(완전히 동일한 픽셀
+// 재현은 아니다). 폰트는 여기서도 구글 자체 변환기를 그대로 쓰므로
+// 한글 폰트를 따로 내장할 필요가 없다.
+export async function uploadHtmlAsPdf(params: {
+  name: string; // 확장자 없이 (자동으로 .pdf 붙음)
+  html: string;
+  parentId: string;
+}): Promise<string> {
+  const drive = getDriveClient();
+  const { Readable } = await import("node:stream");
+
+  const tempDoc = await drive.files.create({
+    requestBody: {
+      name: `__temp_${params.name}`,
+      mimeType: "application/vnd.google-apps.document",
+      parents: [params.parentId],
+    },
+    media: { mimeType: "text/html", body: Readable.from(Buffer.from(params.html, "utf-8")) },
+    fields: "id",
+    supportsAllDrives: true,
+  });
+  const tempDocId = tempDoc.data.id!;
+
+  try {
+    const exported = await drive.files.export(
+      { fileId: tempDocId, mimeType: "application/pdf" },
+      { responseType: "arraybuffer" }
+    );
+    const pdfBuffer = Buffer.from(exported.data as ArrayBuffer);
+
+    const finalFile = await drive.files.create({
+      requestBody: { name: `${params.name}.pdf`, parents: [params.parentId] },
+      media: { mimeType: "application/pdf", body: Readable.from(pdfBuffer) },
+      fields: "id",
+      supportsAllDrives: true,
+    });
+    return finalFile.data.id!;
+  } finally {
+    await drive.files.delete({ fileId: tempDocId, supportsAllDrives: true }).catch(() => {});
+  }
+}

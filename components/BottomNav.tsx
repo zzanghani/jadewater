@@ -11,9 +11,9 @@ const ALL_TABS = [
   { href: "/payment", label: "입금요청", icon: SendIcon },
 ] as const;
 
-export default function BottomNav() {
+export default function BottomNav({ isMaster = false }: { isMaster?: boolean }) {
   const pathname = usePathname();
-  const tabs = ALL_TABS;
+  const tabs = isMaster ? ALL_TABS.filter((t) => t.href !== "/inventory") : ALL_TABS;
 
   return (
     <nav className="sticky bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
