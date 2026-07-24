@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
 import { kstDateLabel, kstDateString } from "@/lib/date";
-import InventoryItemForm from "@/components/InventoryItemForm";
+import InventoryItemPopup from "@/components/InventoryItemPopup";
 import InventoryDatePicker from "@/components/InventoryDatePicker";
 import InventoryCountForm from "@/components/InventoryCountForm";
 import DeleteInventoryItemButton from "@/components/DeleteInventoryItemButton";
@@ -22,7 +22,7 @@ export default async function InventoryPage({
   const date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : kstDateString(0);
 
   const supabase = await createClient();
-  const { storeId } = await getStoreContext(supabase);
+  const { storeId, storeName } = await getStoreContext(supabase);
 
   const [{ data: items }, { data: counts }] = await Promise.all([
     supabase
@@ -41,6 +41,7 @@ export default async function InventoryPage({
   const rows = items ?? [];
   const editing = edit ? rows.find((i) => i.id === edit) : undefined;
   const countByItemId = new Map((counts ?? []).map((c) => [c.item_id, c.quantity]));
+  const dateLabel = kstDateLabel(date);
 
   return (
     <div className="flex flex-col gap-6">
@@ -62,31 +63,24 @@ export default async function InventoryPage({
       </div>
 
       <section>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-foreground">
-            {editing ? "품목 수정" : "품목 추가"}
+            {section} 재고 · {dateLabel}
           </h2>
-          <InventoryDatePicker section={section} date={date} />
+          <div className="flex shrink-0 items-center gap-2">
+            <InventoryItemPopup storeId={storeId} section={section} date={date} existing={editing} />
+            <InventoryDatePicker section={section} date={date} />
+          </div>
         </div>
-        <InventoryItemForm
-          key={editing?.id ?? "new"}
-          storeId={storeId}
-          section={section}
-          date={date}
-          existing={editing}
-        />
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-sm font-semibold text-foreground">
-          {section} 재고 · {kstDateLabel(date)}
-        </h2>
         {rows.length === 0 ? (
           <p className="text-sm text-muted">먼저 품목을 등록해 주세요.</p>
         ) : (
           <InventoryCountForm
             storeId={storeId}
+            storeName={storeName}
+            section={section}
             date={date}
+            dateLabel={dateLabel}
             items={rows}
             countByItemId={countByItemId}
           />
