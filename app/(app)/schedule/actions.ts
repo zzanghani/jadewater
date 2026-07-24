@@ -28,6 +28,46 @@ function parseDatesField(formData: FormData, fallbackDate: string): string[] {
   return dates;
 }
 
+type BatchAnchor = {
+  id: string;
+  date: string;
+  batch_id: string | null;
+  role: ScheduleRole;
+  employee_name: string;
+  start_time: string;
+  end_time: string;
+  break_minutes: number;
+  store_id: string;
+};
+
+// batch_id로 묶인 행이면 그 묶음 전체를, batch_id가 없는(2026-07-25 이전에
+// 하루씩 개별 등록된) 행이면 같은 매장·직급·이름·근무시간으로 등록된
+// 다른 batch_id 없는 행들을 같은 묶음으로 간주해서 반환한다.
+async function findBatchRows(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  original: BatchAnchor
+): Promise<{ id: string; date: string }[]> {
+  if (original.batch_id) {
+    const { data } = await supabase
+      .from("schedule_shifts")
+      .select("id, date")
+      .eq("batch_id", original.batch_id);
+    return data ?? [];
+  }
+
+  const { data } = await supabase
+    .from("schedule_shifts")
+    .select("id, date")
+    .eq("store_id", original.store_id)
+    .eq("employee_name", original.employee_name)
+    .eq("role", original.role)
+    .eq("start_time", original.start_time)
+    .eq("end_time", original.end_time)
+    .eq("break_minutes", original.break_minutes)
+    .is("batch_id", null);
+  return data ?? [];
+}
+
 export async function unlockScheduleAdmin(
   _prevState: UnlockFormState,
   formData: FormData
@@ -108,19 +148,15 @@ export async function getShiftBatchDates(shiftId: string): Promise<string[]> {
 
   const { data: original } = await supabase
     .from("schedule_shifts")
-    .select("date, batch_id")
+    .select(
+      "id, date, batch_id, role, employee_name, start_time, end_time, break_minutes, store_id"
+    )
     .eq("id", shiftId)
     .maybeSingle();
   if (!original) return [];
-  if (!original.batch_id) return [original.date];
 
-  const { data: batchRows } = await supabase
-    .from("schedule_shifts")
-    .select("date")
-    .eq("batch_id", original.batch_id)
-    .order("date", { ascending: true });
-
-  return (batchRows ?? []).map((r) => r.date);
+  const rows = await findBatchRows(supabase, original);
+  return rows.map((r) => r.date).sort();
 }
 
 export async function updateShift(
@@ -161,23 +197,15 @@ export async function updateShift(
   // 새 batch_id를 부여해서 이후로는 묶음으로 관리되게 한다.
   const { data: original } = await supabase
     .from("schedule_shifts")
-    .select("id, date, batch_id")
+    .select(
+      "id, date, batch_id, role, employee_name, start_time, end_time, break_minutes, store_id"
+    )
     .eq("id", id)
     .maybeSingle();
   if (!original) return { error: "잘못된 요청입니다." };
 
   const batchId = original.batch_id ?? crypto.randomUUID();
-
-  let existing: { id: string; date: string }[];
-  if (original.batch_id) {
-    const { data } = await supabase
-      .from("schedule_shifts")
-      .select("id, date")
-      .eq("batch_id", original.batch_id);
-    existing = data ?? [];
-  } else {
-    existing = [{ id: original.id, date: original.date }];
-  }
+  const existing = await findBatchRows(supabase, original);
 
   const desiredSet = new Set(dates);
   const existingByDate = new Map(existing.map((r) => [r.date, r.id]));
