@@ -291,6 +291,22 @@ export type ScheduleShift = {
   updated_at: string
 }
 
+export type InventorySection = '홀' | '주방'
+
+export type InventoryItem = {
+  id: string
+  store_id: string
+  section: InventorySection
+  name: string
+  quantity: number
+  unit: string | null
+  notes: string | null
+  created_by: string
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -415,6 +431,17 @@ export type Database = {
           created_by: string
         }
         Update: Partial<ScheduleShift>
+        Relationships: []
+      }
+      inventory_items: {
+        Row: InventoryItem
+        Insert: Partial<InventoryItem> & {
+          store_id: string
+          section: InventorySection
+          name: string
+          created_by: string
+        }
+        Update: Partial<InventoryItem>
         Relationships: []
       }
       push_subscriptions: {

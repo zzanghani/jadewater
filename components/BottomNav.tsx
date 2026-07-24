@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const ALL_TABS = [
   { href: "/board", label: "게시판", icon: BoardIcon },
+  { href: "/inventory", label: "재고관리", icon: InventoryIcon },
   { href: "/settlement", label: "월말정산", icon: ReportIcon },
   { href: "/review-report", label: "리뷰리포트", icon: StarIcon },
   { href: "/payment", label: "입금요청", icon: SendIcon },
@@ -43,6 +44,16 @@ function BoardIcon({ active }: { active: boolean }) {
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 1.8} strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 4h16v13H8l-4 4Z" />
       <path d="M8 9h8M8 13h5" />
+    </svg>
+  );
+}
+
+function InventoryIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 8 12 3 3 8v8l9 5 9-5Z" />
+      <path d="M3 8l9 5 9-5" />
+      <path d="M12 13v8" />
     </svg>
   );
 }
