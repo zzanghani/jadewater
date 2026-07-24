@@ -3,9 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
 import { kstDateLabel, kstDateString } from "@/lib/date";
 import InventoryItemPopup from "@/components/InventoryItemPopup";
+import InventoryManagePopup from "@/components/InventoryManagePopup";
 import InventoryDatePicker from "@/components/InventoryDatePicker";
 import InventoryCountForm from "@/components/InventoryCountForm";
-import DeleteInventoryItemButton from "@/components/DeleteInventoryItemButton";
 import type { InventorySection } from "@/lib/types";
 
 const SECTIONS: InventorySection[] = ["홀", "주방"];
@@ -69,6 +69,12 @@ export default async function InventoryPage({
           </h2>
           <div className="flex shrink-0 items-center gap-2">
             <InventoryItemPopup storeId={storeId} section={section} date={date} existing={editing} />
+            <InventoryManagePopup
+              section={section}
+              date={date}
+              items={rows}
+              editingId={editing?.id}
+            />
             <InventoryDatePicker section={section} date={date} />
           </div>
         </div>
@@ -86,39 +92,6 @@ export default async function InventoryPage({
           />
         )}
       </section>
-
-      {rows.length > 0 && (
-        <section>
-          <h2 className="mb-3 text-sm font-semibold text-foreground">품목 관리</h2>
-          <ul className="flex flex-col gap-2">
-            {rows.map((item) => (
-              <li
-                key={item.id}
-                className={`flex items-center justify-between gap-3 rounded-2xl border bg-card p-3 ${
-                  item.id === editing?.id ? "border-brand" : "border-border"
-                }`}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">
-                    {item.name}
-                    {item.unit ? ` (${item.unit})` : ""}
-                  </p>
-                  {item.notes && <p className="truncate text-xs text-muted">{item.notes}</p>}
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Link
-                    href={`/inventory?section=${encodeURIComponent(section)}&date=${date}&edit=${item.id}`}
-                    className="rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:text-brand"
-                  >
-                    수정
-                  </Link>
-                  <DeleteInventoryItemButton id={item.id} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </div>
   );
 }
