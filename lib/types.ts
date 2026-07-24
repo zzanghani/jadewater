@@ -298,9 +298,20 @@ export type InventoryItem = {
   store_id: string
   section: InventorySection
   name: string
-  quantity: number
   unit: string | null
   notes: string | null
+  created_by: string
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type InventoryCount = {
+  id: string
+  item_id: string
+  store_id: string
+  date: string
+  quantity: number
   created_by: string
   updated_by: string | null
   created_at: string
@@ -442,6 +453,17 @@ export type Database = {
           created_by: string
         }
         Update: Partial<InventoryItem>
+        Relationships: []
+      }
+      inventory_counts: {
+        Row: InventoryCount
+        Insert: Partial<InventoryCount> & {
+          item_id: string
+          store_id: string
+          date: string
+          created_by: string
+        }
+        Update: Partial<InventoryCount>
         Relationships: []
       }
       push_subscriptions: {

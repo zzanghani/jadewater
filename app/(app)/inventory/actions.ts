@@ -23,17 +23,13 @@ export async function saveInventoryItem(
   const section = String(formData.get("section") ?? "") as InventorySection;
   const name = String(formData.get("name") ?? "").trim();
   const unit = String(formData.get("unit") ?? "").trim() || null;
-  const quantity = Number(formData.get("quantity") ?? 0);
   const notes = String(formData.get("notes") ?? "").trim() || null;
 
   if (!storeId) return { error: "매장 정보가 없습니다." };
   if (!SECTIONS.includes(section)) return { error: "구분을 선택해 주세요." };
   if (!name) return { error: "품목명을 입력해 주세요." };
-  if (!Number.isFinite(quantity) || quantity < 0) {
-    return { error: "수량을 올바르게 입력해 주세요." };
-  }
 
-  const payload = { store_id: storeId, section, name, unit, quantity, notes };
+  const payload = { store_id: storeId, section, name, unit, notes };
 
   const { error } = id
     ? await supabase
@@ -64,30 +60,44 @@ export async function deleteInventoryItem(formData: FormData) {
   revalidatePath("/inventory");
 }
 
-export async function adjustQuantity(formData: FormData) {
+// 재고 마감(그 날짜에 화면에 보이는 품목 전부의 수량)을 한 번에 저장한다.
+export async function saveDailyCounts(
+  _prevState: InventoryFormState,
+  formData: FormData
+): Promise<InventoryFormState> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return;
+  if (!user) return { error: "로그인이 필요합니다." };
 
-  const id = String(formData.get("id") ?? "");
-  const delta = Number(formData.get("delta") ?? 0);
-  if (!id || !Number.isFinite(delta) || delta === 0) return;
+  const storeId = String(formData.get("store_id") ?? "");
+  const date = String(formData.get("date") ?? "");
+  const itemIds = String(formData.get("item_ids") ?? "")
+    .split(",")
+    .filter(Boolean);
 
-  const { data: item } = await supabase
-    .from("inventory_items")
-    .select("quantity")
-    .eq("id", id)
-    .maybeSingle();
-  if (!item) return;
+  if (!storeId) return { error: "매장 정보가 없습니다." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "잘못된 요청입니다." };
+  if (itemIds.length === 0) return { success: true };
 
-  const nextQuantity = Math.max(0, item.quantity + delta);
+  const rows = itemIds.map((itemId) => ({
+    item_id: itemId,
+    store_id: storeId,
+    date,
+    quantity: Number(formData.get(`qty_${itemId}`) ?? 0) || 0,
+    created_by: user.id,
+    updated_by: user.id,
+  }));
 
-  await supabase
-    .from("inventory_items")
-    .update({ quantity: nextQuantity, updated_by: user.id })
-    .eq("id", id);
+  const { error } = await supabase
+    .from("inventory_counts")
+    .upsert(rows, { onConflict: "item_id,date" });
+
+  if (error) {
+    return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+  }
 
   revalidatePath("/inventory");
+  return { success: true };
 }

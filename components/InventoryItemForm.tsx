@@ -8,23 +8,26 @@ import type { InventoryItem, InventorySection } from "@/lib/types";
 export default function InventoryItemForm({
   storeId,
   section,
+  date,
   existing,
 }: {
   storeId: string;
   section: InventorySection;
+  date: string;
   existing?: InventoryItem;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(saveInventoryItem, undefined);
   const [resetKey, setResetKey] = useState(0);
   const isEditing = Boolean(existing);
+  const backHref = `/inventory?section=${encodeURIComponent(section)}&date=${date}`;
 
   // 새 품목 등록 성공 시 다음 품목을 바로 입력할 수 있도록 폼을 비우고,
   // 수정 성공 시에는 목록으로 돌아간다.
   useEffect(() => {
     if (!state?.success) return;
     if (isEditing) {
-      router.push(`/inventory?section=${encodeURIComponent(section)}`);
+      router.push(backHref);
       return;
     }
     setResetKey((k) => k + 1);
@@ -62,19 +65,6 @@ export default function InventoryItemForm({
       </div>
 
       <label className="flex flex-col gap-1.5 text-sm font-medium">
-        수량
-        <input
-          type="number"
-          name="quantity"
-          step="any"
-          min="0"
-          required
-          defaultValue={existing?.quantity ?? 0}
-          className="rounded-xl border border-border bg-card px-4 py-3 outline-none ring-brand/30 focus:ring-2"
-        />
-      </label>
-
-      <label className="flex flex-col gap-1.5 text-sm font-medium">
         메모 <span className="font-normal text-muted">(선택)</span>
         <input
           type="text"
@@ -93,7 +83,7 @@ export default function InventoryItemForm({
         {isEditing && (
           <button
             type="button"
-            onClick={() => router.push(`/inventory?section=${encodeURIComponent(section)}`)}
+            onClick={() => router.push(backHref)}
             className="flex-1 rounded-xl border border-border py-3 text-sm font-semibold text-muted transition-colors hover:text-foreground"
           >
             취소

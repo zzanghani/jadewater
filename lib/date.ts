@@ -27,6 +27,15 @@ export function daysSinceKST(iso: string): number {
   return Math.round((todayUTC - targetUTC) / 86_400_000);
 }
 
+// 'YYYY-MM-DD' 날짜에 days일을 더한 'YYYY-MM-DD' (음수면 이전 날짜).
+export function shiftDateString(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + days));
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(
+    dt.getUTCDate()
+  ).padStart(2, "0")}`;
+}
+
 export function kstDateLabel(dateStr: string): string {
   return KST_LABEL_FORMAT.format(new Date(`${dateStr}T00:00:00+09:00`));
 }
