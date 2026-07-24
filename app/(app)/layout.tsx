@@ -61,7 +61,10 @@ export default async function AppLayout({
         <StoreSwitcher stores={stores} current={storeId} />
       </header>
 
-      <main className="flex-1 px-4 pb-6 pt-4">
+      {/* 하단 내비는 iOS Safari의 sticky bottom 버그를 피하려고 fixed로
+          띄워서 문서 흐름 밖에 있으므로, 본문 아래쪽에 그 높이만큼
+          여백을 직접 확보해줘야 마지막 콘텐츠가 가려지지 않는다. */}
+      <main className="flex-1 px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-4">
         <PullToRefresh>{children}</PullToRefresh>
       </main>
 

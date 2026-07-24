@@ -16,7 +16,7 @@ export default function BottomNav({ isMaster = false }: { isMaster?: boolean }) 
   const tabs = isMaster ? ALL_TABS.filter((t) => t.href !== "/inventory") : ALL_TABS;
 
   return (
-    <nav className="sticky bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+    <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
       <div className="mx-auto flex max-w-md items-stretch justify-around px-2 pb-[env(safe-area-inset-bottom)]">
         {tabs.map(({ href, label, icon: Icon }) => {
           const active =
