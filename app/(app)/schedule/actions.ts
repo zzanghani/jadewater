@@ -72,6 +72,7 @@ export async function addShift(
   }
 
   const { storeId } = await getStoreContext(supabase);
+  const batchId = crypto.randomUUID();
 
   const { error } = await supabase.from("schedule_shifts").insert(
     dates.map((d) => ({
@@ -83,6 +84,7 @@ export async function addShift(
       end_time: endTime,
       break_minutes: breakMinutes,
       notes: notes || null,
+      batch_id: batchId,
       created_by: user.id,
     }))
   );
@@ -96,6 +98,29 @@ export async function addShift(
   }
   revalidatePath("/schedule");
   return { success: true };
+}
+
+// 근무 하나가 여러 날짜를 한 번에 등록한 묶음(batch_id)에 속해 있으면
+// 그 묶음에 포함된 모든 날짜를, 아니라면 자기 날짜 하나만 반환한다.
+// 수정 폼을 열 때 팝업 달력에 기존에 체크돼 있던 날짜를 전부 보여주기 위해 쓴다.
+export async function getShiftBatchDates(shiftId: string): Promise<string[]> {
+  const supabase = await createClient();
+
+  const { data: original } = await supabase
+    .from("schedule_shifts")
+    .select("date, batch_id")
+    .eq("id", shiftId)
+    .maybeSingle();
+  if (!original) return [];
+  if (!original.batch_id) return [original.date];
+
+  const { data: batchRows } = await supabase
+    .from("schedule_shifts")
+    .select("date")
+    .eq("batch_id", original.batch_id)
+    .order("date", { ascending: true });
+
+  return (batchRows ?? []).map((r) => r.date);
 }
 
 export async function updateShift(
@@ -129,49 +154,78 @@ export async function updateShift(
     return { error: "휴게시간을 올바르게 입력해 주세요." };
   }
 
-  // 팝업 달력에서 선택한 날짜 중 첫 번째는 기존 행의 날짜를 바꾸는 데 쓰고,
-  // 추가로 더 선택한 날짜가 있으면 같은 내용으로 새 행을 만들어준다.
-  const [primaryDate, ...extraDates] = dates;
-
-  const { error: updateError } = await supabase
+  // 이 행이 한 번에 여러 날짜로 등록된 묶음(batch_id)에 속해 있으면
+  // 팝업 달력에서 다시 고른 날짜 집합과 기존 묶음의 날짜 집합을 비교해서
+  // 남긴 날짜는 내용만 수정하고, 뺀 날짜는 삭제, 새로 추가한 날짜는
+  // 새 행으로 만든다. 묶음이 없던(예전에 하루씩 등록된) 행이면 이 시점에
+  // 새 batch_id를 부여해서 이후로는 묶음으로 관리되게 한다.
+  const { data: original } = await supabase
     .from("schedule_shifts")
-    .update({
-      date: primaryDate,
-      role: roleRaw as ScheduleRole,
-      employee_name: employeeName,
-      start_time: startTime,
-      end_time: endTime,
-      break_minutes: breakMinutes,
-      notes: notes || null,
-      updated_by: user.id,
-    })
-    .eq("id", id);
+    .select("id, date, batch_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!original) return { error: "잘못된 요청입니다." };
 
-  if (updateError) {
-    return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+  const batchId = original.batch_id ?? crypto.randomUUID();
+
+  let existing: { id: string; date: string }[];
+  if (original.batch_id) {
+    const { data } = await supabase
+      .from("schedule_shifts")
+      .select("id, date")
+      .eq("batch_id", original.batch_id);
+    existing = data ?? [];
+  } else {
+    existing = [{ id: original.id, date: original.date }];
   }
 
-  if (extraDates.length > 0) {
+  const desiredSet = new Set(dates);
+  const existingByDate = new Map(existing.map((r) => [r.date, r.id]));
+
+  const commonFields = {
+    role: roleRaw as ScheduleRole,
+    employee_name: employeeName,
+    start_time: startTime,
+    end_time: endTime,
+    break_minutes: breakMinutes,
+    notes: notes || null,
+    batch_id: batchId,
+    updated_by: user.id,
+  };
+
+  const toUpdateIds = existing.filter((r) => desiredSet.has(r.date)).map((r) => r.id);
+  if (toUpdateIds.length > 0) {
+    const { error } = await supabase
+      .from("schedule_shifts")
+      .update(commonFields)
+      .in("id", toUpdateIds);
+    if (error) {
+      return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+    }
+  }
+
+  const toDeleteIds = existing.filter((r) => !desiredSet.has(r.date)).map((r) => r.id);
+  if (toDeleteIds.length > 0) {
+    await supabase.from("schedule_shifts").delete().in("id", toDeleteIds);
+  }
+
+  const newDates = dates.filter((d) => !existingByDate.has(d));
+  if (newDates.length > 0) {
     const { storeId } = await getStoreContext(supabase);
-    const { error: insertError } = await supabase.from("schedule_shifts").insert(
-      extraDates.map((d) => ({
+    const { error } = await supabase.from("schedule_shifts").insert(
+      newDates.map((d) => ({
         store_id: storeId,
         date: d,
-        role: roleRaw as ScheduleRole,
-        employee_name: employeeName,
-        start_time: startTime,
-        end_time: endTime,
-        break_minutes: breakMinutes,
-        notes: notes || null,
         created_by: user.id,
+        ...commonFields,
       }))
     );
-    if (insertError) {
+    if (error) {
       return { error: "일부 날짜 추가 중 오류가 발생했습니다." };
     }
   }
 
-  for (const d of new Set([date, ...dates])) {
+  for (const d of new Set([date, ...dates, ...existing.map((r) => r.date)])) {
     revalidatePath(`/schedule/${d}`);
   }
   revalidatePath("/schedule");

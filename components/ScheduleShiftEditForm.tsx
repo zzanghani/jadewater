@@ -1,7 +1,11 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { updateShift, type ScheduleFormState } from "@/app/(app)/schedule/actions";
+import {
+  getShiftBatchDates,
+  updateShift,
+  type ScheduleFormState,
+} from "@/app/(app)/schedule/actions";
 import { BREAK_MINUTE_OPTIONS, SCHEDULE_ROLES, roleColor } from "@/lib/scheduleColors";
 import AmPmTimeSelect from "@/components/AmPmTimeSelect";
 import ScheduleMultiDatePicker from "@/components/ScheduleMultiDatePicker";
@@ -36,6 +40,18 @@ export default function ScheduleShiftEditForm({
     if (state?.success) onSaved();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
+
+  // 이 근무가 여러 날짜를 한 번에 등록한 묶음의 일부였다면, 팝업 달력에
+  // 그 묶음에 속한 날짜 전부를 미리 체크된 상태로 보여준다.
+  useEffect(() => {
+    let cancelled = false;
+    getShiftBatchDates(shift.id).then((batchDates) => {
+      if (!cancelled && batchDates.length > 0) setDates(batchDates);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [shift.id]);
 
   const start = splitTime(shift.start_time);
   const end = splitTime(shift.end_time);

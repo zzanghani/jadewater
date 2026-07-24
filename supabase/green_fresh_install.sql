@@ -887,6 +887,7 @@ create table if not exists public.schedule_shifts (
   end_time time not null,
   break_minutes integer not null default 0,
   notes text,
+  batch_id uuid,
 
   created_by uuid not null references public.profiles (id),
   updated_by uuid references public.profiles (id),
@@ -918,6 +919,7 @@ create policy "schedule_shifts_delete_authenticated"
   using (public.user_can_access_store(store_id));
 
 create index if not exists schedule_shifts_store_date_idx on public.schedule_shifts (store_id, date);
+create index if not exists schedule_shifts_batch_id_idx on public.schedule_shifts (batch_id);
 
 create or replace function public.schedule_shifts_set_updated_at()
 returns trigger
