@@ -195,7 +195,7 @@ export type FieldExpenseCategory =
   | '마케팅'
   | '기타'
 
-export type FieldExpensePaymentMethod = '법인카드' | '현금' | '자동이체'
+export type FieldExpensePaymentMethod = '법인카드' | '현금'
 
 export type FieldExpense = {
   id: string

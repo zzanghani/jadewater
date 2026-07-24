@@ -20,11 +20,7 @@ const FIELD_EXPENSE_CATEGORIES: FieldExpenseCategory[] = [
   "기타",
 ];
 
-const FIELD_EXPENSE_PAYMENT_METHODS: FieldExpensePaymentMethod[] = [
-  "법인카드",
-  "현금",
-  "자동이체",
-];
+const FIELD_EXPENSE_PAYMENT_METHODS: FieldExpensePaymentMethod[] = ["법인카드", "현금"];
 
 export async function savePaymentRequest(
   _prevState: PaymentFormState,

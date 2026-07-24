@@ -15,7 +15,7 @@ const CATEGORIES: FieldExpenseCategory[] = [
   "기타",
 ];
 
-const PAYMENT_METHODS: FieldExpensePaymentMethod[] = ["법인카드", "현금", "자동이체"];
+const PAYMENT_METHODS: FieldExpensePaymentMethod[] = ["법인카드", "현금"];
 
 export default function FieldExpenseForm({ storeId }: { storeId: string }) {
   const [state, formAction, pending] = useActionState(
@@ -168,7 +168,7 @@ export default function FieldExpenseForm({ storeId }: { storeId: string }) {
       <div className="flex flex-col gap-1.5 text-sm font-medium">
         결제수단
         <input type="hidden" name="payment_method" value={paymentMethod} />
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {PAYMENT_METHODS.map((m) => (
             <button
               key={m}
