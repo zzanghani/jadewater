@@ -833,6 +833,7 @@ create table if not exists public.weekly_reports (
   updated_by uuid references public.profiles (id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  archived_at timestamptz,
 
   unique (store_id, week_start)
 );

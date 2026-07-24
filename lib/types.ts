@@ -270,6 +270,7 @@ export type WeeklyReport = {
   updated_by: string | null
   created_at: string
   updated_at: string
+  archived_at: string | null
 }
 
 export type ScheduleRole = '점장' | '부점장' | '팀장' | '사원' | '파트타이머'
