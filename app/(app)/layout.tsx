@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
@@ -7,6 +8,12 @@ import BottomNav from "@/components/BottomNav";
 import LogoutButton from "@/components/LogoutButton";
 import StoreSwitcher from "@/components/StoreSwitcher";
 import PullToRefresh from "@/components/PullToRefresh";
+
+// 게시판·주간보고 외에는 접근을 주지 않는 본사 팀 계정(디자인/마케팅/운영/R&D)이
+// 다른 경로로 직접 들어와도 여기서 걸러진다. 실제 데이터 차단은 RLS
+// (user_can_access_store_ops)가 하고, 이건 어색한 빈 화면 대신 깔끔하게
+// 게시판으로 돌려보내는 UX용 가드다.
+const TEAM_ALLOWED_PREFIXES = ["/board", "/weekly-report"];
 
 export default async function AppLayout({
   children,
@@ -28,21 +35,32 @@ export default async function AppLayout({
   }
 
   const [{ data: profile }, storeContext] = await Promise.all([
-    supabase.from("profiles").select("name").eq("id", user.id).single(),
+    supabase.from("profiles").select("name, department").eq("id", user.id).single(),
     getStoreContext(supabase),
   ]);
   const { storeId, stores } = storeContext;
-  const isMaster = stores.length > 1;
+  const isTeamAccount = !!profile?.department;
+  const isMaster = stores.length > 1 && !isTeamAccount;
 
-  const name = isMaster
-    ? "제이드앤워터대표"
-    : profile?.name ?? user.email?.split("@")[0] ?? "사용자";
+  if (isTeamAccount) {
+    const pathname = (await headers()).get("x-pathname") ?? "";
+    const allowed = TEAM_ALLOWED_PREFIXES.some((p) => pathname.startsWith(p));
+    if (!allowed) {
+      redirect("/board");
+    }
+  }
+
+  const name = isTeamAccount
+    ? profile?.name ?? "팀 계정"
+    : isMaster
+      ? "제이드앤워터대표"
+      : profile?.name ?? user.email?.split("@")[0] ?? "사용자";
 
   return (
     <>
       <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="flex items-center justify-between px-4 py-3">
-          <Link href="/">
+          <Link href={isTeamAccount ? "/board" : "/"}>
             <Image
               src="/logo.png"
               alt="JADE & WATER"
@@ -58,7 +76,7 @@ export default async function AppLayout({
             <LogoutButton />
           </div>
         </div>
-        <StoreSwitcher stores={stores} current={storeId} />
+        {!isTeamAccount && <StoreSwitcher stores={stores} current={storeId} />}
       </header>
 
       {/* 하단 내비는 iOS Safari의 sticky bottom 버그를 피하려고 fixed로
@@ -68,7 +86,7 @@ export default async function AppLayout({
         <PullToRefresh>{children}</PullToRefresh>
       </main>
 
-      <BottomNav isMaster={isMaster} />
+      <BottomNav isMaster={isMaster} teamOnly={isTeamAccount} />
     </>
   );
 }

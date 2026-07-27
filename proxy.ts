@@ -55,6 +55,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // 서버 컴포넌트 레이아웃은 현재 경로를 prop으로 받을 방법이 없어서,
+  // 팀 계정(디자인/마케팅/운영/R&D) 접근 제한 리다이렉트에 쓸 수 있게
+  // 여기서 헤더로 흘려보낸다 (app/(app)/layout.tsx에서 읽는다).
+  response.headers.set('x-pathname', path)
   return response
 }
 

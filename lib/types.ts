@@ -1,11 +1,14 @@
 export type Role = 'owner' | 'staff'
 
+export type Department = 'design' | 'marketing' | 'ops' | 'rnd'
+
 export type Profile = {
   id: string
   email: string
   name: string
   role: Role
   store_id: string | null
+  department: Department | null
   created_at: string
 }
 
