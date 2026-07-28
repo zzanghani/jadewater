@@ -36,6 +36,11 @@ create table if not exists public.monthly_plans (
 -- 이미 monthly_plans가 만들어진 뒤에 이 스크립트를 다시 돌리는 경우를 위한 보강
 alter table public.monthly_plans add column if not exists description text;
 
+-- 업무계획/휴가 구분 — 휴가는 알림판(오늘 진행 중/마감 임박) 대상에서 제외된다
+alter table public.monthly_plans add column if not exists plan_type text not null default 'task';
+alter table public.monthly_plans drop constraint if exists monthly_plans_plan_type_check;
+alter table public.monthly_plans add constraint monthly_plans_plan_type_check check (plan_type in ('task', 'vacation'));
+
 alter table public.monthly_plans enable row level security;
 
 drop policy if exists "monthly_plans_select_hq" on public.monthly_plans;

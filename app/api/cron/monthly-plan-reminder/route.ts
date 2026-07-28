@@ -4,7 +4,8 @@ import { sendPush } from "@/lib/webpush";
 import { kstDateString, shiftDateString } from "@/lib/date";
 
 // Vercel Cron이 매일 KST 06:00에 호출한다 (vercel.json 참고).
-// 시작일이 D-3인 월간계획을 찾아, 본사(마스터+팀 계정) 전원에게 알린다.
+// 마감일이 3일 남은 업무계획을 찾아, 본사(마스터+팀 계정) 전원에게 알린다.
+// 휴가는 확인이 필요한 업무가 아니므로 알림 대상에서 제외한다.
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -15,7 +16,11 @@ export async function GET(request: Request) {
   const targetDate = shiftDateString(kstDateString(0), 3);
 
   const [{ data: plans, error: plansError }, { data: hqProfiles }] = await Promise.all([
-    supabase.from("monthly_plans").select("id, title, start_date").eq("start_date", targetDate),
+    supabase
+      .from("monthly_plans")
+      .select("id, title, end_date")
+      .eq("end_date", targetDate)
+      .eq("plan_type", "task"),
     supabase.from("profiles").select("id").is("store_id", null),
   ]);
 
@@ -28,7 +33,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ plans: plans?.length ?? 0, sent: 0 });
   }
 
-  console.log(`[monthly-plan-reminder] D-3 일정 ${plans.length}건, 본사 계정 ${hqProfiles.length}명`);
+  console.log(`[monthly-plan-reminder] 마감 D-3 일정 ${plans.length}건, 본사 계정 ${hqProfiles.length}명`);
 
   let sent = 0;
   for (const profile of hqProfiles) {
@@ -40,8 +45,8 @@ export async function GET(request: Request) {
 
     for (const plan of plans) {
       const payload = {
-        title: "월간계획 알림 (D-3)",
-        body: `"${plan.title}" 일정이 3일 뒤(${plan.start_date}) 시작됩니다.`,
+        title: "월간계획 알림 (마감 D-3)",
+        body: `"${plan.title}" 업무 마감이 3일 뒤(${plan.end_date})입니다. 진행 상황을 확인해 주세요.`,
         url: "/",
       };
 

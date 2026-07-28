@@ -1,14 +1,15 @@
 import { kstDateString, kstDateLabel, shiftDateString } from "@/lib/date";
 import type { MonthlyPlan } from "@/lib/types";
 
-// 별도 입력 없이, 아래 달력에 있는 일정들 중 "오늘 마감"과 "D-3(3일 뒤 시작)"만
+// 별도 입력 없이, 아래 달력에 있는 일정들 중 "오늘 진행 중"과 "마감 3일 전부터"만
 // 자동으로 뽑아 보여주는 전광판 — 직접 체크하는 할 일 목록이 아니다.
+// 휴가는 확인이 필요한 업무가 아니므로 알림판 대상에서 제외한다.
 export default function MonthlyPlanAlerts({ plans }: { plans: MonthlyPlan[] }) {
   const today = kstDateString(0);
-  const dDay3Date = shiftDateString(today, 3);
+  const taskPlans = plans.filter((p) => p.plan_type !== "vacation");
 
-  const dueToday = plans.filter((p) => p.start_date <= today && today <= p.end_date);
-  const upcoming = plans.filter((p) => p.start_date === dDay3Date);
+  const dueToday = taskPlans.filter((p) => p.start_date <= today && today <= p.end_date);
+  const upcoming = taskPlans.filter((p) => shiftDateString(p.end_date, -3) <= today && today <= p.end_date);
 
   if (dueToday.length === 0 && upcoming.length === 0) {
     return (
@@ -39,13 +40,15 @@ export default function MonthlyPlanAlerts({ plans }: { plans: MonthlyPlan[] }) {
 
       {upcoming.length > 0 && (
         <div className={dueToday.length > 0 ? "border-t border-border pt-3" : ""}>
-          <p className="mb-1.5 text-xs font-semibold text-orange-600">⏰ D-3 (3일 뒤 시작)</p>
+          <p className="mb-1.5 text-xs font-semibold text-orange-600">⏰ 마감 임박 — 업무 확인</p>
           <div className="flex flex-col gap-1">
             {upcoming.map((p) => (
               <div key={p.id} className="flex items-center gap-2 text-sm">
                 <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: p.color }} />
                 <span className="flex-1 truncate text-foreground">{p.title}</span>
-                <span className="shrink-0 text-xs text-muted">{kstDateLabel(p.start_date)} 시작</span>
+                <span className="shrink-0 text-xs text-muted">
+                  {p.end_date === today ? "오늘 마감" : `${kstDateLabel(p.end_date)} 마감`}
+                </span>
               </div>
             ))}
           </div>

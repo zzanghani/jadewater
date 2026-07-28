@@ -11,9 +11,11 @@ import {
 import { PLAN_COLORS } from "@/lib/planColors";
 import { createMonthlyPlan, deleteMonthlyPlan } from "@/app/(app)/plan/actions";
 import MonthlyPlanDetail, { type PlanComment, type PlanFollower } from "@/components/MonthlyPlanDetail";
-import type { MonthlyPlan } from "@/lib/types";
+import type { MonthlyPlan, MonthlyPlanType } from "@/lib/types";
 
 type HqProfile = { id: string; name: string };
+
+const PLAN_TYPE_LABEL: Record<MonthlyPlanType, string> = { task: "업무계획", vacation: "휴가" };
 
 const WEEKDAY_HEADER = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -70,6 +72,7 @@ export default function MonthlyPlanCalendar({
   const [showForm, setShowForm] = useState(false);
   const [color, setColor] = useState(PLAN_COLORS[0]);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [planType, setPlanType] = useState<MonthlyPlanType>("task");
   const [followerIds, setFollowerIds] = useState<string[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [state, formAction, pending] = useActionState(createMonthlyPlan, undefined);
@@ -93,6 +96,7 @@ export default function MonthlyPlanCalendar({
       setShowForm(false);
       setShowColorPicker(false);
       setColor(PLAN_COLORS[0]);
+      setPlanType("task");
       setFollowerIds([]);
     }
   }, [state]);
@@ -113,6 +117,21 @@ export default function MonthlyPlanCalendar({
       {showForm && (
         <form action={formAction} className="mb-4 flex flex-col gap-2 rounded-xl bg-background p-3">
           <input type="hidden" name="color" value={color} />
+          <input type="hidden" name="plan_type" value={planType} />
+          <div className="flex gap-1.5 rounded-lg border border-border bg-card p-1">
+            {(Object.keys(PLAN_TYPE_LABEL) as MonthlyPlanType[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setPlanType(t)}
+                className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition-colors ${
+                  planType === t ? "bg-brand text-white" : "text-muted"
+                }`}
+              >
+                {PLAN_TYPE_LABEL[t]}
+              </button>
+            ))}
+          </div>
           <input
             type="text"
             name="title"
@@ -311,8 +330,19 @@ export default function MonthlyPlanCalendar({
                     onClick={() => setExpandedId(isExpanded ? null : p.id)}
                     className="flex flex-1 items-center gap-2 text-left transition-colors hover:text-brand"
                   >
+                    <span
+                      className={`shrink-0 text-muted transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                      aria-hidden
+                    >
+                      ▶
+                    </span>
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: p.color }} />
                     <span className="flex-1 truncate text-foreground">{p.title}</span>
+                    {p.plan_type === "vacation" && (
+                      <span className="shrink-0 rounded-full bg-background px-1.5 py-0.5 text-[10px] font-semibold text-muted">
+                        휴가
+                      </span>
+                    )}
                     {followers.length > 0 && (
                       <span
                         className={`shrink-0 ${

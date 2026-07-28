@@ -20,6 +20,7 @@ export async function createMonthlyPlan(
   const startDate = String(formData.get("start_date") ?? "");
   const endDate = String(formData.get("end_date") ?? "");
   const color = String(formData.get("color") ?? "#2f7a63");
+  const planType = formData.get("plan_type") === "vacation" ? "vacation" : "task";
   const followerIds = [...new Set(formData.getAll("follower_ids").map(String))];
 
   if (!title) return { error: "제목을 입력해 주세요." };
@@ -31,6 +32,7 @@ export async function createMonthlyPlan(
     .insert({
       title,
       description: description || null,
+      plan_type: planType,
       start_date: startDate,
       end_date: endDate,
       color,

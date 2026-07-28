@@ -213,10 +213,13 @@ export type FieldExpense = {
   created_at: string
 }
 
+export type MonthlyPlanType = 'task' | 'vacation'
+
 export type MonthlyPlan = {
   id: string
   title: string
   description: string | null
+  plan_type: MonthlyPlanType
   start_date: string
   end_date: string
   color: string
