@@ -63,6 +63,7 @@ export default function MonthlyPlanCalendar({
   const [month, setMonth] = useState(today.slice(0, 7));
   const [showForm, setShowForm] = useState(false);
   const [color, setColor] = useState(PLAN_COLORS[0]);
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [state, formAction, pending] = useActionState(createMonthlyPlan, undefined);
   const [, startTransition] = useTransition();
@@ -77,7 +78,11 @@ export default function MonthlyPlanCalendar({
   const laneOf = useMemo(() => assignLanes(visiblePlans), [visiblePlans]);
 
   useEffect(() => {
-    if (state?.success) setShowForm(false);
+    if (state?.success) {
+      setShowForm(false);
+      setShowColorPicker(false);
+      setColor(PLAN_COLORS[0]);
+    }
   }, [state]);
 
   return (
@@ -103,6 +108,12 @@ export default function MonthlyPlanCalendar({
             placeholder="일정 제목 (예: 여름 시즌 프로모션)"
             className="rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
           />
+          <textarea
+            name="description"
+            rows={3}
+            placeholder="일정 내용 (선택)"
+            className="rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
+          />
           <div className="flex gap-2">
             <input
               type="date"
@@ -119,22 +130,40 @@ export default function MonthlyPlanCalendar({
               className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none ring-brand/30 focus:ring-2"
             />
           </div>
-          <div className="grid grid-cols-8 gap-2 rounded-lg border border-border bg-card p-2">
-            {PLAN_COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setColor(c)}
-                aria-label="색상 선택"
-                className="flex h-7 w-7 items-center justify-center rounded-full transition-transform active:scale-95"
-                style={{ backgroundColor: c }}
-              >
-                {color === c && (
-                  <span className="text-xs font-bold text-white drop-shadow">✓</span>
-                )}
-              </button>
-            ))}
+
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowColorPicker((v) => !v)}
+              className="flex w-full items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm"
+            >
+              <span className="h-5 w-5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+              <span className="flex-1 text-left text-muted">색상 선택</span>
+              <span className="text-xs text-muted">{showColorPicker ? "닫기 ▲" : "펼치기 ▼"}</span>
+            </button>
+            {showColorPicker && (
+              <div className="mt-2 flex gap-2 overflow-x-auto rounded-lg border border-border bg-card p-2">
+                {PLAN_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => {
+                      setColor(c);
+                      setShowColorPicker(false);
+                    }}
+                    aria-label="색상 선택"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-transform active:scale-95"
+                    style={{ backgroundColor: c }}
+                  >
+                    {color === c && (
+                      <span className="text-xs font-bold text-white drop-shadow">✓</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
+
           {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
           <button
             type="submit"
@@ -261,6 +290,7 @@ export default function MonthlyPlanCalendar({
                 {isExpanded && (
                   <MonthlyPlanDetail
                     planId={p.id}
+                    description={p.description}
                     comments={commentsByPlan[p.id] ?? []}
                     currentUserId={currentUserId}
                   />

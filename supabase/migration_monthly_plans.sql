@@ -33,6 +33,9 @@ create table if not exists public.monthly_plans (
   constraint monthly_plans_date_order check (end_date >= start_date)
 );
 
+-- 이미 monthly_plans가 만들어진 뒤에 이 스크립트를 다시 돌리는 경우를 위한 보강
+alter table public.monthly_plans add column if not exists description text;
+
 alter table public.monthly_plans enable row level security;
 
 drop policy if exists "monthly_plans_select_hq" on public.monthly_plans;

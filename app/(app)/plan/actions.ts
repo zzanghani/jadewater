@@ -16,6 +16,7 @@ export async function createMonthlyPlan(
   if (!user) return { error: "로그인이 필요합니다." };
 
   const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
   const startDate = String(formData.get("start_date") ?? "");
   const endDate = String(formData.get("end_date") ?? "");
   const color = String(formData.get("color") ?? "#2f7a63");
@@ -26,6 +27,7 @@ export async function createMonthlyPlan(
 
   const { error } = await supabase.from("monthly_plans").insert({
     title,
+    description: description || null,
     start_date: startDate,
     end_date: endDate,
     color,

@@ -216,6 +216,7 @@ export type FieldExpense = {
 export type MonthlyPlan = {
   id: string
   title: string
+  description: string | null
   start_date: string
   end_date: string
   color: string

@@ -25,10 +25,12 @@ function dateTimeLabel(iso: string): string {
 
 export default function MonthlyPlanDetail({
   planId,
+  description,
   comments,
   currentUserId,
 }: {
   planId: string;
+  description?: string | null;
   comments: PlanComment[];
   currentUserId?: string;
 }) {
@@ -36,6 +38,12 @@ export default function MonthlyPlanDetail({
 
   return (
     <div className="flex flex-col gap-3 rounded-xl bg-background p-3">
+      {description && (
+        <p className="whitespace-pre-wrap rounded-lg border border-border bg-card p-2.5 text-sm text-foreground">
+          {description}
+        </p>
+      )}
+
       {comments.length === 0 ? (
         <p className="text-xs text-muted">아직 댓글이나 첨부파일이 없습니다.</p>
       ) : (
