@@ -6,8 +6,11 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Git workflow
 
-User is not a developer and doesn't use the terminal directly. After making a code change and confirming it's correct, commit and push it (git add, commit, push) without asking for confirmation each time — no need to check in before pushing.
+User is not a developer and doesn't use the terminal directly. Environment naming: "그린" = the `staging` branch (test environment, its own Supabase project), "블루" = the `main` branch (production).
 
-Once a change is verified on staging, also merge staging into main and push (deploys to production/"블루") automatically, without asking each time.
+Flow for every code change, without asking for confirmation at each step:
+1. Make the change, commit and push to `staging` — this deploys to 그린 automatically.
+2. User tests it on 그린.
+3. Once the user confirms it works on 그린, merge `staging` into `main` and push — this deploys to 블루 (production) automatically.
 
-Exception: SQL/database migrations against Supabase are NOT covered by this auto-apply rule. Always hand these to the user to run themselves in the Supabase SQL Editor (no DB access available here), and never create Supabase Auth accounts — that's always the user's own action.
+Exception: SQL/database migrations against Supabase are NOT covered by this auto-apply rule. Always hand these to the user to run themselves in the Supabase SQL Editor (no DB access available here), and never create Supabase Auth accounts — that's always the user's own action. If a change requires a matching SQL migration, remind the user it also needs to be run against blue's Supabase project before/after that merge.
