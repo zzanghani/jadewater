@@ -1,14 +1,17 @@
 @import "tailwindcss";
 
+/* 로그인/회원가입처럼 아직 어느 브랜드 소속인지 모르는 공용 화면에서 쓰는
+   중립 팔레트. 로그인 이후에는 .theme-jadewater / .theme-bestmate가
+   덮어써서 매장·본사 계정별 톤으로 바뀐다. */
 :root {
-  --background: #f5faf8;
-  --foreground: #1c2624;
-  --brand: #86c1ae;
-  --brand-dark: #6ba390;
-  --brand-light: #e8f5f0;
+  --background: #f5f6f7;
+  --foreground: #1c1f22;
+  --brand: #4b5563;
+  --brand-dark: #374151;
+  --brand-light: #e5e7eb;
   --card: #ffffff;
-  --border: #dcece5;
-  --muted: #6b8079;
+  --border: #e2e4e7;
+  --muted: #6b7280;
 }
 
 @theme inline {
@@ -26,6 +29,31 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
+    --background: #16181b;
+    --foreground: #eef0f2;
+    --brand: #9aa5b1;
+    --brand-dark: #7e8b99;
+    --brand-light: #262a2f;
+    --card: #1f2226;
+    --border: #2b2f34;
+    --muted: #9aa3ad;
+  }
+}
+
+/* 매장(제이드앤워터) 지점장·직원 계정 톤 */
+.theme-jadewater {
+  --background: #f5faf8;
+  --foreground: #1c2624;
+  --brand: #86c1ae;
+  --brand-dark: #6ba390;
+  --brand-light: #e8f5f0;
+  --card: #ffffff;
+  --border: #dcece5;
+  --muted: #6b8079;
+}
+
+@media (prefers-color-scheme: dark) {
+  .theme-jadewater {
     --background: #101815;
     --foreground: #eaf5f1;
     --brand: #9ed4c2;
@@ -34,6 +62,23 @@
     --card: #17231f;
     --border: #26362f;
     --muted: #9ab3a9;
+  }
+}
+
+/* 본사(베스트메이트컴퍼니: 마스터 + 팀 계정) 톤 */
+.theme-bestmate {
+  --background: #eef0f6;
+  --brand: #061383;
+  --brand-dark: #04104f;
+  --brand-light: #e7e9f6;
+}
+
+@media (prefers-color-scheme: dark) {
+  .theme-bestmate {
+    --background: #14172a;
+    --brand: #8f9cf5;
+    --brand-dark: #6b78d1;
+    --brand-light: #232649;
   }
 }
 

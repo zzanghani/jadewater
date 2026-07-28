@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { CSSProperties } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -43,16 +42,9 @@ export default async function AppLayout({
   const isTeamAccount = !!profile?.department;
   const isMaster = stores.length > 1 && !isTeamAccount;
   // 베스트메이트컴퍼니(본사) 계정 — 마스터 + 팀 계정. 매장 지점장/직원은 그대로
-  // 제이드앤워터 톤을 본다. [프로토타입] 실제 반영 전 색/로고 미리보기용.
+  // 제이드앤워터 톤을 본다. 실제 색상 값은 globals.css의 .theme-jadewater /
+  // .theme-bestmate 참고.
   const isBestmateHq = isTeamAccount || isMaster;
-  const hqBrandStyle: CSSProperties | undefined = isBestmateHq
-    ? ({
-        "--brand": "#061383",
-        "--brand-dark": "#04104f",
-        "--brand-light": "#e7e9f6",
-        "--background": "#eef0f6",
-      } as CSSProperties)
-    : undefined;
 
   if (isTeamAccount) {
     const pathname = (await headers()).get("x-pathname") ?? "";
@@ -71,7 +63,11 @@ export default async function AppLayout({
       : profile?.name ?? user.email?.split("@")[0] ?? "사용자";
 
   return (
-    <div className="flex w-full flex-1 flex-col bg-background" style={hqBrandStyle}>
+    <div
+      className={`flex w-full flex-1 flex-col bg-background ${
+        isBestmateHq ? "theme-bestmate" : "theme-jadewater"
+      }`}
+    >
       <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="flex items-center justify-between px-4 py-3">
           <Link href="/">
