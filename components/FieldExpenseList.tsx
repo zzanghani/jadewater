@@ -4,7 +4,7 @@ import { useState } from "react";
 import { formatWon } from "@/lib/format";
 import type { FieldExpense } from "@/lib/types";
 
-type Row = FieldExpense & { photoUrl?: string };
+type Row = FieldExpense & { photoUrl?: string; storeName?: string };
 
 export default function FieldExpenseList({ rows }: { rows: Row[] }) {
   const [selected, setSelected] = useState<Row | null>(null);
@@ -40,6 +40,7 @@ export default function FieldExpenseList({ rows }: { rows: Row[] }) {
                   {r.description}
                 </p>
                 <p className="text-xs text-muted">
+                  {r.storeName && `${r.storeName} · `}
                   {r.date} · {r.category} · {r.payment_method}
                 </p>
               </div>

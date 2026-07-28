@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { saveFieldExpense } from "@/app/(app)/payment/actions";
 import { kstDateString } from "@/lib/date";
-import type { FieldExpenseCategory, FieldExpensePaymentMethod } from "@/lib/types";
+import type { FieldExpenseCategory, FieldExpensePaymentMethod, Store } from "@/lib/types";
 
 const CATEGORIES: FieldExpenseCategory[] = [
   "식자재",
@@ -17,7 +17,14 @@ const CATEGORIES: FieldExpenseCategory[] = [
 
 const PAYMENT_METHODS: FieldExpensePaymentMethod[] = ["법인카드", "현금"];
 
-export default function FieldExpenseForm({ storeId }: { storeId: string }) {
+export default function FieldExpenseForm({
+  storeId,
+  stores,
+}: {
+  storeId: string;
+  /** 팀 계정처럼 고정 매장이 없는 경우에만 넘긴다 — 있으면 매장 선택 드롭다운을 보여준다. */
+  stores?: Store[];
+}) {
   const [state, formAction, pending] = useActionState(
     saveFieldExpense,
     undefined
@@ -25,6 +32,7 @@ export default function FieldExpenseForm({ storeId }: { storeId: string }) {
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [selectedStoreId, setSelectedStoreId] = useState(stores?.[0]?.id ?? storeId);
   const [date, setDate] = useState(kstDateString(0));
   const [category, setCategory] = useState<FieldExpenseCategory>("식자재");
   const [description, setDescription] = useState("");
@@ -62,7 +70,26 @@ export default function FieldExpenseForm({ storeId }: { storeId: string }) {
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-3">
-      <input type="hidden" name="store_id" value={storeId} />
+      {stores && stores.length > 0 ? (
+        <label className="flex flex-col gap-1.5 text-sm font-medium">
+          매장
+          <select
+            name="store_id"
+            required
+            value={selectedStoreId}
+            onChange={(e) => setSelectedStoreId(e.target.value)}
+            className="rounded-xl border border-border bg-card px-4 py-3 outline-none ring-brand/30 focus:ring-2"
+          >
+            {stores.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <input type="hidden" name="store_id" value={storeId} />
+      )}
 
       <div className="flex flex-col gap-1.5 text-sm font-medium">
         영수증 사진

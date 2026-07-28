@@ -9,11 +9,11 @@ import LogoutButton from "@/components/LogoutButton";
 import StoreSwitcher from "@/components/StoreSwitcher";
 import PullToRefresh from "@/components/PullToRefresh";
 
-// 게시판·주간보고 외에는 접근을 주지 않는 본사 팀 계정(디자인/마케팅/운영/R&D)이
+// 매장 운영/재무 화면에는 접근을 주지 않는 본사 팀 계정(디자인/마케팅/운영/R&D)이
 // 다른 경로로 직접 들어와도 여기서 걸러진다. 실제 데이터 차단은 RLS
 // (user_can_access_store_ops)가 하고, 이건 어색한 빈 화면 대신 깔끔하게
-// 게시판으로 돌려보내는 UX용 가드다.
-const TEAM_ALLOWED_PREFIXES = ["/board", "/weekly-report"];
+// 홈으로 돌려보내는 UX용 가드다.
+const TEAM_ALLOWED_PREFIXES = ["/", "/board", "/weekly-report", "/expense"];
 
 export default async function AppLayout({
   children,
@@ -44,9 +44,11 @@ export default async function AppLayout({
 
   if (isTeamAccount) {
     const pathname = (await headers()).get("x-pathname") ?? "";
-    const allowed = TEAM_ALLOWED_PREFIXES.some((p) => pathname.startsWith(p));
+    const allowed = TEAM_ALLOWED_PREFIXES.some((p) =>
+      p === "/" ? pathname === "/" : pathname.startsWith(p)
+    );
     if (!allowed) {
-      redirect("/board");
+      redirect("/");
     }
   }
 
@@ -60,7 +62,7 @@ export default async function AppLayout({
     <>
       <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="flex items-center justify-between px-4 py-3">
-          <Link href={isTeamAccount ? "/board" : "/"}>
+          <Link href="/">
             <Image
               src="/logo.png"
               alt="JADE & WATER"
@@ -81,12 +83,17 @@ export default async function AppLayout({
 
       {/* 하단 내비는 iOS Safari의 sticky bottom 버그를 피하려고 fixed로
           띄워서 문서 흐름 밖에 있으므로, 본문 아래쪽에 그 높이만큼
-          여백을 직접 확보해줘야 마지막 콘텐츠가 가려지지 않는다. */}
-      <main className="flex-1 px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-4">
+          여백을 직접 확보해줘야 마지막 콘텐츠가 가려지지 않는다.
+          팀 계정은 하단바 없이 홈 화면 빠른메뉴로만 이동한다. */}
+      <main
+        className={`flex-1 px-4 pt-4 ${
+          isTeamAccount ? "pb-[calc(1rem+env(safe-area-inset-bottom))]" : "pb-[calc(5rem+env(safe-area-inset-bottom))]"
+        }`}
+      >
         <PullToRefresh>{children}</PullToRefresh>
       </main>
 
-      <BottomNav isMaster={isMaster} teamOnly={isTeamAccount} />
+      {!isTeamAccount && <BottomNav isMaster={isMaster} />}
     </>
   );
 }

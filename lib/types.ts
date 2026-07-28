@@ -213,6 +213,24 @@ export type FieldExpense = {
   created_at: string
 }
 
+export type MonthlyPlan = {
+  id: string
+  title: string
+  start_date: string
+  end_date: string
+  color: string
+  created_by: string
+  created_at: string
+}
+
+export type MonthlyPlanTodo = {
+  id: string
+  content: string
+  done: boolean
+  created_by: string
+  created_at: string
+}
+
 export type BoardCategory = '공지사항' | '마케팅' | '운영HR' | '디자인' | 'R&D'
 
 export type BoardPost = {
@@ -515,6 +533,23 @@ export type Database = {
           created_by: string
         }
         Update: Partial<BoardAttachment>
+        Relationships: []
+      }
+      monthly_plans: {
+        Row: MonthlyPlan
+        Insert: Partial<MonthlyPlan> & {
+          title: string
+          start_date: string
+          end_date: string
+          created_by: string
+        }
+        Update: Partial<MonthlyPlan>
+        Relationships: []
+      }
+      monthly_plan_todos: {
+        Row: MonthlyPlanTodo
+        Insert: Partial<MonthlyPlanTodo> & { content: string; created_by: string }
+        Update: Partial<MonthlyPlanTodo>
         Relationships: []
       }
     }

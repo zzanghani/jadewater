@@ -11,6 +11,9 @@ import {
 import DashboardChart, { type ChartPoint } from "@/components/DashboardChart";
 import MultiStoreChart, { type MultiStorePoint, type StoreSeries } from "@/components/MultiStoreChart";
 import QuickMenu from "@/components/QuickMenu";
+import MonthlyPlanCalendar from "@/components/MonthlyPlanCalendar";
+import MonthlyPlanTodos from "@/components/MonthlyPlanTodos";
+import PushSubscribeButton from "@/components/PushSubscribeButton";
 import { getStoreContext } from "@/lib/store";
 import { storeColor } from "@/lib/storeColors";
 import type { DailyClosing } from "@/lib/types";
@@ -32,18 +35,29 @@ function momLabel(current: number, prev: number): string {
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { storeId, stores } = await getStoreContext(supabase);
-  const isMaster = stores.length > 1;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("department").eq("id", user.id).single()
+    : { data: null };
+  const isTeamAccount = !!profile?.department;
+  const isMaster = stores.length > 1 && !isTeamAccount;
+  const isHq = isMaster || isTeamAccount;
+
   const days = last7DaysKST();
   const today = kstDateString(0);
   const todayLabel = kstShortDateLabel(today);
 
-  const { data: closings } = await supabase
-    .from("daily_closings")
-    .select("*")
-    .eq("store_id", storeId)
-    .gte("date", days[0])
-    .lte("date", today)
-    .order("date", { ascending: true });
+  const { data: closings } = isTeamAccount
+    ? { data: [] }
+    : await supabase
+        .from("daily_closings")
+        .select("*")
+        .eq("store_id", storeId)
+        .gte("date", days[0])
+        .lte("date", today)
+        .order("date", { ascending: true });
 
   const byDate = new Map<string, DailyClosing>(
     (closings ?? []).map((c) => [c.date, c])
@@ -70,7 +84,20 @@ export default async function DashboardPage() {
     mom: string;
   }[] = [];
 
-  if (isMaster) {
+  const [{ data: monthlyPlans }, { data: monthlyPlanTodos }] = isHq
+    ? await Promise.all([
+        supabase
+          .from("monthly_plans")
+          .select("*")
+          .order("start_date", { ascending: true }),
+        supabase
+          .from("monthly_plan_todos")
+          .select("*")
+          .order("created_at", { ascending: true }),
+      ])
+    : [{ data: [] }, { data: [] }];
+
+  if (isMaster || isTeamAccount) {
     const thisMonth = monthRangeKST(0);
     const lastMonth = monthRangeKST(1);
     const dayOfMonth = Number(today.slice(8, 10));
@@ -146,8 +173,32 @@ export default async function DashboardPage() {
     });
   }
 
+  if (isTeamAccount) {
+    return (
+      <div className="flex flex-col gap-5">
+        <PushSubscribeButton storeId={null} />
+        <MonthlyPlanTodos todos={monthlyPlanTodos ?? []} />
+        <MonthlyPlanCalendar plans={monthlyPlans ?? []} />
+
+        <QuickMenu teamOnly />
+
+        <section className="rounded-2xl border border-border bg-card p-4">
+          <h2 className="mb-3 text-sm font-semibold text-foreground">최근 7일 매출</h2>
+          <MultiStoreChart data={multiChartData} series={multiChartSeries} />
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5">
+      {isMaster && (
+        <>
+          <MonthlyPlanTodos todos={monthlyPlanTodos ?? []} />
+          <MonthlyPlanCalendar plans={monthlyPlans ?? []} />
+        </>
+      )}
+
       {isMaster ? (
         <section>
           <div className="mb-3 flex items-center justify-between">
