@@ -9,18 +9,30 @@ const SAVED_EMAIL_KEY = "store-settlement:saved-email";
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-dvh w-full flex-col justify-center px-6 py-10">
-      <div className="mb-10 flex flex-col items-center gap-3 text-center">
-        <Image
-          src="/logo.png"
-          alt="JADE & WATER"
-          width={1000}
-          height={244}
-          priority
-          className="h-auto w-48"
-        />
+    <div className="flex min-h-dvh w-full flex-col justify-center bg-white px-6 py-10">
+      <div className="mb-10 flex flex-col items-center gap-6 text-center">
+        {/* 베메컴(운영사) 로고 + 관리 브랜드 로고를 세로로 나열. 브랜드가
+            늘어나면 제이드앤워터 아래에 같은 톤으로 로고만 추가하면 된다. */}
+        <div className="flex flex-col items-center gap-3">
+          <Image
+            src="/bestmate-logo.png"
+            alt="BESTMATE COMPANY"
+            width={1585}
+            height={472}
+            priority
+            className="h-7 w-auto"
+          />
+          <Image
+            src="/logo.png"
+            alt="JADE & WATER"
+            width={1000}
+            height={244}
+            priority
+            className="h-9 w-auto"
+          />
+        </div>
         <div>
-          <h1 className="text-xl font-bold">매장 정산</h1>
+          <h1 className="text-xl font-bold">통합운영관리시스템</h1>
           <p className="mt-1 text-sm text-muted">
             일 마감부터 입금요청까지, 한 곳에서
           </p>
