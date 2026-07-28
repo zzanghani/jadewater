@@ -10,8 +10,10 @@ import {
 } from "@/lib/date";
 import { PLAN_COLORS } from "@/lib/planColors";
 import { createMonthlyPlan, deleteMonthlyPlan } from "@/app/(app)/plan/actions";
-import MonthlyPlanDetail, { type PlanComment } from "@/components/MonthlyPlanDetail";
+import MonthlyPlanDetail, { type PlanComment, type PlanFollower } from "@/components/MonthlyPlanDetail";
 import type { MonthlyPlan } from "@/lib/types";
+
+type HqProfile = { id: string; name: string };
 
 const WEEKDAY_HEADER = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -53,10 +55,14 @@ function assignLanes(plans: MonthlyPlan[]): Map<string, number> {
 export default function MonthlyPlanCalendar({
   plans,
   commentsByPlan = {},
+  followersByPlan = {},
+  hqProfiles = [],
   currentUserId,
 }: {
   plans: MonthlyPlan[];
   commentsByPlan?: Record<string, PlanComment[]>;
+  followersByPlan?: Record<string, PlanFollower[]>;
+  hqProfiles?: HqProfile[];
   currentUserId?: string;
 }) {
   const today = kstDateString(0);
@@ -64,9 +70,14 @@ export default function MonthlyPlanCalendar({
   const [showForm, setShowForm] = useState(false);
   const [color, setColor] = useState(PLAN_COLORS[0]);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [followerIds, setFollowerIds] = useState<string[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [state, formAction, pending] = useActionState(createMonthlyPlan, undefined);
   const [, startTransition] = useTransition();
+
+  function toggleFollower(id: string) {
+    setFollowerIds((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
+  }
 
   const range = monthRangeFromMonthString(month);
   const weeks = useMemo(() => buildWeeks(month), [month]);
@@ -82,6 +93,7 @@ export default function MonthlyPlanCalendar({
       setShowForm(false);
       setShowColorPicker(false);
       setColor(PLAN_COLORS[0]);
+      setFollowerIds([]);
     }
   }, [state]);
 
@@ -163,6 +175,34 @@ export default function MonthlyPlanCalendar({
               </div>
             )}
           </div>
+
+          {hqProfiles.length > 0 && (
+            <div className="flex flex-col gap-1.5 text-sm font-medium">
+              담당자 <span className="font-normal text-muted">(확인이 필요한 사람을 지정, 선택)</span>
+              <div className="flex flex-wrap gap-1.5">
+                {hqProfiles.map((p) => {
+                  const selected = followerIds.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => toggleFollower(p.id)}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                        selected
+                          ? "border-brand bg-brand/10 text-brand"
+                          : "border-border bg-card text-muted"
+                      }`}
+                    >
+                      {p.name}
+                    </button>
+                  );
+                })}
+              </div>
+              {followerIds.map((id) => (
+                <input key={id} type="hidden" name="follower_ids" value={id} />
+              ))}
+            </div>
+          )}
 
           {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
           <button
@@ -261,6 +301,8 @@ export default function MonthlyPlanCalendar({
           {visiblePlans.map((p) => {
             const isExpanded = expandedId === p.id;
             const commentCount = commentsByPlan[p.id]?.length ?? 0;
+            const followers = followersByPlan[p.id] ?? [];
+            const confirmedCount = followers.filter((f) => f.confirmed).length;
             return (
               <div key={p.id} className="flex flex-col gap-2">
                 <div className="flex w-full items-center gap-2 rounded-lg py-1 text-xs">
@@ -271,6 +313,15 @@ export default function MonthlyPlanCalendar({
                   >
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: p.color }} />
                     <span className="flex-1 truncate text-foreground">{p.title}</span>
+                    {followers.length > 0 && (
+                      <span
+                        className={`shrink-0 ${
+                          confirmedCount === followers.length ? "text-brand" : "text-muted"
+                        }`}
+                      >
+                        ✔ {confirmedCount}/{followers.length}
+                      </span>
+                    )}
                     {commentCount > 0 && (
                       <span className="shrink-0 text-muted">💬 {commentCount}</span>
                     )}
@@ -291,6 +342,7 @@ export default function MonthlyPlanCalendar({
                   <MonthlyPlanDetail
                     planId={p.id}
                     description={p.description}
+                    followers={followers}
                     comments={commentsByPlan[p.id] ?? []}
                     currentUserId={currentUserId}
                   />

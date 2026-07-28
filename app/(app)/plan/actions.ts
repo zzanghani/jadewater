@@ -20,24 +20,58 @@ export async function createMonthlyPlan(
   const startDate = String(formData.get("start_date") ?? "");
   const endDate = String(formData.get("end_date") ?? "");
   const color = String(formData.get("color") ?? "#2f7a63");
+  const followerIds = [...new Set(formData.getAll("follower_ids").map(String))];
 
   if (!title) return { error: "제목을 입력해 주세요." };
   if (!startDate || !endDate) return { error: "기간을 선택해 주세요." };
   if (endDate < startDate) return { error: "종료일이 시작일보다 빠를 수 없습니다." };
 
-  const { error } = await supabase.from("monthly_plans").insert({
-    title,
-    description: description || null,
-    start_date: startDate,
-    end_date: endDate,
-    color,
-    created_by: user.id,
-  });
+  const { data: inserted, error } = await supabase
+    .from("monthly_plans")
+    .insert({
+      title,
+      description: description || null,
+      start_date: startDate,
+      end_date: endDate,
+      color,
+      created_by: user.id,
+    })
+    .select()
+    .single();
 
-  if (error) return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+  if (error || !inserted) return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+
+  if (followerIds.length > 0) {
+    await supabase
+      .from("monthly_plan_followers")
+      .insert(followerIds.map((userId) => ({ plan_id: inserted.id, user_id: userId })));
+  }
 
   revalidatePath("/");
   return { success: true };
+}
+
+export async function togglePlanFollowerConfirm(planId: string): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: follower } = await supabase
+    .from("monthly_plan_followers")
+    .select("id, confirmed")
+    .eq("plan_id", planId)
+    .eq("user_id", user.id)
+    .single();
+  if (!follower) return;
+
+  await supabase
+    .from("monthly_plan_followers")
+    .update({ confirmed: !follower.confirmed })
+    .eq("id", follower.id);
+
+  revalidatePath("/");
 }
 
 export async function deleteMonthlyPlan(id: string) {

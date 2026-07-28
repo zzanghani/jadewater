@@ -224,6 +224,14 @@ export type MonthlyPlan = {
   created_at: string
 }
 
+export type MonthlyPlanFollower = {
+  id: string
+  plan_id: string
+  user_id: string
+  confirmed: boolean
+  created_at: string
+}
+
 export type MonthlyPlanComment = {
   id: string
   plan_id: string
@@ -554,6 +562,12 @@ export type Database = {
           created_by: string
         }
         Update: Partial<MonthlyPlan>
+        Relationships: []
+      }
+      monthly_plan_followers: {
+        Row: MonthlyPlanFollower
+        Insert: Partial<MonthlyPlanFollower> & { plan_id: string; user_id: string }
+        Update: Partial<Pick<MonthlyPlanFollower, "confirmed">>
         Relationships: []
       }
       monthly_plan_comments: {

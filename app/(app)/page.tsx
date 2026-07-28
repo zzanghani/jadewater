@@ -13,7 +13,7 @@ import MultiStoreChart, { type MultiStorePoint, type StoreSeries } from "@/compo
 import QuickMenu from "@/components/QuickMenu";
 import MonthlyPlanCalendar from "@/components/MonthlyPlanCalendar";
 import MonthlyPlanAlerts from "@/components/MonthlyPlanAlerts";
-import type { PlanComment } from "@/components/MonthlyPlanDetail";
+import type { PlanComment, PlanFollower } from "@/components/MonthlyPlanDetail";
 import PushSubscribeButton from "@/components/PushSubscribeButton";
 import { getStoreContext } from "@/lib/store";
 import { storeColor } from "@/lib/storeColors";
@@ -87,15 +87,31 @@ export default async function DashboardPage() {
 
 let monthlyPlans: import("@/lib/types").MonthlyPlan[] = [];
 let commentsByPlan: Record<string, PlanComment[]> = {};
+let followersByPlan: Record<string, PlanFollower[]> = {};
+let hqProfiles: { id: string; name: string }[] = [];
 
 if (isHq) {
-  const { data: plans } = await supabase
-    .from("monthly_plans")
-    .select("*")
-    .order("start_date", { ascending: true });
+  const [{ data: plans }, { data: hqProfileRows }] = await Promise.all([
+    supabase.from("monthly_plans").select("*").order("start_date", { ascending: true }),
+    supabase.from("profiles").select("id, name").is("store_id", null),
+  ]);
   monthlyPlans = plans ?? [];
+  hqProfiles = hqProfileRows ?? [];
 
   const planIds = monthlyPlans.map((p) => p.id);
+  if (planIds.length > 0) {
+    const { data: followerRows } = await supabase
+      .from("monthly_plan_followers")
+      .select("*")
+      .in("plan_id", planIds);
+    const hqNameById = new Map(hqProfiles.map((p) => [p.id, p.name]));
+    followersByPlan = {};
+    for (const f of followerRows ?? []) {
+      const list = followersByPlan[f.plan_id] ?? [];
+      list.push({ userId: f.user_id, name: hqNameById.get(f.user_id) ?? "알 수 없음", confirmed: f.confirmed });
+      followersByPlan[f.plan_id] = list;
+    }
+  }
   if (planIds.length > 0) {
     const { data: comments } = await supabase
       .from("monthly_plan_comments")
@@ -234,6 +250,8 @@ if (isHq) {
         <MonthlyPlanCalendar
           plans={monthlyPlans}
           commentsByPlan={commentsByPlan}
+          followersByPlan={followersByPlan}
+          hqProfiles={hqProfiles}
           currentUserId={user?.id}
         />
 
@@ -255,6 +273,8 @@ if (isHq) {
           <MonthlyPlanCalendar
             plans={monthlyPlans}
             commentsByPlan={commentsByPlan}
+            followersByPlan={followersByPlan}
+            hqProfiles={hqProfiles}
             currentUserId={user?.id}
           />
         </>

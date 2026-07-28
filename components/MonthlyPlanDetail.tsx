@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { deletePlanComment } from "@/app/(app)/plan/actions";
+import { deletePlanComment, togglePlanFollowerConfirm } from "@/app/(app)/plan/actions";
 import MonthlyPlanCommentForm from "@/components/MonthlyPlanCommentForm";
 import BoardAttachmentList from "@/components/BoardAttachmentList";
 
@@ -16,6 +16,12 @@ export type PlanComment = {
   attachments: Attachment[];
 };
 
+export type PlanFollower = {
+  userId: string;
+  name: string;
+  confirmed: boolean;
+};
+
 function dateTimeLabel(iso: string): string {
   const d = new Date(iso);
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(
@@ -26,11 +32,13 @@ function dateTimeLabel(iso: string): string {
 export default function MonthlyPlanDetail({
   planId,
   description,
+  followers = [],
   comments,
   currentUserId,
 }: {
   planId: string;
   description?: string | null;
+  followers?: PlanFollower[];
   comments: PlanComment[];
   currentUserId?: string;
 }) {
@@ -42,6 +50,32 @@ export default function MonthlyPlanDetail({
         <p className="whitespace-pre-wrap rounded-lg border border-border bg-card p-2.5 text-sm text-foreground">
           {description}
         </p>
+      )}
+
+      {followers.length > 0 && (
+        <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-card p-2.5">
+          <p className="text-xs font-semibold text-foreground">담당자 확인</p>
+          <div className="flex flex-wrap gap-1.5">
+            {followers.map((f) => {
+              const isMe = f.userId === currentUserId;
+              return (
+                <button
+                  key={f.userId}
+                  type="button"
+                  disabled={!isMe || pending}
+                  onClick={() => isMe && startTransition(() => togglePlanFollowerConfirm(planId))}
+                  className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                    f.confirmed
+                      ? "border-brand bg-brand/10 text-brand"
+                      : "border-border bg-background text-muted"
+                  } ${!isMe ? "opacity-70" : ""}`}
+                >
+                  {f.confirmed ? "✅" : "⬜"} {f.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {comments.length === 0 ? (

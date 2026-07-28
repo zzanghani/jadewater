@@ -59,6 +59,48 @@ create policy "monthly_plans_delete_hq"
 create index if not exists monthly_plans_range_idx on public.monthly_plans (start_date, end_date);
 
 -- --------------------------------------------------------------------------
+-- 일정별 Follower(담당자) 지정 + 확인 체크 (게시판의 board_post_followers와
+-- 같은 구조 — 본인 확인 체크는 본인만 토글할 수 있다)
+-- --------------------------------------------------------------------------
+create table if not exists public.monthly_plan_followers (
+  id uuid primary key default gen_random_uuid(),
+  plan_id uuid not null references public.monthly_plans (id) on delete cascade,
+  user_id uuid not null references public.profiles (id),
+  confirmed boolean not null default false,
+  created_at timestamptz not null default now(),
+  unique (plan_id, user_id)
+);
+
+alter table public.monthly_plan_followers enable row level security;
+
+drop policy if exists "monthly_plan_followers_select_hq" on public.monthly_plan_followers;
+create policy "monthly_plan_followers_select_hq"
+  on public.monthly_plan_followers for select
+  to authenticated
+  using (public.user_is_hq());
+
+drop policy if exists "monthly_plan_followers_insert_hq" on public.monthly_plan_followers;
+create policy "monthly_plan_followers_insert_hq"
+  on public.monthly_plan_followers for insert
+  to authenticated
+  with check (public.user_is_hq());
+
+drop policy if exists "monthly_plan_followers_update_own" on public.monthly_plan_followers;
+create policy "monthly_plan_followers_update_own"
+  on public.monthly_plan_followers for update
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "monthly_plan_followers_delete_hq" on public.monthly_plan_followers;
+create policy "monthly_plan_followers_delete_hq"
+  on public.monthly_plan_followers for delete
+  to authenticated
+  using (public.user_is_hq());
+
+create index if not exists monthly_plan_followers_plan_id_idx on public.monthly_plan_followers (plan_id);
+
+-- --------------------------------------------------------------------------
 -- 일정별 댓글 스레드 + 파일/이미지 첨부 (게시판과 동일한 구조)
 -- --------------------------------------------------------------------------
 create table if not exists public.monthly_plan_comments (
@@ -187,3 +229,9 @@ create policy "receipts_select_authenticated"
     bucket_id = 'receipts'
     and public.user_can_access_store((storage.foldername(name))[1]::uuid)
   );
+
+-- --------------------------------------------------------------------------
+-- 마스터 계정 표시 이름 수정: profiles.name이 비어 있어 이메일 앞부분인
+-- "owner"로 (Follower 지정 목록 등에) 표시되던 것을 "대표님"으로 바꾼다
+-- --------------------------------------------------------------------------
+update public.profiles set name = '대표님' where email = 'owner@jadewater.com';
