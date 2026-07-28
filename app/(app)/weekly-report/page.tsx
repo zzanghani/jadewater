@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
 import { weekRangeLabel } from "@/lib/date";
+import { storeColor } from "@/lib/storeColors";
 import BoardTopTabs from "@/components/BoardTopTabs";
 
 export default async function WeeklyReportPage() {
@@ -52,7 +53,13 @@ export default async function WeeklyReportPage() {
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold">{weekRangeLabel(r.week_start)}</p>
                   {isMaster && (
-                    <span className="rounded-full bg-brand-light px-2 py-0.5 text-[11px] font-semibold text-brand">
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                      style={{
+                        backgroundColor: `${storeColor(storeNameById.get(r.store_id) ?? "")}1A`,
+                        color: storeColor(storeNameById.get(r.store_id) ?? ""),
+                      }}
+                    >
                       {storeNameById.get(r.store_id) ?? "알 수 없음"}
                     </span>
                   )}
