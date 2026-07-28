@@ -96,7 +96,9 @@ if (isHq) {
     supabase.from("profiles").select("id, name").is("store_id", null),
   ]);
   monthlyPlans = plans ?? [];
-  hqProfiles = hqProfileRows ?? [];
+  hqProfiles = (hqProfileRows ?? []).sort((a, b) =>
+    a.name === "대표님" ? -1 : b.name === "대표님" ? 1 : 0
+  );
 
   const planIds = monthlyPlans.map((p) => p.id);
   if (planIds.length > 0) {
