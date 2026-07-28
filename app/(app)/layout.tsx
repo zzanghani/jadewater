@@ -50,6 +50,7 @@ export default async function AppLayout({
         "--brand": "#061383",
         "--brand-dark": "#04104f",
         "--brand-light": "#e7e9f6",
+        "--background": "#eef0f6",
       } as CSSProperties)
     : undefined;
 
@@ -70,7 +71,7 @@ export default async function AppLayout({
       : profile?.name ?? user.email?.split("@")[0] ?? "사용자";
 
   return (
-    <div className="flex w-full flex-1 flex-col" style={hqBrandStyle}>
+    <div className="flex w-full flex-1 flex-col bg-background" style={hqBrandStyle}>
       <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="flex items-center justify-between px-4 py-3">
           <Link href="/">
