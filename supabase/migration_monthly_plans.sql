@@ -3,11 +3,11 @@
 -- Supabase 프로젝트의 SQL Editor에서 그대로 실행하세요.
 --
 -- 월간계획은 매장 소속이 없는 "본사" 계정(store_id is null — 마스터도, 팀
--- 계정도 여기 해당)만 보고 쓸 수 있다. 아울러 팀 계정 홈 화면에 매장 매출
--- 차트와 현장지출 등록을 새로 열어주기로 해서, daily_closings 조회와
--- field_expenses 조회/등록은 매장 운영 제한(user_can_access_store_ops)에서
--- 다시 완화한다 (마감입력 자체를 팀 계정이 쓰는 건 아니라 insert/update는
--- 그대로 막혀 있다).
+-- 계정도 여기 해당)만 보고 쓸 수 있다. 일정마다 댓글 스레드가 달리고, 댓글에
+-- 파일/이미지를 첨부할 수 있다(게시판의 board_comments/board_attachments와
+-- 같은 구조). 아울러 팀 계정 홈 화면에 매장 매출 차트와 현장지출 등록을 새로
+-- 열어주기로 해서, daily_closings 조회와 field_expenses 조회/등록은 매장
+-- 운영 제한(user_can_access_store_ops)에서 다시 완화한다.
 -- ============================================================================
 
 create or replace function public.user_is_hq()
@@ -27,7 +27,7 @@ create table if not exists public.monthly_plans (
   title text not null,
   start_date date not null,
   end_date date not null,
-  color text not null default '#3a8a72',
+  color text not null default '#2f7a63',
   created_by uuid not null references public.profiles (id),
   created_at timestamptz not null default now(),
   constraint monthly_plans_date_order check (end_date >= start_date)
@@ -55,40 +55,91 @@ create policy "monthly_plans_delete_hq"
 
 create index if not exists monthly_plans_range_idx on public.monthly_plans (start_date, end_date);
 
-create table if not exists public.monthly_plan_todos (
+-- --------------------------------------------------------------------------
+-- 일정별 댓글 스레드 + 파일/이미지 첨부 (게시판과 동일한 구조)
+-- --------------------------------------------------------------------------
+create table if not exists public.monthly_plan_comments (
   id uuid primary key default gen_random_uuid(),
-  content text not null,
-  done boolean not null default false,
+  plan_id uuid not null references public.monthly_plans (id) on delete cascade,
+  body text not null default '',
   created_by uuid not null references public.profiles (id),
   created_at timestamptz not null default now()
 );
 
-alter table public.monthly_plan_todos enable row level security;
+alter table public.monthly_plan_comments enable row level security;
 
-drop policy if exists "monthly_plan_todos_select_hq" on public.monthly_plan_todos;
-create policy "monthly_plan_todos_select_hq"
-  on public.monthly_plan_todos for select
+drop policy if exists "monthly_plan_comments_select_hq" on public.monthly_plan_comments;
+create policy "monthly_plan_comments_select_hq"
+  on public.monthly_plan_comments for select
   to authenticated
   using (public.user_is_hq());
 
-drop policy if exists "monthly_plan_todos_insert_hq" on public.monthly_plan_todos;
-create policy "monthly_plan_todos_insert_hq"
-  on public.monthly_plan_todos for insert
+drop policy if exists "monthly_plan_comments_insert_hq" on public.monthly_plan_comments;
+create policy "monthly_plan_comments_insert_hq"
+  on public.monthly_plan_comments for insert
   to authenticated
   with check (public.user_is_hq() and auth.uid() = created_by);
 
-drop policy if exists "monthly_plan_todos_update_hq" on public.monthly_plan_todos;
-create policy "monthly_plan_todos_update_hq"
-  on public.monthly_plan_todos for update
+drop policy if exists "monthly_plan_comments_delete_own" on public.monthly_plan_comments;
+create policy "monthly_plan_comments_delete_own"
+  on public.monthly_plan_comments for delete
   to authenticated
-  using (public.user_is_hq())
-  with check (public.user_is_hq());
+  using (auth.uid() = created_by);
 
-drop policy if exists "monthly_plan_todos_delete_hq" on public.monthly_plan_todos;
-create policy "monthly_plan_todos_delete_hq"
-  on public.monthly_plan_todos for delete
+create index if not exists monthly_plan_comments_plan_id_idx on public.monthly_plan_comments (plan_id, created_at);
+
+create table if not exists public.monthly_plan_attachments (
+  id uuid primary key default gen_random_uuid(),
+  comment_id uuid not null references public.monthly_plan_comments (id) on delete cascade,
+  storage_path text not null,
+  file_name text not null,
+  created_by uuid not null references public.profiles (id),
+  created_at timestamptz not null default now()
+);
+
+alter table public.monthly_plan_attachments enable row level security;
+
+drop policy if exists "monthly_plan_attachments_select_hq" on public.monthly_plan_attachments;
+create policy "monthly_plan_attachments_select_hq"
+  on public.monthly_plan_attachments for select
   to authenticated
   using (public.user_is_hq());
+
+drop policy if exists "monthly_plan_attachments_insert_hq" on public.monthly_plan_attachments;
+create policy "monthly_plan_attachments_insert_hq"
+  on public.monthly_plan_attachments for insert
+  to authenticated
+  with check (public.user_is_hq() and auth.uid() = created_by);
+
+drop policy if exists "monthly_plan_attachments_delete_own" on public.monthly_plan_attachments;
+create policy "monthly_plan_attachments_delete_own"
+  on public.monthly_plan_attachments for delete
+  to authenticated
+  using (auth.uid() = created_by);
+
+create index if not exists monthly_plan_attachments_comment_id_idx on public.monthly_plan_attachments (comment_id);
+
+insert into storage.buckets (id, name, public)
+values ('monthly-plans', 'monthly-plans', false)
+on conflict (id) do nothing;
+
+drop policy if exists "monthly_plans_files_insert_hq" on storage.objects;
+create policy "monthly_plans_files_insert_hq"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'monthly-plans' and public.user_is_hq());
+
+drop policy if exists "monthly_plans_files_select_hq" on storage.objects;
+create policy "monthly_plans_files_select_hq"
+  on storage.objects for select
+  to authenticated
+  using (bucket_id = 'monthly-plans' and public.user_is_hq());
+
+drop policy if exists "monthly_plans_files_delete_hq" on storage.objects;
+create policy "monthly_plans_files_delete_hq"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'monthly-plans' and public.user_is_hq());
 
 -- --------------------------------------------------------------------------
 -- 팀 계정 홈 화면: 최근 7일 매출 차트를 보려면 daily_closings 조회가 필요하다

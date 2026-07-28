@@ -10,6 +10,7 @@ import {
 } from "@/lib/date";
 import { PLAN_COLORS } from "@/lib/planColors";
 import { createMonthlyPlan, deleteMonthlyPlan } from "@/app/(app)/plan/actions";
+import MonthlyPlanDetail, { type PlanComment } from "@/components/MonthlyPlanDetail";
 import type { MonthlyPlan } from "@/lib/types";
 
 const WEEKDAY_HEADER = ["일", "월", "화", "수", "목", "금", "토"];
@@ -49,11 +50,20 @@ function assignLanes(plans: MonthlyPlan[]): Map<string, number> {
   return laneOf;
 }
 
-export default function MonthlyPlanCalendar({ plans }: { plans: MonthlyPlan[] }) {
+export default function MonthlyPlanCalendar({
+  plans,
+  commentsByPlan = {},
+  currentUserId,
+}: {
+  plans: MonthlyPlan[];
+  commentsByPlan?: Record<string, PlanComment[]>;
+  currentUserId?: string;
+}) {
   const today = kstDateString(0);
   const [month, setMonth] = useState(today.slice(0, 7));
   const [showForm, setShowForm] = useState(false);
   const [color, setColor] = useState(PLAN_COLORS[0]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [state, formAction, pending] = useActionState(createMonthlyPlan, undefined);
   const [, startTransition] = useTransition();
 
@@ -109,16 +119,20 @@ export default function MonthlyPlanCalendar({ plans }: { plans: MonthlyPlan[] })
               className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none ring-brand/30 focus:ring-2"
             />
           </div>
-          <div className="flex gap-1.5">
+          <div className="grid grid-cols-8 gap-2 rounded-lg border border-border bg-card p-2">
             {PLAN_COLORS.map((c) => (
               <button
                 key={c}
                 type="button"
                 onClick={() => setColor(c)}
                 aria-label="색상 선택"
-                className={`h-6 w-6 rounded-full ${color === c ? "ring-2 ring-offset-2 ring-foreground" : ""}`}
+                className="flex h-7 w-7 items-center justify-center rounded-full transition-transform active:scale-95"
                 style={{ backgroundColor: c }}
-              />
+              >
+                {color === c && (
+                  <span className="text-xs font-bold text-white drop-shadow">✓</span>
+                )}
+              </button>
             ))}
           </div>
           {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
@@ -215,23 +229,45 @@ export default function MonthlyPlanCalendar({ plans }: { plans: MonthlyPlan[] })
 
       {visiblePlans.length > 0 && (
         <div className="mt-3 flex flex-col gap-1.5 border-t border-border pt-3">
-          {visiblePlans.map((p) => (
-            <div key={p.id} className="flex items-center gap-2 text-xs">
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: p.color }} />
-              <span className="flex-1 truncate text-foreground">{p.title}</span>
-              <span className="shrink-0 text-muted">
-                {p.start_date.slice(5).replace("-", ".")} ~ {p.end_date.slice(5).replace("-", ".")}
-              </span>
-              <button
-                type="button"
-                onClick={() => startTransition(() => deleteMonthlyPlan(p.id))}
-                className="shrink-0 text-muted"
-                aria-label="삭제"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
+          {visiblePlans.map((p) => {
+            const isExpanded = expandedId === p.id;
+            const commentCount = commentsByPlan[p.id]?.length ?? 0;
+            return (
+              <div key={p.id} className="flex flex-col gap-2">
+                <div className="flex w-full items-center gap-2 rounded-lg py-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId(isExpanded ? null : p.id)}
+                    className="flex flex-1 items-center gap-2 text-left transition-colors hover:text-brand"
+                  >
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: p.color }} />
+                    <span className="flex-1 truncate text-foreground">{p.title}</span>
+                    {commentCount > 0 && (
+                      <span className="shrink-0 text-muted">💬 {commentCount}</span>
+                    )}
+                    <span className="shrink-0 text-muted">
+                      {p.start_date.slice(5).replace("-", ".")} ~ {p.end_date.slice(5).replace("-", ".")}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => startTransition(() => deleteMonthlyPlan(p.id))}
+                    className="shrink-0 text-muted"
+                    aria-label="삭제"
+                  >
+                    ✕
+                  </button>
+                </div>
+                {isExpanded && (
+                  <MonthlyPlanDetail
+                    planId={p.id}
+                    comments={commentsByPlan[p.id] ?? []}
+                    currentUserId={currentUserId}
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </section>

@@ -223,10 +223,19 @@ export type MonthlyPlan = {
   created_at: string
 }
 
-export type MonthlyPlanTodo = {
+export type MonthlyPlanComment = {
   id: string
-  content: string
-  done: boolean
+  plan_id: string
+  body: string
+  created_by: string
+  created_at: string
+}
+
+export type MonthlyPlanAttachment = {
+  id: string
+  comment_id: string
+  storage_path: string
+  file_name: string
   created_by: string
   created_at: string
 }
@@ -546,10 +555,21 @@ export type Database = {
         Update: Partial<MonthlyPlan>
         Relationships: []
       }
-      monthly_plan_todos: {
-        Row: MonthlyPlanTodo
-        Insert: Partial<MonthlyPlanTodo> & { content: string; created_by: string }
-        Update: Partial<MonthlyPlanTodo>
+      monthly_plan_comments: {
+        Row: MonthlyPlanComment
+        Insert: Partial<MonthlyPlanComment> & { plan_id: string; created_by: string }
+        Update: Partial<MonthlyPlanComment>
+        Relationships: []
+      }
+      monthly_plan_attachments: {
+        Row: MonthlyPlanAttachment
+        Insert: Partial<MonthlyPlanAttachment> & {
+          comment_id: string
+          storage_path: string
+          file_name: string
+          created_by: string
+        }
+        Update: Partial<MonthlyPlanAttachment>
         Relationships: []
       }
     }

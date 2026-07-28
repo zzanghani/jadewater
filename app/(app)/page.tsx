@@ -12,7 +12,8 @@ import DashboardChart, { type ChartPoint } from "@/components/DashboardChart";
 import MultiStoreChart, { type MultiStorePoint, type StoreSeries } from "@/components/MultiStoreChart";
 import QuickMenu from "@/components/QuickMenu";
 import MonthlyPlanCalendar from "@/components/MonthlyPlanCalendar";
-import MonthlyPlanTodos from "@/components/MonthlyPlanTodos";
+import MonthlyPlanAlerts from "@/components/MonthlyPlanAlerts";
+import type { PlanComment } from "@/components/MonthlyPlanDetail";
 import PushSubscribeButton from "@/components/PushSubscribeButton";
 import { getStoreContext } from "@/lib/store";
 import { storeColor } from "@/lib/storeColors";
@@ -84,18 +85,70 @@ export default async function DashboardPage() {
     mom: string;
   }[] = [];
 
-  const [{ data: monthlyPlans }, { data: monthlyPlanTodos }] = isHq
-    ? await Promise.all([
-        supabase
-          .from("monthly_plans")
-          .select("*")
-          .order("start_date", { ascending: true }),
-        supabase
-          .from("monthly_plan_todos")
-          .select("*")
-          .order("created_at", { ascending: true }),
-      ])
-    : [{ data: [] }, { data: [] }];
+let monthlyPlans: import("@/lib/types").MonthlyPlan[] = [];
+let commentsByPlan: Record<string, PlanComment[]> = {};
+
+if (isHq) {
+  const { data: plans } = await supabase
+    .from("monthly_plans")
+    .select("*")
+    .order("start_date", { ascending: true });
+  monthlyPlans = plans ?? [];
+
+  const planIds = monthlyPlans.map((p) => p.id);
+  if (planIds.length > 0) {
+    const { data: comments } = await supabase
+      .from("monthly_plan_comments")
+      .select("*")
+      .in("plan_id", planIds)
+      .order("created_at", { ascending: true });
+    const commentRows = comments ?? [];
+    const commentIds = commentRows.map((c) => c.id);
+
+    const [{ data: attachments }, { data: profiles }] = await Promise.all([
+      commentIds.length > 0
+        ? supabase.from("monthly_plan_attachments").select("*").in("comment_id", commentIds)
+        : Promise.resolve({ data: [] as { id: string; comment_id: string; storage_path: string; file_name: string }[] }),
+      supabase.from("profiles").select("id, name"),
+    ]);
+
+    const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name]));
+
+    const signedUrlByPath = new Map<string, string>();
+    if ((attachments ?? []).length > 0) {
+      const { data: signedUrls } = await supabase.storage
+        .from("monthly-plans")
+        .createSignedUrls((attachments ?? []).map((a) => a.storage_path), 3600);
+      for (const s of signedUrls ?? []) {
+        if (s.signedUrl) signedUrlByPath.set(s.path ?? "", s.signedUrl);
+      }
+    }
+
+    const attachmentsByComment = new Map<
+      string,
+      { id: string; file_name: string; url?: string }[]
+    >();
+    for (const a of attachments ?? []) {
+      const list = attachmentsByComment.get(a.comment_id) ?? [];
+      list.push({ id: a.id, file_name: a.file_name, url: signedUrlByPath.get(a.storage_path) });
+      attachmentsByComment.set(a.comment_id, list);
+    }
+
+    commentsByPlan = {};
+    for (const c of commentRows) {
+      const list = commentsByPlan[c.plan_id] ?? [];
+      list.push({
+        id: c.id,
+        body: c.body,
+        created_by: c.created_by,
+        created_at: c.created_at,
+        authorName: nameById.get(c.created_by) ?? "알 수 없음",
+        attachments: attachmentsByComment.get(c.id) ?? [],
+      });
+      commentsByPlan[c.plan_id] = list;
+    }
+  }
+}
 
   if (isMaster || isTeamAccount) {
     const thisMonth = monthRangeKST(0);
@@ -177,8 +230,12 @@ export default async function DashboardPage() {
     return (
       <div className="flex flex-col gap-5">
         <PushSubscribeButton storeId={null} />
-        <MonthlyPlanTodos todos={monthlyPlanTodos ?? []} />
-        <MonthlyPlanCalendar plans={monthlyPlans ?? []} />
+        <MonthlyPlanAlerts plans={monthlyPlans} />
+        <MonthlyPlanCalendar
+          plans={monthlyPlans}
+          commentsByPlan={commentsByPlan}
+          currentUserId={user?.id}
+        />
 
         <QuickMenu teamOnly />
 
@@ -194,8 +251,12 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-5">
       {isMaster && (
         <>
-          <MonthlyPlanTodos todos={monthlyPlanTodos ?? []} />
-          <MonthlyPlanCalendar plans={monthlyPlans ?? []} />
+          <MonthlyPlanAlerts plans={monthlyPlans} />
+          <MonthlyPlanCalendar
+            plans={monthlyPlans}
+            commentsByPlan={commentsByPlan}
+            currentUserId={user?.id}
+          />
         </>
       )}
 
