@@ -16,9 +16,7 @@ export default function ReviewReportClient({
   reports: ReviewReportsByDate;
 }) {
   const [selectedDate, setSelectedDate] = useState(dates[0]?.date ?? "");
-  const [expanded, setExpanded] = useState<Record<string, boolean>>(() =>
-    stores[0] ? { [stores[0].id]: true } : {}
-  );
+  const [selectedStoreId, setSelectedStoreId] = useState(stores[0]?.id ?? "");
   const [blogShowAll, setBlogShowAll] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState("");
@@ -33,9 +31,9 @@ export default function ReviewReportClient({
       )
     : [];
 
-  function toggle(id: string) {
-    setExpanded((p) => ({ ...p, [id]: !p[id] }));
-  }
+  const selectedStore = stores.find((s) => s.id === selectedStoreId) ?? stores[0];
+  const data = report?.[selectedStoreId];
+  const newCount = data?.newReviews.length ?? 0;
 
   function handleRequestNow() {
     setLoading(true);
@@ -92,35 +90,43 @@ export default function ReviewReportClient({
           </div>
         )}
 
-        {/* 매장 카드 */}
-        {stores.map((store) => {
-          const data = report?.[store.id];
-          const isOpen = !!expanded[store.id];
-          const newCount = data?.newReviews.length ?? 0;
-          const hasBad = (data?.badReviews.length ?? 0) > 0;
+        {/* 매장 탭 (매장이 2개 이상일 때만) */}
+        {stores.length > 1 && (
+          <div style={s.storeTabRow}>
+            {stores.map((store) => {
+              const storeData = report?.[store.id];
+              const storeHasBad = (storeData?.badReviews.length ?? 0) > 0;
+              const isActive = store.id === selectedStoreId;
+              return (
+                <button
+                  key={store.id}
+                  onClick={() => setSelectedStoreId(store.id)}
+                  style={{
+                    ...s.storeTab,
+                    ...(isActive
+                      ? { background: store.color, color: "#fff", borderColor: store.color }
+                      : {}),
+                  }}
+                >
+                  {storeHasBad && <span style={s.storeTabDot} />}
+                  {store.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
-          return (
-            <div key={store.id} style={s.card}>
-              {/* 카드 헤더 */}
-              <button
-                onClick={() => toggle(store.id)}
-                style={{ ...s.cardHeader, background: store.color }}
-              >
-                <span style={{ fontWeight: 600, fontSize: 14 }}>{store.name}</span>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {newCount > 0 && <span style={s.newBadge}>새 리뷰 {newCount}건</span>}
-                  {hasBad && (
-                    <span style={{ ...s.newBadge, background: "rgba(255,80,80,0.4)" }}>⚠️</span>
-                  )}
-                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.8)" }}>
-                    {isOpen ? "▲" : "▼"}
-                  </span>
-                </div>
-              </button>
+        {/* 매장 카드 (선택된 매장 1개만) */}
+        {selectedStore && (
+          <div style={s.card}>
+            {/* 카드 헤더 */}
+            <div style={{ ...s.cardHeader, background: selectedStore.color }}>
+              <span style={{ fontWeight: 600, fontSize: 14 }}>{selectedStore.name}</span>
+              {newCount > 0 && <span style={s.newBadge}>새 리뷰 {newCount}건</span>}
+            </div>
 
-              {/* 카드 내용 */}
-              {isOpen && (
-                <div style={s.cardBody}>
+            {/* 카드 내용 */}
+            <div style={s.cardBody}>
                   {/* 플랫폼 테이블 */}
                   {data && data.platforms.length > 0 ? (
                     <table style={s.table}>
@@ -179,7 +185,7 @@ export default function ReviewReportClient({
 
                   {/* 블로그 후기 */}
                   {data && data.blogPosts.length > 0 && (() => {
-                    const showAll = !!blogShowAll[store.id];
+                    const showAll = !!blogShowAll[selectedStore.id];
                     const visiblePosts = showAll
                       ? data.blogPosts
                       : data.blogPosts.slice(0, BLOG_PREVIEW_COUNT);
@@ -206,7 +212,7 @@ export default function ReviewReportClient({
                           <button
                             type="button"
                             onClick={() =>
-                              setBlogShowAll((p) => ({ ...p, [store.id]: true }))
+                              setBlogShowAll((p) => ({ ...p, [selectedStore.id]: true }))
                             }
                             style={s.blogMoreBtn}
                           >
@@ -217,7 +223,7 @@ export default function ReviewReportClient({
                           <button
                             type="button"
                             onClick={() =>
-                              setBlogShowAll((p) => ({ ...p, [store.id]: false }))
+                              setBlogShowAll((p) => ({ ...p, [selectedStore.id]: false }))
                             }
                             style={s.blogMoreBtn}
                           >
@@ -235,11 +241,9 @@ export default function ReviewReportClient({
                       {data.analysis}
                     </div>
                   ) : null}
-                </div>
-              )}
             </div>
-          );
-        })}
+          </div>
+        )}
       </div>
 
       {/* ── 하단 고정 버튼 ── */}
@@ -290,6 +294,36 @@ const s: Record<string, CSSProperties> = {
 
   body: { padding: "16px" },
   dateLabel: { fontSize: 13, color: "#888", marginBottom: 12 },
+
+  storeTabRow: {
+    display: "flex",
+    gap: 6,
+    overflowX: "auto",
+    scrollbarWidth: "none",
+    marginBottom: 12,
+  },
+  storeTab: {
+    flexShrink: 0,
+    display: "flex",
+    alignItems: "center",
+    gap: 5,
+    padding: "8px 14px",
+    borderRadius: 20,
+    border: "1px solid #eee",
+    background: "#fff",
+    color: "#555",
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  },
+  storeTabDot: {
+    width: 6,
+    height: 6,
+    borderRadius: "50%",
+    background: "#ff5050",
+    flexShrink: 0,
+  },
 
   banner: { borderRadius: 10, padding: "12px 16px", marginBottom: 16, fontSize: 14 },
   badCard: { background: "#fff", borderRadius: 8, padding: "10px 12px", marginTop: 6, fontSize: 13, lineHeight: 1.6 },
