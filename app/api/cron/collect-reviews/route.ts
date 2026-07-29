@@ -37,10 +37,17 @@ export async function GET(request: Request) {
   // 매장별로 따로 검색하는 대신 "제이드앤워터"로 한 번에 넓게 검색한 뒤,
   // 글마다 어느 지점 얘기가 가장 많이 나오는지로 분류한다.
   // (매장별 검색은 결과 개수 제한 때문에 누락이 많았다.)
+  //
+  // 네이버 검색은 관련도순(sort=sim)이라 몇 달 전 글이 오늘 처음 100위 안에
+  // 잡히는 경우가 있는데, 그러면 실제로는 오래된 글인데도 "오늘 새로 발견"으로
+  // 저장돼서 리포트에 "새로 달린 후기"처럼 보이는 문제가 있었다. 그래서 실제
+  // 작성일(postedAt)이 최근 7일 이내인 글만 저장 대상으로 남긴다.
+  const sevenDaysAgo = kstDateString(7);
   let postsByBranch: Record<string, ReturnType<typeof classifyPostsByBranch>[string]> = {};
   if (naverClientId && naverClientSecret) {
     const allPosts = await fetchNaverBlogPosts("제이드앤워터", naverClientId, naverClientSecret);
-    postsByBranch = classifyPostsByBranch(allPosts);
+    const recentPosts = allPosts.filter((p) => p.postedAt >= sevenDaysAgo);
+    postsByBranch = classifyPostsByBranch(recentPosts);
   }
 
   for (const store of stores ?? []) {
