@@ -106,27 +106,23 @@ export async function createBoardPost(
       );
     }
 
-    // 마스터 계정이 공지사항을 등록하면 개별 Follower 지정 여부와 상관없이
-    // 전 계정에 알림을 보낸다.
+    // 공지사항은 누가 등록하든(마스터·본사 팀 계정 모두) 개별 Follower 지정
+    // 여부와 상관없이 전 계정에 알림을 보낸다.
     if (category === NOTICE) {
-      const { stores } = await getStoreContext(supabase);
-      const isMaster = stores.length > 1;
-      if (isMaster) {
-        const { data: allProfiles } = await supabase.from("profiles").select("id");
-        const targets = (allProfiles ?? [])
-          .map((p) => p.id)
-          .filter((id) => !notified.has(id));
-        await Promise.all(
-          targets.map((id) => {
-            notified.add(id);
-            return sendPushToUser(supabase, id, {
-              title: `${authorName}님이 공지사항을 등록했습니다`,
-              body: title,
-              url: `/board/${inserted.id}`,
-            });
-          })
-        );
-      }
+      const { data: allProfiles } = await supabase.from("profiles").select("id");
+      const targets = (allProfiles ?? [])
+        .map((p) => p.id)
+        .filter((id) => !notified.has(id));
+      await Promise.all(
+        targets.map((id) => {
+          notified.add(id);
+          return sendPushToUser(supabase, id, {
+            title: `${authorName}님이 공지사항을 등록했습니다`,
+            body: title,
+            url: `/board/${inserted.id}`,
+          });
+        })
+      );
     }
   } catch (err) {
     console.error("[createBoardPost] 알림 발송 중 오류", err);
