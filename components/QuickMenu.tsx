@@ -15,6 +15,7 @@ const MASTER_EXCLUDED_HREFS: string[] = ["/closing", "/schedule", "/receipts", "
 const TEAM_ITEMS = [
   { href: "/board", label: "게시판", icon: BoardIcon },
   { href: "/expense", label: "현장지출", icon: ReceiptIcon },
+  { href: "/review-report", label: "리뷰리포트", icon: StarIcon },
 ] as const;
 
 export default function QuickMenu({
@@ -114,6 +115,14 @@ function CalendarIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="5" width="18" height="16" rx="2" />
       <path d="M3 10h18M8 3v4M16 3v4" />
+    </svg>
+  );
+}
+
+function StarIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m12 3 2.6 5.7 6.2.6-4.7 4.2 1.4 6.1L12 16.9 6.5 19.6l1.4-6.1-4.7-4.2 6.2-.6Z" />
     </svg>
   );
 }
