@@ -28,7 +28,7 @@ async function loadConfiguredWebPush() {
     const { default: webpush } = await import("web-push");
     if (!configured) {
       webpush.setVapidDetails(
-        "mailto:owner@jadewater.com",
+        "mailto:owner@bestmateco.com",
         publicKey,
         privateKey
       );
