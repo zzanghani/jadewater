@@ -61,7 +61,8 @@ ${blogLines || "(없음)"}
     },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
-      max_tokens: 600,
+      max_tokens: 1024,
+      thinking: { type: "disabled" },
       messages: [{ role: "user", content: prompt }],
     }),
   });
