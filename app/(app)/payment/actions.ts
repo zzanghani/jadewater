@@ -6,6 +6,7 @@ import { getStoreContext } from "@/lib/store";
 import { formatWon } from "@/lib/format";
 import { sendPush } from "@/lib/webpush";
 import { archivePaymentRequestToDrive } from "@/lib/paymentArchive";
+import { archiveFieldExpenseToDrive } from "@/lib/fieldExpenseArchive";
 import type { FieldExpenseCategory, FieldExpensePaymentMethod } from "@/lib/types";
 
 export type PaymentFormState = { error?: string; success?: boolean } | undefined;
@@ -263,22 +264,35 @@ export async function saveFieldExpense(
     receiptPhotoPath = path;
   }
 
-  const { error } = await supabase.from("field_expenses").insert({
-    store_id: storeId,
-    date,
-    category,
-    description,
-    amount,
-    payment_method: paymentMethod,
-    receipt_photo_path: receiptPhotoPath,
-    created_by: user.id,
-  });
+  const { data: inserted, error } = await supabase
+    .from("field_expenses")
+    .insert({
+      store_id: storeId,
+      date,
+      category,
+      description,
+      amount,
+      payment_method: paymentMethod,
+      receipt_photo_path: receiptPhotoPath,
+      created_by: user.id,
+    })
+    .select()
+    .single();
 
-  if (error) {
+  if (error || !inserted) {
     return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
   revalidatePath("/expense");
+
+  // 구글드라이브 백업은 부가 기능이므로, 실패해도 지출 저장 자체는 이미
+  // 끝난 상태로 절대 실패하지 않게 한다 (Supabase 원본은 그대로 남는다).
+  try {
+    await archiveFieldExpenseToDrive(supabase, inserted.id);
+  } catch (err) {
+    console.error("[saveFieldExpense] 구글드라이브 백업 실패", err);
+  }
+
   return { success: true };
 }
 
