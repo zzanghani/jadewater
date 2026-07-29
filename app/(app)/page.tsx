@@ -269,6 +269,8 @@ if (isHq) {
 
   return (
     <div className="flex flex-col gap-5">
+      <PushSubscribeButton storeId={isMaster ? null : storeId} />
+
       {isMaster && (
         <>
           <MonthlyPlanAlerts plans={monthlyPlans} />

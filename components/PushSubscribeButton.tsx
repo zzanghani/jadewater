@@ -97,10 +97,8 @@ export default function PushSubscribeButton({
 
   if (status === "checking" || status === "unsupported") return null;
 
-  const label = storeId ? "요청완료 알림 받기" : "새 입금요청 알림 받기";
-  const subscribedLabel = storeId
-    ? "🔔 요청완료 알림이 설정되어 있습니다."
-    : "🔔 새 입금요청 알림이 설정되어 있습니다.";
+  const label = "알림 받기";
+  const subscribedLabel = "🔔 알림이 설정되어 있습니다. (게시판·입금요청 등)";
 
   if (status === "subscribed") {
     return <p className="text-xs text-muted">{subscribedLabel}</p>;
