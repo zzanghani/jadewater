@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { fetchGooglePlaceSnapshot } from "@/lib/googlePlaces";
 import { branchKeyForStoreName, classifyPostsByBranch, fetchNaverBlogPosts } from "@/lib/naverBlog";
+import { generateReviewSummary } from "@/lib/claude";
 import { kstDateString } from "@/lib/date";
 
 // Vercel Cron이 매일 KST 06:00에 호출한다 (vercel.json 참고).
@@ -125,9 +126,70 @@ export async function GET(request: Request) {
       }
     }
 
+    // 이번 실행에서 실제로 새로 저장된(=오늘 날짜로 처음 insert된) 리뷰/블로그만
+    // AI 요약 대상으로 삼는다. upsert 시 중복은 ON CONFLICT DO NOTHING이라
+    // 기존 행의 date는 갱신되지 않으므로, date=today로 조회하면 신규 항목만 잡힌다.
+    const claudeApiKey = process.env.ANTHROPIC_API_KEY;
+    const [{ data: todaysReviews }, { data: todaysBlogPosts }, { data: todaysPlatformStats }] =
+      await Promise.all([
+        supabase
+          .from("reviews")
+          .select("platform, rating, body")
+          .eq("store_id", store.id)
+          .eq("date", today),
+        supabase
+          .from("blog_posts")
+          .select("title, body")
+          .eq("store_id", store.id)
+          .eq("date", today),
+        supabase
+          .from("review_platform_stats")
+          .select("platform, rating, review_count, change_count")
+          .eq("store_id", store.id)
+          .eq("date", today),
+      ]);
+
+    let summarySuffix: string;
+    if (!claudeApiKey) {
+      summarySuffix = ", AI요약: 건너뜀(ANTHROPIC_API_KEY 없음)";
+    } else if ((todaysReviews?.length ?? 0) === 0 && (todaysBlogPosts?.length ?? 0) === 0) {
+      summarySuffix = ", AI요약: 건너뜀(신규 데이터 없음)";
+    } else {
+      const summary = await generateReviewSummary(
+        {
+          storeName: store.name,
+          platforms: (todaysPlatformStats ?? []).map((p) => ({
+            name: p.platform,
+            rating: p.rating,
+            count: p.review_count,
+            change: p.change_count,
+          })),
+          newReviews: (todaysReviews ?? []).map((r) => ({
+            platform: r.platform,
+            rating: r.rating,
+            body: r.body,
+          })),
+          blogPosts: (todaysBlogPosts ?? []).map((p) => ({ title: p.title, body: p.body })),
+        },
+        claudeApiKey
+      );
+
+      if (!summary) {
+        summarySuffix = ", AI요약: 생성 실패";
+      } else {
+        const { error: summaryError } = await supabase.from("review_ai_summaries").upsert(
+          { store_id: store.id, date: today, summary },
+          { onConflict: "store_id,date" }
+        );
+        summarySuffix = summaryError
+          ? `, AI요약 저장 오류: ${summaryError.message}`
+          : ", AI요약: 생성완료";
+      }
+    }
+
     results[store.name] = reviewsError
-      ? `완료 (평점 ${snapshot.rating}, 총 ${snapshot.reviewCount}건) — 리뷰 저장 오류: ${reviewsError}${blogSummary}`
-      : `완료 (평점 ${snapshot.rating}, 총 ${snapshot.reviewCount}건, 증가 ${changeCount}건${blogSummary})`;
+      ? `완료 (평점 ${snapshot.rating}, 총 ${snapshot.reviewCount}건) — 리뷰 저장 오류: ${reviewsError}${blogSummary}${summarySuffix}`
+      : `완료 (평점 ${snapshot.rating}, 총 ${snapshot.reviewCount}건, 증가 ${changeCount}건${blogSummary})${summarySuffix}`;
   }
 
   return NextResponse.json({ ok: true, date: today, results });
