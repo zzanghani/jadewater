@@ -8,6 +8,7 @@ import {
   monthRangeFromMonthString,
   shiftMonthString,
 } from "@/lib/date";
+import MonthYearJumpPicker from "@/components/MonthYearJumpPicker";
 
 const WEEKDAY_HEADER = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -77,7 +78,7 @@ export default function SingleDatePicker({
               >
                 ←
               </button>
-              <span className="text-sm font-bold">{range.label}</span>
+              <MonthYearJumpPicker month={month} label={range.label} onChange={setMonth} />
               <button
                 type="button"
                 onClick={() => setMonth((m) => shiftMonthString(m, 1))}

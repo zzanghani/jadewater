@@ -10,6 +10,7 @@ import {
   shiftMonthString,
 } from "@/lib/date";
 import type { InventorySection } from "@/lib/types";
+import MonthYearJumpPicker from "@/components/MonthYearJumpPicker";
 
 const WEEKDAY_HEADER = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -70,7 +71,7 @@ export default function InventoryDatePicker({
               >
                 ←
               </button>
-              <span className="text-sm font-bold">{range.label}</span>
+              <MonthYearJumpPicker month={month} label={range.label} onChange={setMonth} />
               <button
                 type="button"
                 onClick={() => setMonth((m) => shiftMonthString(m, 1))}
