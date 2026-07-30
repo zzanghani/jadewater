@@ -44,15 +44,18 @@ export function tenureLabel(hireDate: string): string {
   return `${years}년 ${restMonths}개월`;
 }
 
-// 보건증 갱신일 기준 상태. 식품위생교육/보건증은 통상 1년마다 갱신해야 해서,
-// 11개월이 지나면 곧 만료(주의), 12개월이 지나면 만료(경고)로 표시한다.
-export type HealthCertStatus = "none" | "ok" | "due-soon" | "overdue";
+// 보건증 갱신일 기준 상태. 보건증은 마지막 갱신일로부터 1년(365일)마다 다시
+// 갱신해야 해서, 그 만료일까지 남은 일수를 기준으로 3단계 경고를 매긴다.
+// (만료일이 지난 경우도 d15와 동일하게 가장 강한 경고로 취급한다.)
+export type HealthCertStatus = "none" | "ok" | "d45" | "d30" | "d15";
 
 export function healthCertStatus(renewedAt: string | null): HealthCertStatus {
   if (!renewedAt) return "none";
   const elapsedDays = daysSinceKST(`${renewedAt}T00:00:00`);
-  if (elapsedDays >= 365) return "overdue";
-  if (elapsedDays >= 335) return "due-soon"; // 11개월(약 335일) 경과
+  const daysUntilDue = 365 - elapsedDays;
+  if (daysUntilDue <= 15) return "d15";
+  if (daysUntilDue <= 30) return "d30";
+  if (daysUntilDue <= 45) return "d45";
   return "ok";
 }
 

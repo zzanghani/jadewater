@@ -9,14 +9,23 @@ import type { Employee } from "@/lib/types";
 
 type StoreInfo = { id: string; name: string; color: string };
 
+// 보건증 갱신 알람 3단계 — 만료 45일 전(제이드앤워터 브랜드 민트) → 30일 전(주황) →
+// 15일 전(빨강)으로 갈수록 위급하게. 색은 매장 브랜드 톤을 그대로 가져와
+// 이 페이지가 지금 어떤 테마(베메컴 네이비)를 쓰든 항상 같은 색으로 보인다.
+const JADEWATER_BRAND = "#86c1ae";
+
 const HEALTH_CERT_BADGE: Record<
   ReturnType<typeof healthCertStatus>,
-  { label: string; className: string } | null
+  { label: string; className?: string; style?: { backgroundColor: string; color: string } } | null
 > = {
   none: { label: "미등록", className: "bg-gray-100 text-gray-500" },
   ok: null,
-  "due-soon": { label: "곧 만료", className: "bg-amber-50 text-amber-600" },
-  overdue: { label: "만료", className: "bg-red-50 text-red-600" },
+  d45: {
+    label: "보건증갱신",
+    style: { backgroundColor: `${JADEWATER_BRAND}1A`, color: JADEWATER_BRAND },
+  },
+  d30: { label: "보건증갱신", className: "bg-orange-50 text-orange-600" },
+  d15: { label: "보건증갱신", className: "bg-red-50 text-red-600" },
 };
 
 export default function HrClient({
@@ -135,7 +144,10 @@ export default function HrClient({
                   <span className="flex items-center gap-1">
                     보건증 {emp.health_cert_renewed_at ?? "-"}
                     {certBadge && (
-                      <span className={`rounded-full px-1.5 py-0.5 font-semibold ${certBadge.className}`}>
+                      <span
+                        className={`rounded-full px-1.5 py-0.5 font-semibold ${certBadge.className ?? ""}`}
+                        style={certBadge.style}
+                      >
                         {certBadge.label}
                       </span>
                     )}
