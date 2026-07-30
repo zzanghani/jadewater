@@ -18,15 +18,21 @@ const TEAM_ITEMS = [
   { href: "/review-report", label: "리뷰리포트", icon: StarIcon },
 ] as const;
 
+const HR_ITEM = { href: "/hr", label: "HR", icon: HrIcon } as const;
+
 export default function QuickMenu({
   isMaster = false,
   teamOnly = false,
+  showHr = false,
 }: {
   isMaster?: boolean;
   teamOnly?: boolean;
+  showHr?: boolean;
 }) {
   const items = teamOnly
-    ? TEAM_ITEMS
+    ? showHr
+      ? [...TEAM_ITEMS, HR_ITEM]
+      : TEAM_ITEMS
     : isMaster
       ? ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href))
       : ALL_ITEMS;
@@ -123,6 +129,16 @@ function StarIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="m12 3 2.6 5.7 6.2.6-4.7 4.2 1.4 6.1L12 16.9 6.5 19.6l1.4-6.1-4.7-4.2 6.2-.6Z" />
+    </svg>
+  );
+}
+
+function HrIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+      <path d="M17 8h4M19 6v4" />
     </svg>
   );
 }

@@ -48,9 +48,10 @@ export default async function AppLayout({
 
   if (isTeamAccount) {
     const pathname = (await headers()).get("x-pathname") ?? "";
-    const allowed = TEAM_ALLOWED_PREFIXES.some((p) =>
-      p === "/" ? pathname === "/" : pathname.startsWith(p)
-    );
+    const isHrTeam = profile?.department === "rnd" || profile?.department === "ops";
+    const allowed =
+      TEAM_ALLOWED_PREFIXES.some((p) => (p === "/" ? pathname === "/" : pathname.startsWith(p))) ||
+      (isHrTeam && pathname.startsWith("/hr"));
     if (!allowed) {
       redirect("/");
     }

@@ -257,7 +257,7 @@ if (isHq) {
           currentUserId={user?.id}
         />
 
-        <QuickMenu teamOnly />
+        <QuickMenu teamOnly showHr={profile?.department === "rnd" || profile?.department === "ops"} />
 
         <section className="rounded-2xl border border-border bg-card p-4">
           <h2 className="mb-3 text-sm font-semibold text-foreground">최근 7일 매출</h2>

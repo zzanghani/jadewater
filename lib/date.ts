@@ -27,6 +27,35 @@ export function daysSinceKST(iso: string): number {
   return Math.round((todayUTC - targetUTC) / 86_400_000);
 }
 
+// 입사일('YYYY-MM-DD')로부터 오늘(KST)까지의 근속기간을 "N년 M개월"로 표시.
+export function tenureLabel(hireDate: string): string {
+  const [hy, hm, hd] = hireDate.split("-").map(Number);
+  const [ty, tm, td] = kstDateString(0).split("-").map(Number);
+
+  let months = (ty - hy) * 12 + (tm - hm);
+  if (td < hd) months -= 1;
+  if (months < 0) return "입사 예정";
+
+  const years = Math.floor(months / 12);
+  const restMonths = months % 12;
+  if (years === 0 && restMonths === 0) return "이번 달 입사";
+  if (years === 0) return `${restMonths}개월`;
+  if (restMonths === 0) return `${years}년`;
+  return `${years}년 ${restMonths}개월`;
+}
+
+// 보건증 갱신일 기준 상태. 식품위생교육/보건증은 통상 1년마다 갱신해야 해서,
+// 11개월이 지나면 곧 만료(주의), 12개월이 지나면 만료(경고)로 표시한다.
+export type HealthCertStatus = "none" | "ok" | "due-soon" | "overdue";
+
+export function healthCertStatus(renewedAt: string | null): HealthCertStatus {
+  if (!renewedAt) return "none";
+  const elapsedDays = daysSinceKST(`${renewedAt}T00:00:00`);
+  if (elapsedDays >= 365) return "overdue";
+  if (elapsedDays >= 335) return "due-soon"; // 11개월(약 335일) 경과
+  return "ok";
+}
+
 // 'YYYY-MM-DD' 날짜에 days일을 더한 'YYYY-MM-DD' (음수면 이전 날짜).
 export function shiftDateString(dateStr: string, days: number): string {
   const [y, m, d] = dateStr.split("-").map(Number);

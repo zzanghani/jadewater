@@ -317,6 +317,19 @@ export type WeeklyReport = {
 
 export type ScheduleRole = '점장' | '부점장' | '팀장' | '사원' | '파트타이머'
 
+export type Employee = {
+  id: string
+  store_id: string
+  name: string
+  position: ScheduleRole
+  hire_date: string
+  health_cert_renewed_at: string | null
+  created_by: string
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type ScheduleShift = {
   id: string
   store_id: string
@@ -485,6 +498,18 @@ export type Database = {
           created_by: string
         }
         Update: Partial<ScheduleShift>
+        Relationships: []
+      }
+      employees: {
+        Row: Employee
+        Insert: Partial<Employee> & {
+          store_id: string
+          name: string
+          position: ScheduleRole
+          hire_date: string
+          created_by: string
+        }
+        Update: Partial<Employee>
         Relationships: []
       }
       inventory_items: {
