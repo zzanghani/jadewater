@@ -3,6 +3,8 @@
 import { useActionState, useEffect, useState } from "react";
 import { createEmployee, updateEmployee, type HrFormState } from "@/app/(app)/hr/actions";
 import { SCHEDULE_ROLES, roleColor } from "@/lib/scheduleColors";
+import { kstDateString } from "@/lib/date";
+import SingleDatePicker from "@/components/SingleDatePicker";
 import type { Employee, ScheduleRole } from "@/lib/types";
 
 export default function HrEmployeeForm({
@@ -17,6 +19,8 @@ export default function HrEmployeeForm({
   const action = employee ? updateEmployee : createEmployee;
   const [state, formAction, pending] = useActionState<HrFormState, FormData>(action, undefined);
   const [position, setPosition] = useState<ScheduleRole>(employee?.position ?? SCHEDULE_ROLES[0]);
+  const [hireDate, setHireDate] = useState(employee?.hire_date ?? kstDateString(0));
+  const [healthCertDate, setHealthCertDate] = useState(employee?.health_cert_renewed_at ?? "");
 
   useEffect(() => {
     if (state?.success) onDone?.();
@@ -30,6 +34,8 @@ export default function HrEmployeeForm({
       {employee && <input type="hidden" name="id" value={employee.id} />}
       <input type="hidden" name="store_id" value={storeId} />
       <input type="hidden" name="position" value={position} />
+      <input type="hidden" name="hire_date" value={hireDate} />
+      <input type="hidden" name="health_cert_renewed_at" value={healthCertDate} />
 
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         이름
@@ -67,26 +73,15 @@ export default function HrEmployeeForm({
         </div>
       </div>
 
-      <label className="flex flex-col gap-1.5 text-sm font-medium">
-        입사일자
-        <input
-          type="date"
-          name="hire_date"
-          required
-          defaultValue={employee?.hire_date}
-          className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none ring-brand/30 focus:ring-2"
-        />
-      </label>
+      <SingleDatePicker label="입사일자" date={hireDate} onChange={setHireDate} />
 
-      <label className="flex flex-col gap-1.5 text-sm font-medium">
-        보건증 갱신일자 <span className="font-normal text-muted">(선택)</span>
-        <input
-          type="date"
-          name="health_cert_renewed_at"
-          defaultValue={employee?.health_cert_renewed_at ?? ""}
-          className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none ring-brand/30 focus:ring-2"
-        />
-      </label>
+      <SingleDatePicker
+        label="보건증 갱신일자 (선택)"
+        date={healthCertDate}
+        onChange={setHealthCertDate}
+        allowClear
+        placeholder="선택 안 함"
+      />
 
       {state?.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{state.error}</p>
