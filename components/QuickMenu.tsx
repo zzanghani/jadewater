@@ -34,7 +34,7 @@ export default function QuickMenu({
       ? [...TEAM_ITEMS, HR_ITEM]
       : TEAM_ITEMS
     : isMaster
-      ? ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href))
+      ? [...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), HR_ITEM]
       : ALL_ITEMS;
 
   return (
