@@ -49,9 +49,11 @@ export default async function AppLayout({
   if (isTeamAccount) {
     const pathname = (await headers()).get("x-pathname") ?? "";
     const isHrTeam = profile?.department === "rnd" || profile?.department === "ops";
+    const isRnd = profile?.department === "rnd";
     const allowed =
       TEAM_ALLOWED_PREFIXES.some((p) => (p === "/" ? pathname === "/" : pathname.startsWith(p))) ||
-      (isHrTeam && pathname.startsWith("/hr"));
+      (isHrTeam && pathname.startsWith("/hr")) ||
+      (isRnd && pathname.startsWith("/inventory"));
     if (!allowed) {
       redirect("/");
     }
@@ -97,7 +99,7 @@ export default async function AppLayout({
             <LogoutButton />
           </div>
         </div>
-        {!isTeamAccount && <StoreSwitcher stores={stores} current={storeId} />}
+        <StoreSwitcher stores={stores} current={storeId} />
       </header>
 
       {/* 하단 내비는 iOS Safari의 sticky bottom 버그를 피하려고 fixed로

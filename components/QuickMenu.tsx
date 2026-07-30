@@ -19,20 +19,25 @@ const TEAM_ITEMS = [
 ] as const;
 
 const HR_ITEM = { href: "/hr", label: "HR", icon: HrIcon } as const;
+const INVENTORY_ITEM = { href: "/inventory", label: "재고관리", icon: BoxIcon } as const;
 
 export default function QuickMenu({
   isMaster = false,
   teamOnly = false,
   showHr = false,
+  showInventory = false,
 }: {
   isMaster?: boolean;
   teamOnly?: boolean;
   showHr?: boolean;
+  showInventory?: boolean;
 }) {
   const items = teamOnly
-    ? showHr
-      ? [...TEAM_ITEMS, HR_ITEM]
-      : TEAM_ITEMS
+    ? [
+        ...TEAM_ITEMS,
+        ...(showHr ? [HR_ITEM] : []),
+        ...(showInventory ? [INVENTORY_ITEM] : []),
+      ]
     : isMaster
       ? [...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), HR_ITEM]
       : ALL_ITEMS;
