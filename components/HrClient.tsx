@@ -38,6 +38,7 @@ export default function HrClient({
   const [selectedStoreId, setSelectedStoreId] = useState(stores[0]?.id ?? "");
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"roster" | "review">("roster");
 
   const employees = employeesByStore[selectedStoreId] ?? [];
 
@@ -81,7 +82,40 @@ export default function HrClient({
         </label>
       )}
 
-      {!showAddForm && (
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab("roster")}
+          className={`flex flex-col items-center gap-2 rounded-2xl border px-2 py-3 text-center transition-colors ${
+            activeTab === "roster" ? "border-brand bg-brand/10" : "border-border bg-card"
+          }`}
+        >
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-light text-brand">
+            <PeopleIcon />
+          </span>
+          <span className="text-[11px] font-medium leading-tight text-foreground">HR</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("review")}
+          className={`flex flex-col items-center gap-2 rounded-2xl border px-2 py-3 text-center transition-colors ${
+            activeTab === "review" ? "border-brand bg-brand/10" : "border-border bg-card"
+          }`}
+        >
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-light text-brand">
+            <ReviewIcon />
+          </span>
+          <span className="text-[11px] font-medium leading-tight text-foreground">인사평가</span>
+        </button>
+      </div>
+
+      {activeTab === "review" && (
+        <p className="rounded-2xl border border-border bg-card p-4 text-sm text-muted">
+          준비 중인 기능입니다. 자료 정리되는 대로 반영될 예정이에요.
+        </p>
+      )}
+
+      {activeTab === "roster" && !showAddForm && (
         <button
           type="button"
           onClick={() => setShowAddForm(true)}
@@ -91,11 +125,11 @@ export default function HrClient({
         </button>
       )}
 
-      {showAddForm && (
+      {activeTab === "roster" && showAddForm && (
         <HrEmployeeForm storeId={selectedStoreId} onDone={() => setShowAddForm(false)} />
       )}
 
-      {employees.length === 0 ? (
+      {activeTab === "roster" && (employees.length === 0 ? (
         <p className="text-sm text-muted">등록된 직원이 없습니다.</p>
       ) : (
         <ul className="flex flex-col gap-2">
@@ -169,7 +203,26 @@ export default function HrClient({
             );
           })}
         </ul>
-      )}
+      ))}
     </div>
+  );
+}
+
+function PeopleIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+      <path d="M17 8h4M19 6v4" />
+    </svg>
+  );
+}
+
+function ReviewIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z" />
+      <path d="m9 11 2 2 4-4" />
+    </svg>
   );
 }
