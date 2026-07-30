@@ -46,27 +46,39 @@ export default function HrClient({
       <h1 className="text-lg font-bold">HR</h1>
 
       {stores.length > 1 && (
-        <div className="flex flex-wrap gap-1.5">
-          {stores.map((store) => {
-            const isActive = store.id === selectedStoreId;
-            return (
-              <button
-                key={store.id}
-                onClick={() => {
-                  setSelectedStoreId(store.id);
-                  setShowAddForm(false);
-                  setEditingId(null);
-                }}
-                style={isActive ? { background: store.color, borderColor: store.color } : undefined}
-                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                  isActive ? "text-white" : "border-border bg-card text-muted"
-                }`}
-              >
+        <label className="relative flex items-center">
+          <span className="pointer-events-none absolute left-3 text-xs font-medium text-muted">
+            매장
+          </span>
+          <select
+            value={selectedStoreId}
+            onChange={(e) => {
+              setSelectedStoreId(e.target.value);
+              setShowAddForm(false);
+              setEditingId(null);
+            }}
+            className="w-full appearance-none rounded-xl border border-border bg-card py-2.5 pl-12 pr-8 text-sm font-semibold text-foreground outline-none ring-brand/30 focus:ring-2"
+          >
+            {stores.map((store) => (
+              <option key={store.id} value={store.id}>
                 {store.name}
-              </button>
-            );
-          })}
-        </div>
+              </option>
+            ))}
+          </select>
+          <svg
+            className="pointer-events-none absolute right-3 text-muted"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </label>
       )}
 
       {!showAddForm && (
