@@ -20,7 +20,7 @@ export default function HrEmployeeForm({
   const [state, formAction, pending] = useActionState<HrFormState, FormData>(action, undefined);
   const [position, setPosition] = useState<ScheduleRole>(employee?.position ?? SCHEDULE_ROLES[0]);
   const [hireDate, setHireDate] = useState(employee?.hire_date ?? kstDateString(0));
-  const [healthCertDate, setHealthCertDate] = useState(employee?.health_cert_renewed_at ?? "");
+  const [healthCertDate, setHealthCertDate] = useState(employee?.health_cert_issued_at ?? "");
 
   useEffect(() => {
     if (state?.success) onDone?.();
@@ -35,7 +35,7 @@ export default function HrEmployeeForm({
       <input type="hidden" name="store_id" value={storeId} />
       <input type="hidden" name="position" value={position} />
       <input type="hidden" name="hire_date" value={hireDate} />
-      <input type="hidden" name="health_cert_renewed_at" value={healthCertDate} />
+      <input type="hidden" name="health_cert_issued_at" value={healthCertDate} />
 
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         이름
@@ -76,7 +76,7 @@ export default function HrEmployeeForm({
       <SingleDatePicker label="입사일자" date={hireDate} onChange={setHireDate} />
 
       <SingleDatePicker
-        label="보건증 갱신일자 (선택)"
+        label="보건증 발급일자 (선택)"
         date={healthCertDate}
         onChange={setHealthCertDate}
         allowClear

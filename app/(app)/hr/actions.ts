@@ -22,7 +22,7 @@ export async function createEmployee(
   const name = String(formData.get("name") ?? "").trim();
   const positionRaw = String(formData.get("position") ?? "");
   const hireDate = String(formData.get("hire_date") ?? "");
-  const healthCertRenewedAt = String(formData.get("health_cert_renewed_at") ?? "").trim();
+  const healthCertIssuedAt = String(formData.get("health_cert_issued_at") ?? "").trim();
 
   if (!storeId) return { error: "매장을 선택해 주세요." };
   if (!name) return { error: "이름을 입력해 주세요." };
@@ -36,7 +36,7 @@ export async function createEmployee(
     name,
     position: positionRaw as ScheduleRole,
     hire_date: hireDate,
-    health_cert_renewed_at: healthCertRenewedAt || null,
+    health_cert_issued_at: healthCertIssuedAt || null,
     created_by: user.id,
   });
 
@@ -62,7 +62,7 @@ export async function updateEmployee(
   const name = String(formData.get("name") ?? "").trim();
   const positionRaw = String(formData.get("position") ?? "");
   const hireDate = String(formData.get("hire_date") ?? "");
-  const healthCertRenewedAt = String(formData.get("health_cert_renewed_at") ?? "").trim();
+  const healthCertIssuedAt = String(formData.get("health_cert_issued_at") ?? "").trim();
 
   if (!id) return { error: "잘못된 요청입니다." };
   if (!name) return { error: "이름을 입력해 주세요." };
@@ -77,7 +77,7 @@ export async function updateEmployee(
       name,
       position: positionRaw as ScheduleRole,
       hire_date: hireDate,
-      health_cert_renewed_at: healthCertRenewedAt || null,
+      health_cert_issued_at: healthCertIssuedAt || null,
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     })

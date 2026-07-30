@@ -146,7 +146,7 @@ export default function HrClient({
               );
             }
 
-            const certStatus = healthCertStatus(emp.health_cert_renewed_at);
+            const certStatus = healthCertStatus(emp.health_cert_issued_at);
             const certBadge = HEALTH_CERT_BADGE[certStatus];
 
             return (
@@ -188,7 +188,7 @@ export default function HrClient({
                   <span>입사일 {emp.hire_date}</span>
                   <span>근속 {tenureLabel(emp.hire_date)}</span>
                   <span className="flex items-center gap-1">
-                    보건증 {emp.health_cert_renewed_at ?? "-"}
+                    보건증 발급 {emp.health_cert_issued_at ?? "-"}
                     {certBadge && (
                       <span
                         className={`rounded-full px-1.5 py-0.5 font-semibold ${certBadge.className ?? ""}`}

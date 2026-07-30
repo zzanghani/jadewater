@@ -44,14 +44,14 @@ export function tenureLabel(hireDate: string): string {
   return `${years}년 ${restMonths}개월`;
 }
 
-// 보건증 갱신일 기준 상태. 보건증은 마지막 갱신일로부터 1년(365일)마다 다시
-// 갱신해야 해서, 그 만료일까지 남은 일수를 기준으로 3단계 경고를 매긴다.
+// 보건증 발급일 기준 상태. 보건증은 발급일로부터 1년(365일) 동안만 유효해서,
+// 그 만료일까지 남은 일수를 기준으로 3단계 경고를 매긴다.
 // (만료일이 지난 경우도 d15와 동일하게 가장 강한 경고로 취급한다.)
 export type HealthCertStatus = "none" | "ok" | "d45" | "d30" | "d15";
 
-export function healthCertStatus(renewedAt: string | null): HealthCertStatus {
-  if (!renewedAt) return "none";
-  const elapsedDays = daysSinceKST(`${renewedAt}T00:00:00`);
+export function healthCertStatus(issuedAt: string | null): HealthCertStatus {
+  if (!issuedAt) return "none";
+  const elapsedDays = daysSinceKST(`${issuedAt}T00:00:00`);
   const daysUntilDue = 365 - elapsedDays;
   if (daysUntilDue <= 15) return "d15";
   if (daysUntilDue <= 30) return "d30";

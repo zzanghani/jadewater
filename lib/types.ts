@@ -323,7 +323,7 @@ export type Employee = {
   name: string
   position: ScheduleRole
   hire_date: string
-  health_cert_renewed_at: string | null
+  health_cert_issued_at: string | null
   created_by: string
   updated_by: string | null
   created_at: string
