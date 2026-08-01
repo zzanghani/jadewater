@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getStoreContext } from "@/lib/store";
 import BoardAttachmentList from "@/components/BoardAttachmentList";
 import BoardCommentForm from "@/components/BoardCommentForm";
-import BoardTaskCheckboxes from "@/components/BoardTaskCheckboxes";
+import BoardPostHeader from "@/components/BoardPostHeader";
 import { daysSinceKST, kstDateTimeLabel as dateTimeLabel } from "@/lib/date";
 
 export default async function BoardPostPage({
@@ -14,12 +15,18 @@ export default async function BoardPostPage({
   const { postId } = await params;
   const supabase = await createClient();
 
-  const [{ data: post }, { data: { user } }] = await Promise.all([
+  const [{ data: post }, { data: { user } }, { stores }] = await Promise.all([
     supabase.from("board_posts").select("*").eq("id", postId).single(),
     supabase.auth.getUser(),
+    getStoreContext(supabase),
   ]);
 
   if (!post) notFound();
+
+  const { data: viewerProfile } = user
+    ? await supabase.from("profiles").select("department").eq("id", user.id).single()
+    : { data: null };
+  const isMaster = stores.length > 1 && !viewerProfile?.department;
 
   const { data: comments } = await supabase
     .from("board_comments")
@@ -98,28 +105,19 @@ export default async function BoardPostPage({
       </Link>
 
       <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <span className="inline-block rounded-full bg-brand-light px-2.5 py-0.5 text-[11px] font-semibold text-brand">
-              {post.category}
-            </span>
-            <h1 className="mt-1.5 text-lg font-bold">{post.title}</h1>
-            <p className="mt-1 text-xs text-muted">
-              {nameById.get(post.created_by) ?? "알 수 없음"} · {dateTimeLabel(post.created_at)}
-            </p>
-          </div>
-          {followers.length > 0 && (
-            <BoardTaskCheckboxes
-              postId={post.id}
-              requesterConfirmed={post.requester_confirmed}
-              requesterName={nameById.get(post.created_by) ?? "알 수 없음"}
-              canConfirmRequester={user?.id === post.created_by}
-              followers={followers}
-              currentUserId={user?.id}
-            />
-          )}
-        </div>
-        <p className="whitespace-pre-wrap text-sm text-foreground">{post.body}</p>
+        <BoardPostHeader
+          postId={post.id}
+          category={post.category}
+          title={post.title}
+          body={post.body}
+          authorLabel={`${nameById.get(post.created_by) ?? "알 수 없음"} · ${dateTimeLabel(post.created_at)}`}
+          isMaster={isMaster}
+          followers={followers}
+          requesterConfirmed={post.requester_confirmed}
+          requesterName={nameById.get(post.created_by) ?? "알 수 없음"}
+          canConfirmRequester={user?.id === post.created_by}
+          currentUserId={user?.id}
+        />
         <BoardAttachmentList attachments={postAttachmentRows} />
 
         {followers.length > 0 && !post.completed_at && daysSinceKST(post.created_at) >= 3 && (

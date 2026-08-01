@@ -13,6 +13,19 @@ const BOARD_CATEGORIES: BoardCategory[] = ["공지사항", "마케팅", "운영H
 
 export type BoardFormState = { error?: string } | undefined;
 
+// stores.length > 1만 보면 본사 팀 계정(department 있음)도 전 매장이 보여서
+// 마스터로 오판된다. department가 없어야 진짜 마스터.
+async function isMasterAccount(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+): Promise<boolean> {
+  const [{ stores }, { data: profile }] = await Promise.all([
+    getStoreContext(supabase),
+    supabase.from("profiles").select("department").eq("id", userId).single(),
+  ]);
+  return stores.length > 1 && !profile?.department;
+}
+
 async function uploadAttachments(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
@@ -62,6 +75,10 @@ export async function createBoardPost(
 
   const category = categoryRaw as BoardCategory;
 
+  if (category === NOTICE && !(await isMasterAccount(supabase, user.id))) {
+    return { error: "공지사항은 마스터 계정만 등록할 수 있습니다." };
+  }
+
   const { data: inserted, error } = await supabase
     .from("board_posts")
     .insert({ category, title, body, created_by: user.id })
@@ -106,8 +123,8 @@ export async function createBoardPost(
       );
     }
 
-    // 공지사항은 누가 등록하든(마스터·본사 팀 계정 모두) 개별 Follower 지정
-    // 여부와 상관없이 전 계정에 알림을 보낸다.
+    // 공지사항(마스터 계정 전용)은 개별 Follower 지정 여부와 상관없이
+    // 전 계정에 알림을 보낸다.
     if (category === NOTICE) {
       const { data: allProfiles } = await supabase.from("profiles").select("id");
       const targets = (allProfiles ?? [])
@@ -129,6 +146,44 @@ export async function createBoardPost(
   }
 
   redirect(`/board/${inserted.id}`);
+}
+
+// 제목/내용 수정. 마스터 계정만 할 수 있다(카테고리·첨부파일·Follower는 그대로 둔다).
+export async function updateBoardPost(
+  _prevState: BoardFormState,
+  formData: FormData
+): Promise<BoardFormState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "로그인이 필요합니다." };
+
+  const postId = String(formData.get("post_id") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+
+  if (!postId) return { error: "잘못된 요청입니다." };
+  if (!title) return { error: "제목을 입력해 주세요." };
+  if (!body) return { error: "내용을 입력해 주세요." };
+
+  if (!(await isMasterAccount(supabase, user.id))) {
+    return { error: "수정은 마스터 계정만 할 수 있습니다." };
+  }
+
+  const { error } = await supabase
+    .from("board_posts")
+    .update({ title, body })
+    .eq("id", postId);
+
+  if (error) {
+    return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+  }
+
+  revalidatePath(`/board/${postId}`);
+  revalidatePath("/board");
+  redirect(`/board/${postId}`);
 }
 
 export async function createBoardComment(
@@ -358,8 +413,7 @@ export async function archiveBoardPostAction(postId: string): Promise<ArchiveSta
   } = await supabase.auth.getUser();
   if (!user) return { error: "로그인이 필요합니다." };
 
-  const { stores } = await getStoreContext(supabase);
-  if (stores.length <= 1) {
+  if (!(await isMasterAccount(supabase, user.id))) {
     return { error: "마스터 계정만 보관할 수 있습니다." };
   }
 

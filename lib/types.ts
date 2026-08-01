@@ -554,7 +554,7 @@ export type Database = {
           body: string
           created_by: string
         }
-        Update: Partial<Pick<BoardPost, "requester_confirmed" | "completed_at">>
+        Update: Partial<Pick<BoardPost, "requester_confirmed" | "completed_at" | "title" | "body">>
         Relationships: []
       }
       board_post_followers: {

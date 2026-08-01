@@ -12,9 +12,11 @@ type Profile = { id: string; name: string };
 export default function BoardPostForm({
   profiles,
   defaultCategory,
+  isMaster,
 }: {
   profiles: Profile[];
   defaultCategory: BoardCategory;
+  isMaster: boolean;
 }) {
   const [state, formAction, pending] = useActionState<BoardFormState, FormData>(
     createBoardPost,
@@ -45,17 +47,19 @@ export default function BoardPostForm({
       <div className="flex flex-col gap-1.5 text-sm font-medium">
         카테고리
         <input type="hidden" name="category" value={category} />
-        <button
-          type="button"
-          onClick={() => setCategory(NOTICE)}
-          className={`rounded-xl py-2 text-center text-xs font-semibold transition-colors ${
-            category === NOTICE
-              ? "bg-brand text-white shadow-sm"
-              : "border border-border bg-card text-muted"
-          }`}
-        >
-          공지사항
-        </button>
+        {isMaster && (
+          <button
+            type="button"
+            onClick={() => setCategory(NOTICE)}
+            className={`rounded-xl py-2 text-center text-xs font-semibold transition-colors ${
+              category === NOTICE
+                ? "bg-brand text-white shadow-sm"
+                : "border border-border bg-card text-muted"
+            }`}
+          >
+            공지사항
+          </button>
+        )}
         <div className="grid grid-cols-4 gap-2">
           {WORK_CATEGORIES.map((c) => (
             <button
