@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { deletePlanComment, togglePlanFollowerConfirm } from "@/app/(app)/plan/actions";
+import { kstDateTimeLabel as dateTimeLabel } from "@/lib/date";
 import MonthlyPlanCommentForm from "@/components/MonthlyPlanCommentForm";
 import BoardAttachmentList from "@/components/BoardAttachmentList";
 
@@ -21,13 +22,6 @@ export type PlanFollower = {
   name: string;
   confirmed: boolean;
 };
-
-function dateTimeLabel(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(
-    d.getMinutes()
-  ).padStart(2, "0")}`;
-}
 
 export default function MonthlyPlanDetail({
   planId,

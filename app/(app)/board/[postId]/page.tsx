@@ -4,14 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import BoardAttachmentList from "@/components/BoardAttachmentList";
 import BoardCommentForm from "@/components/BoardCommentForm";
 import BoardTaskCheckboxes from "@/components/BoardTaskCheckboxes";
-import { daysSinceKST } from "@/lib/date";
-
-function dateTimeLabel(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(
-    d.getMinutes()
-  ).padStart(2, "0")}`;
-}
+import { daysSinceKST, kstDateTimeLabel as dateTimeLabel } from "@/lib/date";
 
 export default async function BoardPostPage({
   params,

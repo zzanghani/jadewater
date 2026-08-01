@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
-import { daysSinceKST } from "@/lib/date";
+import { daysSinceKST, kstDateTimeLabel } from "@/lib/date";
 import BoardArchiveButton from "@/components/BoardArchiveButton";
 import BoardTopTabs from "@/components/BoardTopTabs";
 import { NOTICE, WORK_CATEGORIES, ALL_CATEGORIES } from "@/lib/board";
@@ -16,8 +16,7 @@ function timeAgoLabel(iso: string): string {
   if (hours < 24) return `${hours}시간 전`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}일 전`;
-  const d = new Date(iso);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
+  return kstDateTimeLabel(iso).split(" ")[0];
 }
 
 export default async function BoardPage({

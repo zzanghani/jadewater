@@ -12,6 +12,30 @@ const KST_LABEL_FORMAT = new Intl.DateTimeFormat("ko-KR", {
   weekday: "short",
 });
 
+const KST_TIME_ONLY_FORMAT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Seoul",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+// 서버(Vercel/Node)는 보통 UTC로 돌아서, new Date(iso).getHours() 같은 로컬
+// getter를 그대로 쓰면 서버 컴포넌트에서만 시간이 9시간 밀려 보이는 문제가
+// 있었다(클라이언트 컴포넌트는 방문자 기기 시간대라 KST라 문제 없음). 항상
+// Asia/Seoul 기준으로 "M/D HH:MM" 라벨을 만들어서 서버/클라이언트 어디서
+// 불러도 같은 결과가 나오게 한다.
+export function kstDateTimeLabel(iso: string): string {
+  const d = new Date(iso);
+  const [, m, day] = KST_DATE_FORMAT.format(d).split("-");
+  return `${Number(m)}/${Number(day)} ${KST_TIME_ONLY_FORMAT.format(d)}`;
+}
+
+// 구글드라이브 백업 파일명 등에 쓰는 "YYYY-MM-DD HH:MM" 전체 형식.
+export function kstDateTimeFullLabel(iso: string): string {
+  const d = new Date(iso);
+  return `${KST_DATE_FORMAT.format(d)} ${KST_TIME_ONLY_FORMAT.format(d)}`;
+}
+
 // 한국 표준시(KST, UTC+9) 기준 오늘부터 n일 전 날짜를 'YYYY-MM-DD'로 반환.
 // KST는 DST가 없으므로 UTC ms에서 24h * n을 빼는 것만으로 정확한 달력 날짜가 나온다.
 export function kstDateString(daysAgo = 0): string {

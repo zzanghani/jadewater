@@ -1,16 +1,7 @@
 import { findOrCreateFolder, uploadFileToDrive, uploadTextAsPdf } from "@/lib/googleDrive";
 import { formatWon } from "@/lib/format";
+import { kstDateTimeFullLabel as dateTimeLabel } from "@/lib/date";
 import type { createClient } from "@/lib/supabase/server";
-
-function dateTimeLabel(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(
-    2,
-    "0"
-  )}`;
-}
 
 // 현장지출을 저장할 때마다 호출된다. 입금요청 보관과 달리 Supabase 원본은
 // 지우지 않고, 구글드라이브에 내역 PDF + 영수증 사진 사본만 자동으로 남긴다.
