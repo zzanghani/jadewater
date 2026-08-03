@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatWon } from "@/lib/format";
-import { kstDateString, kstShortDateLabel, kstWeekdayShortLabel, last7DaysKST } from "@/lib/date";
+import { kstDateString, kstShortDateLabel, kstWeekdayShortLabel, last7DaysKST, monthRangeKST } from "@/lib/date";
 import { getStoreContext } from "@/lib/store";
 
 function sum(values: number[]) {
@@ -109,20 +109,22 @@ export default async function CostPage() {
   const { storeId } = await getStoreContext(supabase);
   const today = kstDateString(0);
   const days = last7DaysKST();
+  const monthStart = monthRangeKST(0).start;
 
-  const [{ data: todayReceipts }, { data: todayClosing }, { data: rangeReceipts }, { data: rangeClosings }] =
+  const [{ data: monthReceipts }, { data: monthClosings }, { data: rangeReceipts }, { data: rangeClosings }] =
     await Promise.all([
       supabase
         .from("receipts")
         .select("amount, category")
         .eq("store_id", storeId)
-        .eq("date", today),
+        .gte("date", monthStart)
+        .lte("date", today),
       supabase
         .from("daily_closings")
         .select("food_sales, beverage_sales")
         .eq("store_id", storeId)
-        .eq("date", today)
-        .maybeSingle(),
+        .gte("date", monthStart)
+        .lte("date", today),
       supabase
         .from("receipts")
         .select("date, amount, category")
@@ -137,18 +139,19 @@ export default async function CostPage() {
         .lte("date", days[6]),
     ]);
 
-  const todayFoodCost = sum(
-    (todayReceipts ?? [])
+  // "실시간누적" = 이번달 1일부터 오늘까지 누적된 입고/매출 총액 기준.
+  const monthFoodCost = sum(
+    (monthReceipts ?? [])
       .filter((r) => r.category === "식재료")
       .map((r) => r.amount)
   );
-  const todayBeverageCost = sum(
-    (todayReceipts ?? [])
+  const monthBeverageCost = sum(
+    (monthReceipts ?? [])
       .filter((r) => r.category === "음료재료")
       .map((r) => r.amount)
   );
-  const todayFoodSales = todayClosing?.food_sales ?? 0;
-  const todayBeverageSales = todayClosing?.beverage_sales ?? 0;
+  const monthFoodSales = sum((monthClosings ?? []).map((c) => c.food_sales));
+  const monthBeverageSales = sum((monthClosings ?? []).map((c) => c.beverage_sales));
 
   // 일자별로 그날의 입고·매출만 따로 모아서, 주 단위로 뭉뚱그리지 않고
   // 하루하루의 코스트율을 그대로 보여준다.
@@ -190,11 +193,11 @@ export default async function CostPage() {
         <h2 className="text-sm font-semibold text-foreground">푸드코스트</h2>
         <CostCard
           title="실시간누적"
-          pct={costPercent(todayFoodCost, todayFoodSales)}
+          pct={costPercent(monthFoodCost, monthFoodSales)}
           costLabel="입고"
-          cost={todayFoodCost}
+          cost={monthFoodCost}
           revenueLabel="매출"
-          revenue={todayFoodSales}
+          revenue={monthFoodSales}
         />
         <DailyCostList title="최근 7일" rows={foodDailyRows} />
       </section>
@@ -203,11 +206,11 @@ export default async function CostPage() {
         <h2 className="text-sm font-semibold text-foreground">음료코스트</h2>
         <CostCard
           title="실시간누적"
-          pct={costPercent(todayBeverageCost, todayBeverageSales)}
+          pct={costPercent(monthBeverageCost, monthBeverageSales)}
           costLabel="입고"
-          cost={todayBeverageCost}
+          cost={monthBeverageCost}
           revenueLabel="매출"
-          revenue={todayBeverageSales}
+          revenue={monthBeverageSales}
         />
         <DailyCostList title="최근 7일" rows={beverageDailyRows} />
       </section>
