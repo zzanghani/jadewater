@@ -189,7 +189,7 @@ export default async function CostPage() {
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-foreground">푸드코스트</h2>
         <CostCard
-          title="오늘"
+          title="실시간누적"
           pct={costPercent(todayFoodCost, todayFoodSales)}
           costLabel="입고"
           cost={todayFoodCost}
@@ -202,7 +202,7 @@ export default async function CostPage() {
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-foreground">음료코스트</h2>
         <CostCard
-          title="오늘"
+          title="실시간누적"
           pct={costPercent(todayBeverageCost, todayBeverageSales)}
           costLabel="입고"
           cost={todayBeverageCost}
