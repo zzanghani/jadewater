@@ -20,12 +20,14 @@ export default function SingleDatePicker({
   onChange,
   allowClear = false,
   placeholder = "날짜를 선택하세요",
+  maxDate,
 }: {
   label: string;
   date: string;
   onChange: (date: string) => void;
   allowClear?: boolean;
   placeholder?: string;
+  maxDate?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState((date || kstDateString(0)).slice(0, 7));
@@ -100,13 +102,17 @@ export default function SingleDatePicker({
                 if (!d) return <div key={`blank-${idx}`} />;
                 const isSelected = d === date;
                 const isToday = d === today;
+                const isDisabled = maxDate ? d > maxDate : false;
                 return (
                   <button
                     key={d}
                     type="button"
+                    disabled={isDisabled}
                     onClick={() => pickDate(d)}
                     className={`rounded-lg py-2 text-xs font-semibold transition-colors ${
-                      isSelected
+                      isDisabled
+                        ? "text-border"
+                        : isSelected
                         ? "bg-brand text-white"
                         : isToday
                         ? "bg-brand-light text-brand"

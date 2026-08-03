@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveReceipt } from "@/app/(app)/receipts/actions";
 import { kstDateString } from "@/lib/date";
+import SingleDatePicker from "@/components/SingleDatePicker";
 import type { Receipt, ReceiptCategory } from "@/lib/types";
 
 const CATEGORIES: ReceiptCategory[] = ["식재료", "음료재료", "소모품", "기타"];
@@ -24,6 +25,7 @@ export default function ReceiptForm({
     existing?.amount ? String(existing.amount) : ""
   );
   const [resetKey, setResetKey] = useState(0);
+  const [date, setDate] = useState(existing?.date ?? kstDateString(0));
   const isEditing = Boolean(existing);
 
   // 신규 등록 성공 시 다음 항목을 바로 입력할 수 있도록 폼을 비우고,
@@ -36,6 +38,7 @@ export default function ReceiptForm({
     }
     setAmountRaw("");
     setCategory("식재료");
+    setDate(kstDateString(0));
     setResetKey((k) => k + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
@@ -44,18 +47,9 @@ export default function ReceiptForm({
     <form key={resetKey} action={formAction} className="flex flex-col gap-3">
       <input type="hidden" name="store_id" value={storeId} />
       {existing && <input type="hidden" name="id" value={existing.id} />}
+      <input type="hidden" name="date" value={date} />
 
-      <label className="flex flex-col gap-1.5 text-sm font-medium">
-        날짜
-        <input
-          type="date"
-          name="date"
-          required
-          defaultValue={existing?.date ?? kstDateString(0)}
-          max={kstDateString(0)}
-          className="rounded-xl border border-border bg-card px-4 py-3 outline-none ring-brand/30 focus:ring-2"
-        />
-      </label>
+      <SingleDatePicker label="날짜" date={date} onChange={setDate} maxDate={kstDateString(0)} />
 
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         거래처명
