@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatWon } from "@/lib/format";
-import { kstDateString, weekDatesKST } from "@/lib/date";
+import { kstDateString, kstShortDateLabel, kstWeekdayShortLabel, last7DaysKST } from "@/lib/date";
 import { getStoreContext } from "@/lib/store";
 
 function sum(values: number[]) {
@@ -71,13 +71,46 @@ function CostCard({
   );
 }
 
+function DailyCostList({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: { date: string; pct: number | null }[];
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <p className="mb-2 text-xs font-medium text-muted">{title}</p>
+      <ul className="flex flex-col divide-y divide-border">
+        {rows.map((r) => {
+          const c = costColorClasses(r.pct);
+          const isToday = r.date === kstDateString(0);
+          return (
+            <li
+              key={r.date}
+              className="flex items-center justify-between py-2 text-sm"
+            >
+              <span className={isToday ? "font-semibold text-foreground" : "text-muted"}>
+                {kstShortDateLabel(r.date)}({kstWeekdayShortLabel(r.date)}){isToday ? " · 오늘" : ""}
+              </span>
+              <span className={`font-bold ${c.text}`}>
+                {r.pct === null ? "-" : `${r.pct.toFixed(1)}%`}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 export default async function CostPage() {
   const supabase = await createClient();
   const { storeId } = await getStoreContext(supabase);
   const today = kstDateString(0);
-  const thisWeek = weekDatesKST(0);
+  const days = last7DaysKST();
 
-  const [{ data: todayReceipts }, { data: todayClosing }, { data: weekReceipts }, { data: weekClosings }] =
+  const [{ data: todayReceipts }, { data: todayClosing }, { data: rangeReceipts }, { data: rangeClosings }] =
     await Promise.all([
       supabase
         .from("receipts")
@@ -92,16 +125,16 @@ export default async function CostPage() {
         .maybeSingle(),
       supabase
         .from("receipts")
-        .select("amount, category")
+        .select("date, amount, category")
         .eq("store_id", storeId)
-        .gte("date", thisWeek[0])
-        .lte("date", thisWeek[6]),
+        .gte("date", days[0])
+        .lte("date", days[6]),
       supabase
         .from("daily_closings")
-        .select("food_sales, beverage_sales")
+        .select("date, food_sales, beverage_sales")
         .eq("store_id", storeId)
-        .gte("date", thisWeek[0])
-        .lte("date", thisWeek[6]),
+        .gte("date", days[0])
+        .lte("date", days[6]),
     ]);
 
   const todayFoodCost = sum(
@@ -117,20 +150,32 @@ export default async function CostPage() {
   const todayFoodSales = todayClosing?.food_sales ?? 0;
   const todayBeverageSales = todayClosing?.beverage_sales ?? 0;
 
-  const weekFoodCost = sum(
-    (weekReceipts ?? [])
-      .filter((r) => r.category === "식재료")
-      .map((r) => r.amount)
-  );
-  const weekBeverageCost = sum(
-    (weekReceipts ?? [])
-      .filter((r) => r.category === "음료재료")
-      .map((r) => r.amount)
-  );
-  const weekFoodSales = sum((weekClosings ?? []).map((s) => s.food_sales));
-  const weekBeverageSales = sum(
-    (weekClosings ?? []).map((s) => s.beverage_sales)
-  );
+  // 일자별로 그날의 입고·매출만 따로 모아서, 주 단위로 뭉뚱그리지 않고
+  // 하루하루의 코스트율을 그대로 보여준다.
+  const foodCostByDate = new Map<string, number>();
+  const beverageCostByDate = new Map<string, number>();
+  for (const r of rangeReceipts ?? []) {
+    if (r.category === "식재료") {
+      foodCostByDate.set(r.date, (foodCostByDate.get(r.date) ?? 0) + r.amount);
+    } else if (r.category === "음료재료") {
+      beverageCostByDate.set(r.date, (beverageCostByDate.get(r.date) ?? 0) + r.amount);
+    }
+  }
+  const foodSalesByDate = new Map<string, number>();
+  const beverageSalesByDate = new Map<string, number>();
+  for (const c of rangeClosings ?? []) {
+    foodSalesByDate.set(c.date, c.food_sales);
+    beverageSalesByDate.set(c.date, c.beverage_sales);
+  }
+
+  const foodDailyRows = days.map((date) => ({
+    date,
+    pct: costPercent(foodCostByDate.get(date) ?? 0, foodSalesByDate.get(date) ?? 0),
+  }));
+  const beverageDailyRows = days.map((date) => ({
+    date,
+    pct: costPercent(beverageCostByDate.get(date) ?? 0, beverageSalesByDate.get(date) ?? 0),
+  }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -143,46 +188,28 @@ export default async function CostPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-foreground">푸드코스트</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <CostCard
-            title="오늘"
-            pct={costPercent(todayFoodCost, todayFoodSales)}
-            costLabel="입고"
-            cost={todayFoodCost}
-            revenueLabel="매출"
-            revenue={todayFoodSales}
-          />
-          <CostCard
-            title="이번주 평균"
-            pct={costPercent(weekFoodCost, weekFoodSales)}
-            costLabel="입고"
-            cost={weekFoodCost}
-            revenueLabel="매출"
-            revenue={weekFoodSales}
-          />
-        </div>
+        <CostCard
+          title="오늘"
+          pct={costPercent(todayFoodCost, todayFoodSales)}
+          costLabel="입고"
+          cost={todayFoodCost}
+          revenueLabel="매출"
+          revenue={todayFoodSales}
+        />
+        <DailyCostList title="최근 7일" rows={foodDailyRows} />
       </section>
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-foreground">음료코스트</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <CostCard
-            title="오늘"
-            pct={costPercent(todayBeverageCost, todayBeverageSales)}
-            costLabel="입고"
-            cost={todayBeverageCost}
-            revenueLabel="매출"
-            revenue={todayBeverageSales}
-          />
-          <CostCard
-            title="이번주 평균"
-            pct={costPercent(weekBeverageCost, weekBeverageSales)}
-            costLabel="입고"
-            cost={weekBeverageCost}
-            revenueLabel="매출"
-            revenue={weekBeverageSales}
-          />
-        </div>
+        <CostCard
+          title="오늘"
+          pct={costPercent(todayBeverageCost, todayBeverageSales)}
+          costLabel="입고"
+          cost={todayBeverageCost}
+          revenueLabel="매출"
+          revenue={todayBeverageSales}
+        />
+        <DailyCostList title="최근 7일" rows={beverageDailyRows} />
       </section>
     </div>
   );
