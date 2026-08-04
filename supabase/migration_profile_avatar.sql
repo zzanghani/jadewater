@@ -29,3 +29,18 @@ create policy "avatars_delete_own"
   on storage.objects for delete
   to authenticated
   using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- SELECT 정책이 빠지면 upload()가 내부적으로 하는 기존 파일 존재 확인이
+-- 막혀서 "Bucket not found"라는 헷갈리는 오류로 실패한다 (board 버킷에는
+-- 이미 board_files_select_authenticated가 있어서 문제가 없었다).
+create policy "avatars_select_authenticated"
+  on storage.objects for select
+  to authenticated
+  using (bucket_id = 'avatars');
+
+-- storage.buckets 자체에도 RLS가 걸려 있어, 이 정책이 없으면 클라이언트가
+-- "avatars" 버킷의 존재 자체를 못 본다.
+create policy "avatars_bucket_visible"
+  on storage.buckets for select
+  to authenticated
+  using (id = 'avatars');
