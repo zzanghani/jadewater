@@ -4,6 +4,8 @@ import { getStoreContext } from "@/lib/store";
 import { daysSinceKST, kstDateTimeLabel } from "@/lib/date";
 import BoardArchiveButton from "@/components/BoardArchiveButton";
 import BoardTopTabs from "@/components/BoardTopTabs";
+import Avatar from "@/components/Avatar";
+import { fetchAvatarUrlById } from "@/lib/avatar";
 import { NOTICE, WORK_CATEGORIES, ALL_CATEGORIES } from "@/lib/board";
 import type { BoardCategory } from "@/lib/types";
 
@@ -60,10 +62,12 @@ export default async function BoardPage({
     ]),
   ];
 
-  const { data: profiles } =
+  const [{ data: profiles }, avatarById] = await Promise.all([
     authorIds.length > 0
-      ? await supabase.from("profiles").select("id, name").in("id", authorIds)
-      : { data: [] as { id: string; name: string }[] };
+      ? supabase.from("profiles").select("id, name").in("id", authorIds)
+      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+    fetchAvatarUrlById(supabase, authorIds),
+  ]);
 
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name]));
   const commentCountByPost = new Map<string, number>();
@@ -144,6 +148,11 @@ export default async function BoardPage({
                 <p className="truncate text-sm font-semibold">{post.title}</p>
                 <p className="line-clamp-2 text-xs text-muted">{post.body}</p>
                 <div className="mt-1 flex items-center gap-2 text-[11px] text-muted">
+                  <Avatar
+                    name={nameById.get(post.created_by) ?? "?"}
+                    avatarUrl={avatarById.get(post.created_by)}
+                    size={16}
+                  />
                   <span>{nameById.get(post.created_by) ?? "알 수 없음"}</span>
                   <span>·</span>
                   <span>{timeAgoLabel(post.created_at)}</span>

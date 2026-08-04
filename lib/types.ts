@@ -16,6 +16,7 @@ export type Profile = {
   role: Role
   store_id: string | null
   department: Department | null
+  avatar_path: string | null
   created_at: string
 }
 

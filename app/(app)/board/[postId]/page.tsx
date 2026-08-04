@@ -5,6 +5,8 @@ import { getStoreContext } from "@/lib/store";
 import BoardAttachmentList from "@/components/BoardAttachmentList";
 import BoardCommentForm from "@/components/BoardCommentForm";
 import BoardPostHeader from "@/components/BoardPostHeader";
+import Avatar from "@/components/Avatar";
+import { fetchAvatarUrlById } from "@/lib/avatar";
 import { daysSinceKST, kstDateTimeLabel as dateTimeLabel } from "@/lib/date";
 
 export default async function BoardPostPage({
@@ -49,7 +51,7 @@ export default async function BoardPostPage({
     ),
   ];
 
-  const [{ data: profiles }, { data: postAttachments }, { data: commentAttachments }, { data: allProfiles }] =
+  const [{ data: profiles }, { data: postAttachments }, { data: commentAttachments }, { data: allProfiles }, avatarById] =
     await Promise.all([
       supabase.from("profiles").select("id, name").in("id", authorIds),
       supabase.from("board_attachments").select("*").eq("post_id", postId),
@@ -57,6 +59,7 @@ export default async function BoardPostPage({
         ? supabase.from("board_attachments").select("*").in("comment_id", commentIds)
         : Promise.resolve({ data: [] as { id: string; comment_id: string | null; storage_path: string; file_name: string }[] }),
       supabase.from("profiles").select("id, name"),
+      fetchAvatarUrlById(supabase, authorIds),
     ]);
 
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name]));
@@ -111,6 +114,7 @@ export default async function BoardPostPage({
           title={post.title}
           body={post.body}
           authorLabel={`${nameById.get(post.created_by) ?? "알 수 없음"} · ${dateTimeLabel(post.created_at)}`}
+          authorAvatarUrl={avatarById.get(post.created_by)}
           isMaster={isMaster}
           followers={followers}
           requesterConfirmed={post.requester_confirmed}
@@ -136,9 +140,14 @@ export default async function BoardPostPage({
           <ul className="flex flex-col gap-3">
             {commentRows.map((c) => (
               <li key={c.id} className="flex flex-col gap-1.5 rounded-2xl border border-border bg-card p-3">
-                <p className="text-xs font-semibold text-foreground">
+                <p className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  <Avatar
+                    name={nameById.get(c.created_by) ?? "?"}
+                    avatarUrl={avatarById.get(c.created_by)}
+                    size={18}
+                  />
                   {nameById.get(c.created_by) ?? "알 수 없음"}
-                  <span className="ml-2 font-normal text-muted">{dateTimeLabel(c.created_at)}</span>
+                  <span className="ml-1 font-normal text-muted">{dateTimeLabel(c.created_at)}</span>
                 </p>
                 <p className="whitespace-pre-wrap text-sm text-foreground">{c.body}</p>
                 <BoardAttachmentList attachments={commentAttachmentsByCommentId.get(c.id) ?? []} />

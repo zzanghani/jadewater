@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { updateBoardPost, type BoardFormState } from "@/app/(app)/board/actions";
 import BoardTaskCheckboxes from "@/components/BoardTaskCheckboxes";
+import Avatar from "@/components/Avatar";
 
 type Follower = { userId: string; name: string; confirmed: boolean };
 
@@ -12,6 +13,7 @@ export default function BoardPostHeader({
   title,
   body,
   authorLabel,
+  authorAvatarUrl,
   isMaster,
   followers,
   requesterConfirmed,
@@ -24,6 +26,7 @@ export default function BoardPostHeader({
   title: string;
   body: string;
   authorLabel: string;
+  authorAvatarUrl?: string | null;
   isMaster: boolean;
   followers: Follower[];
   requesterConfirmed: boolean;
@@ -100,7 +103,10 @@ export default function BoardPostHeader({
             )}
           </div>
           <h1 className="mt-1.5 text-lg font-bold">{title}</h1>
-          <p className="mt-1 text-xs text-muted">{authorLabel}</p>
+          <p className="mt-1 flex items-center gap-1.5 text-xs text-muted">
+            <Avatar name={requesterName} avatarUrl={authorAvatarUrl} size={16} />
+            {authorLabel}
+          </p>
         </div>
         {followers.length > 0 && (
           <BoardTaskCheckboxes

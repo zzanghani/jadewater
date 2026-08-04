@@ -5,6 +5,7 @@ import { deletePlanComment, togglePlanFollowerConfirm } from "@/app/(app)/plan/a
 import { kstDateTimeLabel as dateTimeLabel } from "@/lib/date";
 import MonthlyPlanCommentForm from "@/components/MonthlyPlanCommentForm";
 import BoardAttachmentList from "@/components/BoardAttachmentList";
+import Avatar from "@/components/Avatar";
 
 type Attachment = { id: string; file_name: string; url?: string };
 
@@ -14,6 +15,7 @@ export type PlanComment = {
   created_by: string;
   created_at: string;
   authorName: string;
+  authorAvatarUrl?: string | null;
   attachments: Attachment[];
 };
 
@@ -79,7 +81,10 @@ export default function MonthlyPlanDetail({
           {comments.map((c) => (
             <div key={c.id} className="flex flex-col gap-1.5 rounded-lg border border-border bg-card p-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-foreground">{c.authorName}</span>
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  <Avatar name={c.authorName} avatarUrl={c.authorAvatarUrl} size={16} />
+                  {c.authorName}
+                </span>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-muted">{dateTimeLabel(c.created_at)}</span>
                   {c.created_by === currentUserId && (

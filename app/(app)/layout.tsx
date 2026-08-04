@@ -10,12 +10,14 @@ import LogoutButton from "@/components/LogoutButton";
 import StoreSwitcher from "@/components/StoreSwitcher";
 import LayoutModeToggle from "@/components/LayoutModeToggle";
 import PullToRefresh from "@/components/PullToRefresh";
+import Avatar from "@/components/Avatar";
+import { fetchAvatarUrlById } from "@/lib/avatar";
 
 // 매장 운영/재무 화면에는 접근을 주지 않는 본사 팀 계정(디자인/마케팅/운영/R&D)이
 // 다른 경로로 직접 들어와도 여기서 걸러진다. 실제 데이터 차단은 RLS
 // (user_can_access_store_ops)가 하고, 이건 어색한 빈 화면 대신 깔끔하게
 // 홈으로 돌려보내는 UX용 가드다.
-const TEAM_ALLOWED_PREFIXES = ["/", "/board", "/weekly-report", "/expense", "/review-report", "/payment"];
+const TEAM_ALLOWED_PREFIXES = ["/", "/board", "/weekly-report", "/expense", "/review-report", "/payment", "/profile"];
 
 export default async function AppLayout({
   children,
@@ -36,9 +38,10 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  const [{ data: profile }, storeContext] = await Promise.all([
+  const [{ data: profile }, storeContext, myAvatarById] = await Promise.all([
     supabase.from("profiles").select("name, department").eq("id", user.id).single(),
     getStoreContext(supabase),
+    fetchAvatarUrlById(supabase, [user.id]),
   ]);
   const { storeId, stores } = storeContext;
   const isTeamAccount = !!profile?.department;
@@ -97,9 +100,12 @@ export default async function AppLayout({
             )}
           </Link>
           <div className="flex items-center gap-2">
-            <div className="text-right leading-tight">
-              <p className="text-sm font-semibold">{name}님</p>
-            </div>
+            <Link href="/profile" className="flex items-center gap-1.5">
+              <div className="text-right leading-tight">
+                <p className="text-sm font-semibold">{name}님</p>
+              </div>
+              <Avatar name={name} avatarUrl={myAvatarById.get(user.id)} size={28} />
+            </Link>
             <LayoutModeToggle desktopMode={desktopMode} />
             <LogoutButton />
           </div>

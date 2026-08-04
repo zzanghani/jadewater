@@ -17,6 +17,7 @@ import type { PlanComment, PlanFollower } from "@/components/MonthlyPlanDetail";
 import PushSubscribeButton from "@/components/PushSubscribeButton";
 import { getStoreContext } from "@/lib/store";
 import { storeColor } from "@/lib/storeColors";
+import { avatarPublicUrl } from "@/lib/avatar";
 import type { DailyClosing } from "@/lib/types";
 
 function sumByStore(rows: { store_id: string; grand_total: number }[] | null) {
@@ -123,14 +124,20 @@ if (isHq) {
     const commentRows = comments ?? [];
     const commentIds = commentRows.map((c) => c.id);
 
-    const [{ data: attachments }, { data: profiles }] = await Promise.all([
+    const [{ data: attachments }, { data: profiles }, { data: avatarProfiles }] = await Promise.all([
       commentIds.length > 0
         ? supabase.from("monthly_plan_attachments").select("*").in("comment_id", commentIds)
         : Promise.resolve({ data: [] as { id: string; comment_id: string; storage_path: string; file_name: string }[] }),
       supabase.from("profiles").select("id, name"),
+      // avatar_path는 name과 별도 쿼리로 조회한다. 같은 select에 묶으면 마이그레이션
+      // 전 환경에서는 쿼리 전체가 실패해서 이름 표시까지 깨진다.
+      supabase.from("profiles").select("id, avatar_path"),
     ]);
 
     const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name]));
+    const avatarById = new Map(
+      (avatarProfiles ?? []).map((p) => [p.id, avatarPublicUrl(p.avatar_path)])
+    );
 
     const signedUrlByPath = new Map<string, string>();
     if ((attachments ?? []).length > 0) {
@@ -161,6 +168,7 @@ if (isHq) {
         created_by: c.created_by,
         created_at: c.created_at,
         authorName: nameById.get(c.created_by) ?? "알 수 없음",
+        authorAvatarUrl: avatarById.get(c.created_by),
         attachments: attachmentsByComment.get(c.id) ?? [],
       });
       commentsByPlan[c.plan_id] = list;
