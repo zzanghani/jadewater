@@ -47,7 +47,7 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <div
           className={`mx-auto flex w-full flex-1 flex-col ${
-            desktopMode ? "max-w-3xl" : "max-w-md"
+            desktopMode ? "max-w-none" : "max-w-md"
           }`}
         >
           {children}
