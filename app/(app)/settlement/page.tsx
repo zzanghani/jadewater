@@ -110,6 +110,7 @@ export default async function SettlementPage({
       </div>
 
       <SettlementForm
+        key={`${storeId}-${start}`}
         storeId={storeId}
         storeName={storeName}
         month={start}
