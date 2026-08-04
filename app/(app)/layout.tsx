@@ -77,7 +77,7 @@ export default async function AppLayout({
     >
       <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="flex items-center justify-between px-4 py-3">
-          <Link href="/">
+          <Link href="/" className="cursor-pointer">
             {isBestmateHq ? (
               <Image
                 src="/bestmate-logo.png"
