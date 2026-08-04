@@ -91,7 +91,8 @@ export default function SettlementForm({
 
   const totalSales = autoSales.totalSales;
 
-  const laborTotal = sum(laborItems.map((i) => i.amount));
+  // 공제총액(4대보험 등)도 매장이 실제 지출하는 인건비이므로 급여에 더해 합산한다.
+  const laborTotal = sum(laborItems.map((i) => i.amount + (i.deduction ?? 0)));
   const utilityTotal = sum(utilityItems.map((i) => i.amount));
   const hqFeeTotal = sum(hqFeeItems.map((i) => i.amount));
 
@@ -576,7 +577,7 @@ function ItemListEditor<
             )}
             {item.amount > 0 && (
               <p className="pr-9 text-right text-[11px] text-muted">
-                항목 합계 대비 {formatPercent(item.amount, total)}
+                항목 합계 대비 {formatPercent(item.amount + (item.deduction ?? 0), total)}
               </p>
             )}
           </div>
@@ -902,18 +903,21 @@ const SettlementReport = forwardRef<HTMLDivElement, ReportProps>(function Settle
         {laborItems.length === 0 ? (
           <p className="text-xs text-muted">내역 없음</p>
         ) : (
-          laborItems.map((i) => (
-            <ReportRow
-              key={i.key}
-              label={
-                i.deduction
-                  ? `${i.name} (${i.type}, 공제 ${formatWon(i.deduction)})`
-                  : `${i.name} (${i.type})`
-              }
-              value={i.amount}
-              percent={formatPercent(i.amount, laborTotal)}
-            />
-          ))
+          laborItems.map((i) => {
+            const itemTotal = i.amount + (i.deduction ?? 0);
+            return (
+              <ReportRow
+                key={i.key}
+                label={
+                  i.deduction
+                    ? `${i.name} (${i.type}, 공제 ${formatWon(i.deduction)})`
+                    : `${i.name} (${i.type})`
+                }
+                value={itemTotal}
+                percent={formatPercent(itemTotal, laborTotal)}
+              />
+            );
+          })
         )}
       </ReportSection>
 
