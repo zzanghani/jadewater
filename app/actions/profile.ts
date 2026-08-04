@@ -42,7 +42,13 @@ export async function updateAvatar(
       `[updateAvatar] 업로드 실패 (user_id=${user.id}, path=${path})`,
       uploadError
     );
-    return { error: `사진 업로드 중 오류가 발생했습니다. (${uploadError.message})` };
+    const projectRef = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(
+      /^https?:\/\/([^.]+)\..*$/,
+      "$1"
+    );
+    return {
+      error: `사진 업로드 중 오류가 발생했습니다. (${uploadError.message}, 프로젝트: ${projectRef})`,
+    };
   }
 
   const { data: existing } = await supabase
