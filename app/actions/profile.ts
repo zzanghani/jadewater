@@ -38,6 +38,10 @@ export async function updateAvatar(
     .from("avatars")
     .upload(path, photo, { contentType: photo.type || "image/jpeg" });
   if (uploadError) {
+    console.error(
+      `[updateAvatar] 업로드 실패 (user_id=${user.id}, path=${path})`,
+      uploadError
+    );
     return { error: "사진 업로드 중 오류가 발생했습니다." };
   }
 
