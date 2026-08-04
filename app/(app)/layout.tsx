@@ -1,12 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
+import { LAYOUT_MODE_COOKIE, isDesktopMode } from "@/lib/layoutMode";
 import BottomNav from "@/components/BottomNav";
 import LogoutButton from "@/components/LogoutButton";
 import StoreSwitcher from "@/components/StoreSwitcher";
+import LayoutModeToggle from "@/components/LayoutModeToggle";
 import PullToRefresh from "@/components/PullToRefresh";
 
 // 매장 운영/재무 화면에는 접근을 주지 않는 본사 팀 계정(디자인/마케팅/운영/R&D)이
@@ -65,6 +67,8 @@ export default async function AppLayout({
       ? "제이드앤워터대표"
       : profile?.name ?? user.email?.split("@")[0] ?? "사용자";
 
+  const desktopMode = isDesktopMode((await cookies()).get(LAYOUT_MODE_COOKIE)?.value);
+
   return (
     <div
       className={`flex w-full flex-1 flex-col bg-background ${
@@ -96,6 +100,7 @@ export default async function AppLayout({
             <div className="text-right leading-tight">
               <p className="text-sm font-semibold">{name}님</p>
             </div>
+            <LayoutModeToggle desktopMode={desktopMode} />
             <LogoutButton />
           </div>
         </div>
