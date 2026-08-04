@@ -77,6 +77,7 @@ export async function savePaymentRequest(
     .single();
 
   if (error || !inserted) {
+    console.error("[savePaymentRequest] Supabase insert 실패", error);
     return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
