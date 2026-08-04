@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { updateAvatar } from "@/app/actions/profile";
 import Avatar from "@/components/Avatar";
 
@@ -13,6 +13,10 @@ export default function AvatarUploadForm({
 }) {
   const [state, formAction, pending] = useActionState(updateAvatar, undefined);
   const [preview, setPreview] = useState<string | null>(null);
+  // 모바일에서 저장 버튼이 겹눌림(더블탭)되면 두 번째 제출은 파일 없이
+  // 나가서 "사진을 선택해 주세요" 오류가 뜬다. state 업데이트를 기다리지
+  // 않고 즉시 막기 위해 ref로 막는다.
+  const submittingRef = useRef(false);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -20,8 +24,23 @@ export default function AvatarUploadForm({
     setPreview(URL.createObjectURL(file));
   }
 
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (submittingRef.current) {
+      e.preventDefault();
+      return;
+    }
+    submittingRef.current = true;
+    setTimeout(() => {
+      submittingRef.current = false;
+    }, 2000);
+  }
+
   return (
-    <form action={formAction} className="flex flex-col items-center gap-4">
+    <form
+      action={formAction}
+      onSubmit={handleSubmit}
+      className="flex flex-col items-center gap-4"
+    >
       <Avatar name={name} avatarUrl={preview ?? avatarUrl} size={88} />
 
       <label className="cursor-pointer rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground">
