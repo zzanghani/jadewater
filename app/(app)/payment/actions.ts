@@ -192,14 +192,24 @@ export async function completePaymentRequest(id: string): Promise<void> {
 
 async function notifyStoreOfCompletion(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  updated: { store_id: string | null; vendor_name: string; amount: number }
+  updated: {
+    store_id: string | null;
+    created_by: string;
+    vendor_name: string;
+    amount: number;
+  }
 ) {
-  if (!updated.store_id) return;
-
-  const { data: subs } = await supabase
-    .from("push_subscriptions")
-    .select("*")
-    .eq("store_id", updated.store_id);
+  // 본사 팀 계정(디자인/마케팅/운영/RnD) 요청은 매장이 없으므로, 매장 구독자
+  // 대신 요청을 올린 본인에게 바로 알린다.
+  const { data: subs } = updated.store_id
+    ? await supabase
+        .from("push_subscriptions")
+        .select("*")
+        .eq("store_id", updated.store_id)
+    : await supabase
+        .from("push_subscriptions")
+        .select("*")
+        .eq("user_id", updated.created_by);
 
   console.log(
     `[completePaymentRequest] store_id=${updated.store_id} 구독 ${subs?.length ?? 0}건 발견`
