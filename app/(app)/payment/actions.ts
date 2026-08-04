@@ -7,7 +7,8 @@ import { formatWon } from "@/lib/format";
 import { sendPush } from "@/lib/webpush";
 import { archivePaymentRequestToDrive } from "@/lib/paymentArchive";
 import { archiveFieldExpenseToDrive } from "@/lib/fieldExpenseArchive";
-import type { FieldExpenseCategory, FieldExpensePaymentMethod } from "@/lib/types";
+import { DEPARTMENT_LABELS } from "@/lib/types";
+import type { Department, FieldExpenseCategory, FieldExpensePaymentMethod } from "@/lib/types";
 
 export type PaymentFormState = { error?: string; success?: boolean } | undefined;
 
@@ -36,13 +37,22 @@ export async function savePaymentRequest(
     return { error: "로그인이 필요합니다." };
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("department")
+    .eq("id", user.id)
+    .maybeSingle();
+  const department = profile?.department ?? null;
+
   const storeId = String(formData.get("store_id") ?? "");
   const vendorName = String(formData.get("vendor_name") ?? "").trim();
   const amount = Number(formData.get("amount") ?? 0);
   const bankName = String(formData.get("bank_name") ?? "").trim() || null;
   const accountNumber = String(formData.get("account_number") ?? "").trim() || null;
 
-  if (!storeId) {
+  // 본사 팀 계정(디자인/마케팅/운영/RnD)의 요청은 매장이 아니라 부서 소속으로
+  // 기록한다 — 특정 지점에 속하지 않기 때문에 지점 선택을 요구하지 않는다.
+  if (!department && !storeId) {
     return { error: "매장을 선택해 주세요." };
   }
   if (!vendorName) {
@@ -55,7 +65,8 @@ export async function savePaymentRequest(
   const { data: inserted, error } = await supabase
     .from("payment_requests")
     .insert({
-      store_id: storeId,
+      store_id: department ? null : storeId,
+      department,
       vendor_name: vendorName,
       amount,
       bank_name: bankName,
@@ -84,7 +95,12 @@ export async function savePaymentRequest(
 
 async function notifyMasterOfNewRequest(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  inserted: { store_id: string; vendor_name: string; amount: number }
+  inserted: {
+    store_id: string | null;
+    department: Department | null;
+    vendor_name: string;
+    amount: number;
+  }
 ) {
   const { data: subs } = await supabase
     .from("push_subscriptions")
@@ -97,15 +113,21 @@ async function notifyMasterOfNewRequest(
 
   if (!subs?.length) return;
 
-  const { data: store } = await supabase
-    .from("stores")
-    .select("name")
-    .eq("id", inserted.store_id)
-    .single();
+  let sourceLabel = "매장";
+  if (inserted.department) {
+    sourceLabel = DEPARTMENT_LABELS[inserted.department];
+  } else if (inserted.store_id) {
+    const { data: store } = await supabase
+      .from("stores")
+      .select("name")
+      .eq("id", inserted.store_id)
+      .single();
+    sourceLabel = store?.name ?? "매장";
+  }
 
   const payload = {
     title: "새 입금요청",
-    body: `${store?.name ?? "매장"} · ${inserted.vendor_name} · ${formatWon(inserted.amount)} 입금요청이 등록됐습니다.`,
+    body: `${sourceLabel} · ${inserted.vendor_name} · ${formatWon(inserted.amount)} 입금요청이 등록됐습니다.`,
     url: "/payment?tab=confirm",
   };
 
@@ -169,8 +191,10 @@ export async function completePaymentRequest(id: string): Promise<void> {
 
 async function notifyStoreOfCompletion(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  updated: { store_id: string; vendor_name: string; amount: number }
+  updated: { store_id: string | null; vendor_name: string; amount: number }
 ) {
+  if (!updated.store_id) return;
+
   const { data: subs } = await supabase
     .from("push_subscriptions")
     .select("*")

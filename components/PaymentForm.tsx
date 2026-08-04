@@ -2,14 +2,17 @@
 
 import { useActionState, useState } from "react";
 import { savePaymentRequest } from "@/app/(app)/payment/actions";
-import type { Store } from "@/lib/types";
+import { DEPARTMENT_LABELS } from "@/lib/types";
+import type { Department, Store } from "@/lib/types";
 
 export default function PaymentForm({
   storeId,
   stores,
+  department,
 }: {
   storeId: string;
   stores: Store[];
+  department?: Department | null;
 }) {
   const [state, formAction, pending] = useActionState(
     savePaymentRequest,
@@ -23,8 +26,12 @@ export default function PaymentForm({
   return (
     <form action={formAction} className="flex flex-col gap-3">
       <label className="flex flex-col gap-1.5 text-sm font-medium">
-        지점
-        {stores.length > 1 ? (
+        {department ? "요청 부서" : "지점"}
+        {department ? (
+          <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground">
+            {DEPARTMENT_LABELS[department]}
+          </div>
+        ) : stores.length > 1 ? (
           <select
             name="store_id"
             defaultValue={storeId}

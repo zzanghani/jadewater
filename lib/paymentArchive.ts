@@ -1,6 +1,7 @@
 import { findOrCreateFolder, uploadTextAsPdf } from "@/lib/googleDrive";
 import { formatWon } from "@/lib/format";
 import { kstDateTimeFullLabel as dateTimeLabel } from "@/lib/date";
+import { DEPARTMENT_LABELS } from "@/lib/types";
 import type { createClient } from "@/lib/supabase/server";
 
 export async function archivePaymentRequestToDrive(
@@ -15,12 +16,17 @@ export async function archivePaymentRequestToDrive(
   if (error || !request) throw new Error("입금요청을 찾을 수 없습니다.");
 
   const [{ data: store }, { data: requester }] = await Promise.all([
-    supabase.from("stores").select("name").eq("id", request.store_id).single(),
+    request.store_id
+      ? supabase.from("stores").select("name").eq("id", request.store_id).single()
+      : Promise.resolve({ data: null }),
     supabase.from("profiles").select("name").eq("id", request.created_by).single(),
   ]);
-  const storeName = store?.name ?? "알 수 없는 매장";
+  // 본사 팀 계정 요청은 매장이 아니라 부서 단위로 폴더를 나눈다.
+  const storeName = request.department
+    ? DEPARTMENT_LABELS[request.department]
+    : store?.name ?? "알 수 없는 매장";
 
-  // 매장별 폴더 하나를 계속 재사용한다.
+  // 매장(또는 부서)별 폴더 하나를 계속 재사용한다.
   const rootParentId = process.env.GOOGLE_DRIVE_ARCHIVE_FOLDER_ID || "root";
   const storeFolderId = await findOrCreateFolder(storeName, rootParentId);
 

@@ -2,6 +2,13 @@ export type Role = 'owner' | 'staff'
 
 export type Department = 'design' | 'marketing' | 'ops' | 'rnd'
 
+export const DEPARTMENT_LABELS: Record<Department, string> = {
+  design: '디자인',
+  marketing: '마케팅',
+  ops: '운영',
+  rnd: 'RnD',
+}
+
 export type Profile = {
   id: string
   email: string
@@ -65,7 +72,8 @@ type DailyClosingGenerated =
 
 export type PaymentRequest = {
   id: string
-  store_id: string
+  store_id: string | null
+  department: Department | null
   vendor_name: string
   amount: number
   bank_name: string | null
@@ -403,7 +411,6 @@ export type Database = {
       payment_requests: {
         Row: PaymentRequest
         Insert: Partial<PaymentRequest> & {
-          store_id: string
           vendor_name: string
           amount: number
           created_by: string

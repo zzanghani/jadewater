@@ -4,7 +4,8 @@ import { getStoreContext } from "@/lib/store";
 import PaymentForm from "@/components/PaymentForm";
 import PaymentRequestList from "@/components/PaymentRequestList";
 import PushSubscribeButton from "@/components/PushSubscribeButton";
-import type { Store } from "@/lib/types";
+import { DEPARTMENT_LABELS } from "@/lib/types";
+import type { Department, Store } from "@/lib/types";
 
 type Tab = "request" | "confirm";
 
@@ -26,12 +27,14 @@ export default async function PaymentPage({
   const {
     data: { session },
   } = await supabase.auth.getSession();
+  const userId = session?.user.id ?? "";
   const { data: profile } = await supabase
     .from("profiles")
     .select("department")
-    .eq("id", session?.user.id ?? "")
+    .eq("id", userId)
     .maybeSingle();
-  const isTeamAccount = !!profile?.department;
+  const department = profile?.department ?? null;
+  const isTeamAccount = !!department;
   const isMaster = stores.length > 1 && !isTeamAccount;
 
   // 마스터 계정은 각 매장이 올린 현장지출/입금요청을 직접 등록할 일이 없으므로
@@ -40,7 +43,14 @@ export default async function PaymentPage({
   if (isMaster) {
     return (
       <div className="flex flex-col gap-6">
-        <ConfirmTab storeId={storeId} stores={stores} isMaster={isMaster} showDone={showDone} />
+        <ConfirmTab
+          storeId={storeId}
+          stores={stores}
+          isMaster={isMaster}
+          isTeamAccount={isTeamAccount}
+          userId={userId}
+          showDone={showDone}
+        />
       </div>
     );
   }
@@ -68,10 +78,17 @@ export default async function PaymentPage({
       </div>
 
       {tab === "request" && (
-        <RequestTab storeId={storeId} stores={stores} />
+        <RequestTab storeId={storeId} stores={stores} department={department} />
       )}
       {tab === "confirm" && (
-        <ConfirmTab storeId={storeId} stores={stores} isMaster={isMaster} showDone={showDone} />
+        <ConfirmTab
+          storeId={storeId}
+          stores={stores}
+          isMaster={isMaster}
+          isTeamAccount={isTeamAccount}
+          userId={userId}
+          showDone={showDone}
+        />
       )}
     </div>
   );
@@ -80,14 +97,16 @@ export default async function PaymentPage({
 async function RequestTab({
   storeId,
   stores,
+  department,
 }: {
   storeId: string;
   stores: Store[];
+  department: Department | null;
 }) {
   return (
     <section>
       <h1 className="mb-3 text-lg font-bold">입금요청</h1>
-      <PaymentForm storeId={storeId} stores={stores} />
+      <PaymentForm storeId={storeId} stores={stores} department={department} />
     </section>
   );
 }
@@ -96,11 +115,15 @@ async function ConfirmTab({
   storeId,
   stores,
   isMaster,
+  isTeamAccount,
+  userId,
   showDone,
 }: {
   storeId: string;
   stores: Store[];
   isMaster: boolean;
+  isTeamAccount: boolean;
+  userId: string;
   showDone: boolean;
 }) {
   const supabase = await createClient();
@@ -112,32 +135,22 @@ async function ConfirmTab({
 
   query = showDone ? query.not("completed_at", "is", null) : query.is("completed_at", null);
 
-  if (!isMaster) {
+  // 본사 팀 계정은 매장 소속이 아니므로 "내가 올린 요청"만, 지점 계정은
+  // 자기 매장 요청만, 마스터는 전체를 본다.
+  if (isTeamAccount) {
+    query = query.eq("created_by", userId);
+  } else if (!isMaster) {
     query = query.eq("store_id", storeId);
   }
 
   const { data: history } = await query.limit(50);
 
-  // 본사 팀 계정이 올린 요청은 마스터 화면에서 파란 글씨로 구분해 보여준다.
-  const creatorIds = Array.from(
-    new Set((history ?? []).map((r) => r.created_by).filter(Boolean))
-  );
-  let teamCreatorIds = new Set<string>();
-  if (isMaster && creatorIds.length > 0) {
-    const { data: creators } = await supabase
-      .from("profiles")
-      .select("id, department")
-      .in("id", creatorIds);
-    teamCreatorIds = new Set(
-      (creators ?? []).filter((p) => p.department).map((p) => p.id)
-    );
-  }
-
   const storeNameById = new Map(stores.map((s) => [s.id, s.name]));
   const rows = (history ?? []).map((r) => ({
     ...r,
-    storeName: storeNameById.get(r.store_id),
-    isTeamRequest: teamCreatorIds.has(r.created_by),
+    storeName: r.store_id ? storeNameById.get(r.store_id) : undefined,
+    isTeamRequest: !!r.department,
+    teamDepartmentLabel: r.department ? DEPARTMENT_LABELS[r.department] : undefined,
   }));
 
   const tabQuery = isMaster ? "" : "&tab=confirm";

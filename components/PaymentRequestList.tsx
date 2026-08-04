@@ -9,7 +9,11 @@ import { storeColorSoft } from "@/lib/storeColors";
 import PaymentArchiveButton from "@/components/PaymentArchiveButton";
 import type { PaymentRequest } from "@/lib/types";
 
-type Row = PaymentRequest & { storeName?: string; isTeamRequest?: boolean };
+type Row = PaymentRequest & {
+  storeName?: string;
+  isTeamRequest?: boolean;
+  teamDepartmentLabel?: string;
+};
 
 function kstDateParts(iso: string) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -81,13 +85,20 @@ export default function PaymentRequestList({
                 onClick={() => setSelected(r)}
                 className="min-w-0 flex-1 text-left"
               >
-                {isMaster && r.storeName && (
-                  <p
-                    className="mb-0.5 text-[11px] font-semibold"
-                    style={{ color: storeColorSoft(r.storeName) }}
-                  >
-                    {r.storeName}
+                {isMaster && r.isTeamRequest && r.teamDepartmentLabel ? (
+                  <p className="mb-0.5 text-[11px] font-semibold text-blue-600">
+                    {r.teamDepartmentLabel}
                   </p>
+                ) : (
+                  isMaster &&
+                  r.storeName && (
+                    <p
+                      className="mb-0.5 text-[11px] font-semibold"
+                      style={{ color: storeColorSoft(r.storeName) }}
+                    >
+                      {r.storeName}
+                    </p>
+                  )
                 )}
                 <p
                   className={`truncate text-sm font-semibold ${
@@ -147,13 +158,20 @@ export default function PaymentRequestList({
               </button>
             </div>
 
-            {isMaster && selected.storeName && (
-              <p
-                className="text-sm font-semibold"
-                style={{ color: storeColorSoft(selected.storeName) }}
-              >
-                {selected.storeName}
+            {isMaster && selected.isTeamRequest && selected.teamDepartmentLabel ? (
+              <p className="text-sm font-semibold text-blue-600">
+                {selected.teamDepartmentLabel}
               </p>
+            ) : (
+              isMaster &&
+              selected.storeName && (
+                <p
+                  className="text-sm font-semibold"
+                  style={{ color: storeColorSoft(selected.storeName) }}
+                >
+                  {selected.storeName}
+                </p>
+              )
             )}
 
             <div className="flex flex-col gap-2 text-sm">
