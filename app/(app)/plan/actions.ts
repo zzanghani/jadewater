@@ -19,6 +19,8 @@ export async function createMonthlyPlan(
   const description = String(formData.get("description") ?? "").trim();
   const startDate = String(formData.get("start_date") ?? "");
   const endDate = String(formData.get("end_date") ?? "");
+  const startTime = String(formData.get("start_time") ?? "").trim();
+  const endTime = String(formData.get("end_time") ?? "").trim();
   const color = String(formData.get("color") ?? "#2f7a63");
   const planType = formData.get("plan_type") === "vacation" ? "vacation" : "task";
   const followerIds = [...new Set(formData.getAll("follower_ids").map(String))];
@@ -35,6 +37,8 @@ export async function createMonthlyPlan(
       plan_type: planType,
       start_date: startDate,
       end_date: endDate,
+      start_time: startTime || null,
+      end_time: endTime || null,
       color,
       created_by: user.id,
     })
@@ -48,6 +52,61 @@ export async function createMonthlyPlan(
       .from("monthly_plan_followers")
       .insert(followerIds.map((userId) => ({ plan_id: inserted.id, user_id: userId })));
   }
+
+  revalidatePath("/");
+  return { success: true };
+}
+
+// 제목/내용/기간/시간/색상 수정. 작성자 본인만 할 수 있다(RLS에서도 동일하게 막음).
+export async function updateMonthlyPlan(
+  _prevState: PlanFormState,
+  formData: FormData
+): Promise<PlanFormState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "로그인이 필요합니다." };
+
+  const id = String(formData.get("id") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const startDate = String(formData.get("start_date") ?? "");
+  const endDate = String(formData.get("end_date") ?? "");
+  const startTime = String(formData.get("start_time") ?? "").trim();
+  const endTime = String(formData.get("end_time") ?? "").trim();
+  const color = String(formData.get("color") ?? "#2f7a63");
+  const planType = formData.get("plan_type") === "vacation" ? "vacation" : "task";
+
+  if (!id) return { error: "잘못된 요청입니다." };
+  if (!title) return { error: "제목을 입력해 주세요." };
+  if (!startDate || !endDate) return { error: "기간을 선택해 주세요." };
+  if (endDate < startDate) return { error: "종료일이 시작일보다 빠를 수 없습니다." };
+
+  const { data: plan } = await supabase
+    .from("monthly_plans")
+    .select("created_by")
+    .eq("id", id)
+    .single();
+  if (!plan || plan.created_by !== user.id) {
+    return { error: "작성자만 수정할 수 있습니다." };
+  }
+
+  const { error } = await supabase
+    .from("monthly_plans")
+    .update({
+      title,
+      description: description || null,
+      plan_type: planType,
+      start_date: startDate,
+      end_date: endDate,
+      start_time: startTime || null,
+      end_time: endTime || null,
+      color,
+    })
+    .eq("id", id);
+
+  if (error) return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
 
   revalidatePath("/");
   return { success: true };
