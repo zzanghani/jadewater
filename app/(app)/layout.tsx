@@ -15,7 +15,7 @@ import PullToRefresh from "@/components/PullToRefresh";
 // 다른 경로로 직접 들어와도 여기서 걸러진다. 실제 데이터 차단은 RLS
 // (user_can_access_store_ops)가 하고, 이건 어색한 빈 화면 대신 깔끔하게
 // 홈으로 돌려보내는 UX용 가드다.
-const TEAM_ALLOWED_PREFIXES = ["/", "/board", "/weekly-report", "/expense", "/review-report"];
+const TEAM_ALLOWED_PREFIXES = ["/", "/board", "/weekly-report", "/expense", "/review-report", "/payment"];
 
 export default async function AppLayout({
   children,

@@ -23,7 +23,8 @@ export default function StoreSwitcher({
   const showsStoreSwitcher =
     pathname.startsWith("/settlement") ||
     pathname.startsWith("/inventory") ||
-    pathname.startsWith("/cost");
+    pathname.startsWith("/cost") ||
+    pathname.startsWith("/payment");
   if (stores.length > 1 && !showsStoreSwitcher) {
     return null;
   }

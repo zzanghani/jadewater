@@ -9,7 +9,7 @@ import { storeColorSoft } from "@/lib/storeColors";
 import PaymentArchiveButton from "@/components/PaymentArchiveButton";
 import type { PaymentRequest } from "@/lib/types";
 
-type Row = PaymentRequest & { storeName?: string };
+type Row = PaymentRequest & { storeName?: string; isTeamRequest?: boolean };
 
 function kstDateParts(iso: string) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -89,7 +89,11 @@ export default function PaymentRequestList({
                     {r.storeName}
                   </p>
                 )}
-                <p className="truncate text-sm font-semibold">
+                <p
+                  className={`truncate text-sm font-semibold ${
+                    isMaster && r.isTeamRequest ? "text-blue-600" : ""
+                  }`}
+                >
                   {r.vendor_name}
                 </p>
                 <p className="text-xs text-muted">
@@ -153,7 +157,13 @@ export default function PaymentRequestList({
             )}
 
             <div className="flex flex-col gap-2 text-sm">
-              <DetailRow label="거래처" value={selected.vendor_name} />
+              <DetailRow
+                label="거래처"
+                value={selected.vendor_name}
+                valueClassName={
+                  isMaster && selected.isTeamRequest ? "text-blue-600" : undefined
+                }
+              />
               <DetailRow label="금액" value={formatWon(selected.amount)} />
               {selected.bank_name && (
                 <DetailRow label="은행" value={selected.bank_name} />
@@ -207,11 +217,19 @@ function UrgentBadge() {
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function DetailRow({
+  label,
+  value,
+  valueClassName,
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
   return (
     <div className="flex items-center justify-between border-b border-border/60 pb-2 last:border-0">
       <span className="text-muted">{label}</span>
-      <span className="font-semibold">{value}</span>
+      <span className={`font-semibold ${valueClassName ?? ""}`}>{value}</span>
     </div>
   );
 }

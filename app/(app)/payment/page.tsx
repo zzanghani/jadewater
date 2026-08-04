@@ -23,10 +23,20 @@ export default async function PaymentPage({
 
   const supabase = await createClient();
   const { storeId, stores } = await getStoreContext(supabase);
-  const isMaster = stores.length > 1;
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("department")
+    .eq("id", session?.user.id ?? "")
+    .maybeSingle();
+  const isTeamAccount = !!profile?.department;
+  const isMaster = stores.length > 1 && !isTeamAccount;
 
   // 마스터 계정은 각 매장이 올린 현장지출/입금요청을 직접 등록할 일이 없으므로
-  // 요청확인 화면만 보여준다.
+  // 요청확인 화면만 보여준다. (본사 팀 계정은 stores.length > 1이어도
+  // 직접 입금요청을 등록해야 하므로 마스터로 취급하지 않는다.)
   if (isMaster) {
     return (
       <div className="flex flex-col gap-6">
@@ -108,10 +118,26 @@ async function ConfirmTab({
 
   const { data: history } = await query.limit(50);
 
+  // 본사 팀 계정이 올린 요청은 마스터 화면에서 파란 글씨로 구분해 보여준다.
+  const creatorIds = Array.from(
+    new Set((history ?? []).map((r) => r.created_by).filter(Boolean))
+  );
+  let teamCreatorIds = new Set<string>();
+  if (isMaster && creatorIds.length > 0) {
+    const { data: creators } = await supabase
+      .from("profiles")
+      .select("id, department")
+      .in("id", creatorIds);
+    teamCreatorIds = new Set(
+      (creators ?? []).filter((p) => p.department).map((p) => p.id)
+    );
+  }
+
   const storeNameById = new Map(stores.map((s) => [s.id, s.name]));
   const rows = (history ?? []).map((r) => ({
     ...r,
     storeName: storeNameById.get(r.store_id),
+    isTeamRequest: teamCreatorIds.has(r.created_by),
   }));
 
   const tabQuery = isMaster ? "" : "&tab=confirm";

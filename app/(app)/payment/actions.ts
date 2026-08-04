@@ -310,7 +310,12 @@ export async function archivePaymentRequestAction(
   if (!user) return { error: "로그인이 필요합니다." };
 
   const { stores } = await getStoreContext(supabase);
-  if (stores.length <= 1) {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("department")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (stores.length <= 1 || profile?.department) {
     return { error: "마스터 계정만 보관할 수 있습니다." };
   }
 
