@@ -105,6 +105,7 @@ export type LineItem = {
 
 export type LaborItem = LineItem & {
   type: '정직원' | '파트타이머'
+  deduction?: number
 }
 
 export type UtilityCategory =

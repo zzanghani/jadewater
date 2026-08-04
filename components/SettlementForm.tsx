@@ -183,6 +183,7 @@ export default function SettlementForm({
           items={laborItems}
           onChange={setLaborItems}
           showType
+          showDeduction
         />
 
         <ItemListEditor
@@ -455,12 +456,15 @@ function ComputedRow({
   );
 }
 
-function ItemListEditor<T extends LineItem & { key: number; type?: string }>({
+function ItemListEditor<
+  T extends LineItem & { key: number; type?: string; deduction?: number },
+>({
   title,
   total,
   items,
   onChange,
   showType = false,
+  showDeduction = false,
   typeOptions = STAFF_TYPES,
   namePlaceholder = "항목명",
 }: {
@@ -469,6 +473,7 @@ function ItemListEditor<T extends LineItem & { key: number; type?: string }>({
   items: T[];
   onChange: (items: T[]) => void;
   showType?: boolean;
+  showDeduction?: boolean;
   typeOptions?: string[];
   namePlaceholder?: string;
 }) {
@@ -482,7 +487,14 @@ function ItemListEditor<T extends LineItem & { key: number; type?: string }>({
 
   function addItem() {
     const base = { name: "", amount: 0, key: nextKey() } as T;
-    onChange([...items, showType ? { ...base, type: typeOptions[0] } : base]);
+    onChange([
+      ...items,
+      {
+        ...base,
+        ...(showType ? { type: typeOptions[0] } : {}),
+        ...(showDeduction ? { deduction: 0 } : {}),
+      },
+    ]);
   }
 
   return (
@@ -542,6 +554,26 @@ function ItemListEditor<T extends LineItem & { key: number; type?: string }>({
                 ✕
               </button>
             </div>
+            {showDeduction && (
+              <div className="flex items-center gap-1.5 pl-1">
+                <span className="shrink-0 text-[11px] text-muted">
+                  공제총액 (4대보험 등)
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={item.deduction ? String(item.deduction) : ""}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/[^0-9]/g, "");
+                    updateItem(item.key, {
+                      deduction: digits ? Number(digits) : 0,
+                    } as Partial<T>);
+                  }}
+                  placeholder="0"
+                  className="ml-auto w-24 shrink-0 rounded-lg border border-border bg-card px-2.5 py-1.5 text-right text-sm outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
+                />
+              </div>
+            )}
             {item.amount > 0 && (
               <p className="pr-9 text-right text-[11px] text-muted">
                 항목 합계 대비 {formatPercent(item.amount, total)}
@@ -873,7 +905,11 @@ const SettlementReport = forwardRef<HTMLDivElement, ReportProps>(function Settle
           laborItems.map((i) => (
             <ReportRow
               key={i.key}
-              label={`${i.name} (${i.type})`}
+              label={
+                i.deduction
+                  ? `${i.name} (${i.type}, 공제 ${formatWon(i.deduction)})`
+                  : `${i.name} (${i.type})`
+              }
               value={i.amount}
               percent={formatPercent(i.amount, laborTotal)}
             />
