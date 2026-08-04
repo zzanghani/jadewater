@@ -20,7 +20,6 @@ export async function createMonthlyPlan(
   const startDate = String(formData.get("start_date") ?? "");
   const endDate = String(formData.get("end_date") ?? "");
   const startTime = String(formData.get("start_time") ?? "").trim();
-  const endTime = String(formData.get("end_time") ?? "").trim();
   const color = String(formData.get("color") ?? "#2f7a63");
   const planType = formData.get("plan_type") === "vacation" ? "vacation" : "task";
   const followerIds = [...new Set(formData.getAll("follower_ids").map(String))];
@@ -38,7 +37,6 @@ export async function createMonthlyPlan(
       start_date: startDate,
       end_date: endDate,
       start_time: startTime || null,
-      end_time: endTime || null,
       color,
       created_by: user.id,
     })
@@ -74,7 +72,6 @@ export async function updateMonthlyPlan(
   const startDate = String(formData.get("start_date") ?? "");
   const endDate = String(formData.get("end_date") ?? "");
   const startTime = String(formData.get("start_time") ?? "").trim();
-  const endTime = String(formData.get("end_time") ?? "").trim();
   const color = String(formData.get("color") ?? "#2f7a63");
   const planType = formData.get("plan_type") === "vacation" ? "vacation" : "task";
 
@@ -101,7 +98,6 @@ export async function updateMonthlyPlan(
       start_date: startDate,
       end_date: endDate,
       start_time: startTime || null,
-      end_time: endTime || null,
       color,
     })
     .eq("id", id);

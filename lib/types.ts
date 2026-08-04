@@ -223,7 +223,6 @@ export type MonthlyPlan = {
   start_date: string
   end_date: string
   start_time: string | null
-  end_time: string | null
   color: string
   created_by: string
   created_at: string

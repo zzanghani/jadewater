@@ -28,7 +28,6 @@ export default function MonthlyPlanForm({
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [planType, setPlanType] = useState<MonthlyPlanType>(existing?.plan_type ?? "task");
   const [followerIds, setFollowerIds] = useState<string[]>([]);
-  const [hasTime, setHasTime] = useState(Boolean(existing?.start_time));
 
   useEffect(() => {
     if (state?.success) onDone?.();
@@ -38,8 +37,7 @@ export default function MonthlyPlanForm({
     setFollowerIds((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
   }
 
-  const startDefault = parseTimeTo12h(existing?.start_time);
-  const endDefault = parseTimeTo12h(existing?.end_time ?? existing?.start_time);
+  const timeDefault = parseTimeTo12h(existing?.start_time);
 
   return (
     <form action={formAction} className="mb-4 flex flex-col gap-2 rounded-xl bg-background p-3">
@@ -94,39 +92,16 @@ export default function MonthlyPlanForm({
         />
       </div>
 
-      <label className="flex items-center gap-2 text-sm text-muted">
-        <input
-          type="checkbox"
-          checked={hasTime}
-          onChange={(e) => setHasTime(e.target.checked)}
-          className="h-4 w-4 rounded border-border accent-brand"
+      <div className="flex flex-col gap-1.5 text-sm font-medium">
+        시각
+        <AmPmTimeSelect
+          name="start_time"
+          defaultPeriod={timeDefault.period}
+          defaultHour={timeDefault.hour}
+          defaultMinute={timeDefault.minute}
+          minutes={TIME_MINUTES}
         />
-        시간 지정 (15분 단위)
-      </label>
-      {hasTime && (
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-2">
-            <span className="w-10 shrink-0 text-xs font-medium text-muted">시작</span>
-            <AmPmTimeSelect
-              name="start_time"
-              defaultPeriod={startDefault.period}
-              defaultHour={startDefault.hour}
-              defaultMinute={startDefault.minute}
-              minutes={TIME_MINUTES}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-10 shrink-0 text-xs font-medium text-muted">종료</span>
-            <AmPmTimeSelect
-              name="end_time"
-              defaultPeriod={endDefault.period}
-              defaultHour={endDefault.hour}
-              defaultMinute={endDefault.minute}
-              minutes={TIME_MINUTES}
-            />
-          </div>
-        </div>
-      )}
+      </div>
 
       <div>
         <button

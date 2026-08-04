@@ -236,7 +236,6 @@ export default function MonthlyPlanCalendar({
                     <span className="shrink-0 text-muted">
                       {p.start_date.slice(5).replace("-", ".")} ~ {p.end_date.slice(5).replace("-", ".")}
                       {p.start_time && ` · ${p.start_time}`}
-                      {p.end_time && ` ~ ${p.end_time}`}
                     </span>
                   </button>
                   {isAuthor && (
