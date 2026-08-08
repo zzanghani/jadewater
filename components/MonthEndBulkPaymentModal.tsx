@@ -71,7 +71,7 @@ export default function MonthEndBulkPaymentModal({ storeId }: { storeId: string 
       <button
         type="button"
         onClick={openModal}
-        className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground"
+        className="inline-flex h-8 items-center rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground"
       >
         🧾 월말입금표
       </button>

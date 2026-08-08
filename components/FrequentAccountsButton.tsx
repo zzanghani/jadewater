@@ -22,7 +22,7 @@ export default function FrequentAccountsButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground"
+        className="inline-flex h-8 items-center rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground"
       >
         📋 자주쓰는 계좌
       </button>
