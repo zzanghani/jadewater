@@ -148,6 +148,112 @@ async function notifyMasterOfNewRequest(
   }
 }
 
+export type BulkPaymentItem = {
+  vendor_name: string;
+  bank_name: string;
+  account_number: string;
+  amount: number;
+};
+
+export type BulkPaymentState =
+  | { error?: string; success?: boolean; count?: number }
+  | undefined;
+
+// 월말입금표: 여러 거래처를 한 번에 입금요청으로 등록한다. 폼 하나씩
+// useActionState로 처리하는 다른 요청과 달리, 표의 행 개수가 유동적이라
+// 클라이언트에서 직접 호출하는 일반 서버 액션으로 둔다.
+export async function saveBulkPaymentRequests(
+  storeId: string,
+  items: BulkPaymentItem[]
+): Promise<BulkPaymentState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "로그인이 필요합니다." };
+  }
+  if (!storeId) {
+    return { error: "매장 정보를 확인할 수 없습니다." };
+  }
+
+  const valid = items.filter(
+    (i) => i.vendor_name.trim() && i.amount > 0 && !Number.isNaN(i.amount)
+  );
+  if (valid.length === 0) {
+    return { error: "거래처명과 금액을 입력한 항목이 없습니다." };
+  }
+
+  const { data: inserted, error } = await supabase
+    .from("payment_requests")
+    .insert(
+      valid.map((i) => ({
+        store_id: storeId,
+        vendor_name: i.vendor_name.trim(),
+        amount: i.amount,
+        bank_name: i.bank_name.trim() || null,
+        account_number: i.account_number.trim() || null,
+        created_by: user.id,
+      }))
+    )
+    .select();
+
+  if (error || !inserted) {
+    return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+  }
+
+  revalidatePath("/payment");
+
+  try {
+    await notifyMasterOfBulkRequest(supabase, storeId, inserted.length);
+  } catch (err) {
+    console.error("[saveBulkPaymentRequests] 알림 발송 중 오류", err);
+  }
+
+  return { success: true, count: inserted.length };
+}
+
+async function notifyMasterOfBulkRequest(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  storeId: string,
+  count: number
+) {
+  const { data: subs } = await supabase
+    .from("push_subscriptions")
+    .select("*")
+    .is("store_id", null);
+
+  if (!subs?.length) return;
+
+  const { data: store } = await supabase
+    .from("stores")
+    .select("name")
+    .eq("id", storeId)
+    .single();
+
+  const payload = {
+    title: "월말입금표 등록",
+    body: `${store?.name ?? "매장"} · 입금요청 ${count}건이 한번에 등록됐습니다.`,
+    url: "/payment?tab=confirm",
+  };
+
+  const expiredIds: string[] = [];
+  await Promise.all(
+    subs.map(async (s) => {
+      const { expired } = await sendPush(
+        { endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth },
+        payload
+      );
+      if (expired) expiredIds.push(s.id);
+    })
+  );
+
+  if (expiredIds.length > 0) {
+    await supabase.from("push_subscriptions").delete().in("id", expiredIds);
+  }
+}
+
 export async function completePaymentRequest(id: string): Promise<void> {
   console.log(`[completePaymentRequest] 호출됨 id=${id}`);
   const supabase = await createClient();
