@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { sendPush } from "@/lib/webpush";
 
 export type PlanFormState = { error?: string; success?: boolean } | undefined;
 
@@ -195,7 +196,82 @@ export async function createPlanComment(
   }
 
   revalidatePath("/");
+
+  // 알림 발송은 부가 기능이므로, 여기서 어떤 문제가 생기더라도
+  // 댓글 저장 자체는 이미 끝난 상태로 절대 실패하지 않게 한다.
+  try {
+    await notifyMentionedUsers(supabase, user.id, body);
+  } catch (err) {
+    console.error("[createPlanComment] 알림 발송 중 오류", err);
+  }
+
   return { success: true };
+}
+
+async function sendPushToUser(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  payload: { title: string; body: string; url: string }
+) {
+  const { data: subs } = await supabase.rpc("get_push_subscriptions_for_user", {
+    p_user_id: userId,
+  });
+  if (!subs?.length) return;
+
+  const expiredIds: string[] = [];
+  await Promise.all(
+    subs.map(async (s) => {
+      const { expired } = await sendPush(
+        { endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth },
+        payload
+      );
+      if (expired) expiredIds.push(s.id);
+    })
+  );
+
+  if (expiredIds.length > 0) {
+    await supabase.from("push_subscriptions").delete().in("id", expiredIds);
+  }
+}
+
+// 댓글 본문에 "@이름"으로 태그된 본사(마스터+팀) 계정에게 알림을 보낸다.
+// 월간계획은 본사 계정끼리만 쓰는 기능이라 태그 대상도 본사 계정으로 한정한다.
+async function notifyMentionedUsers(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  commenterId: string,
+  commentBody: string
+) {
+  if (!commentBody) return;
+
+  const { data: hqProfiles } = await supabase
+    .from("profiles")
+    .select("id, name")
+    .is("store_id", null);
+  if (!hqProfiles?.length) return;
+
+  const { data: commenterProfile } = await supabase
+    .from("profiles")
+    .select("name")
+    .eq("id", commenterId)
+    .single();
+  const commenterName = commenterProfile?.name ?? "누군가";
+
+  const mentionedIds = new Set<string>();
+  for (const p of hqProfiles) {
+    if (p.id === commenterId) continue;
+    if (commentBody.includes(`@${p.name}`)) mentionedIds.add(p.id);
+  }
+  if (mentionedIds.size === 0) return;
+
+  await Promise.all(
+    [...mentionedIds].map((userId) =>
+      sendPushToUser(supabase, userId, {
+        title: `${commenterName}님이 회원님을 태그했습니다`,
+        body: `[월간계획] ${commentBody.slice(0, 80)}`,
+        url: "/",
+      })
+    )
+  );
 }
 
 export async function deletePlanComment(id: string) {

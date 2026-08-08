@@ -8,6 +8,7 @@ import BoardAttachmentList from "@/components/BoardAttachmentList";
 import Avatar from "@/components/Avatar";
 
 type Attachment = { id: string; file_name: string; url?: string };
+type HqProfile = { id: string; name: string };
 
 export type PlanComment = {
   id: string;
@@ -31,12 +32,14 @@ export default function MonthlyPlanDetail({
   followers = [],
   comments,
   currentUserId,
+  hqProfiles = [],
 }: {
   planId: string;
   description?: string | null;
   followers?: PlanFollower[];
   comments: PlanComment[];
   currentUserId?: string;
+  hqProfiles?: HqProfile[];
 }) {
   const [pending, startTransition] = useTransition();
 
@@ -106,7 +109,7 @@ export default function MonthlyPlanDetail({
         </div>
       )}
 
-      <MonthlyPlanCommentForm planId={planId} />
+      <MonthlyPlanCommentForm planId={planId} profiles={hqProfiles} />
     </div>
   );
 }

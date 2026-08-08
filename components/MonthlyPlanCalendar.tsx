@@ -264,6 +264,7 @@ export default function MonthlyPlanCalendar({
                     followers={followers}
                     comments={commentsByPlan[p.id] ?? []}
                     currentUserId={currentUserId}
+                    hqProfiles={hqProfiles}
                   />
                 )}
               </div>
