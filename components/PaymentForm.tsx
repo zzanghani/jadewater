@@ -39,7 +39,7 @@ export default function PaymentForm({
     <form action={formAction} className="flex flex-col gap-3">
       {!department && (
         <div className="flex items-center justify-end gap-2">
-          <MonthEndBulkPaymentModal storeId={storeId} accounts={accounts} />
+          <MonthEndBulkPaymentModal storeId={storeId} />
           <FrequentAccountsButton accounts={accounts} onSelect={handleSelectAccount} />
         </div>
       )}

@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { saveBulkPaymentRequests, type BulkPaymentState } from "@/app/(app)/payment/actions";
 import { formatAmountInput } from "@/lib/format";
-import type { FrequentAccount } from "@/lib/frequentAccounts";
 
 type Row = {
   key: number;
@@ -13,36 +12,26 @@ type Row = {
   amount: string;
 };
 
+const BLANK_ROW_COUNT = 20;
+
 let keySeq = 0;
 function nextKey() {
   keySeq += 1;
   return keySeq;
 }
 
-function rowFromAccount(a: FrequentAccount): Row {
-  return {
-    key: nextKey(),
-    vendor_name: a.vendor_name,
-    bank_name: a.bank_name ?? "",
-    account_number: a.account_number,
-    amount: "",
-  };
+function blankRow(): Row {
+  return { key: nextKey(), vendor_name: "", bank_name: "", account_number: "", amount: "" };
 }
 
-export default function MonthEndBulkPaymentModal({
-  storeId,
-  accounts,
-}: {
-  storeId: string;
-  accounts: FrequentAccount[];
-}) {
+export default function MonthEndBulkPaymentModal({ storeId }: { storeId: string }) {
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<BulkPaymentState>(undefined);
 
   function openModal() {
-    setRows(accounts.map(rowFromAccount));
+    setRows(Array.from({ length: BLANK_ROW_COUNT }, blankRow));
     setResult(undefined);
     setOpen(true);
   }
@@ -56,10 +45,7 @@ export default function MonthEndBulkPaymentModal({
   }
 
   function addRow() {
-    setRows((prev) => [
-      ...prev,
-      { key: nextKey(), vendor_name: "", bank_name: "", account_number: "", amount: "" },
-    ]);
+    setRows((prev) => [...prev, blankRow()]);
   }
 
   function handleSubmit() {
@@ -115,7 +101,7 @@ export default function MonthEndBulkPaymentModal({
 
             {rows.length === 0 ? (
               <p className="rounded-xl border border-dashed border-border py-6 text-center text-sm text-muted">
-                자주 쓴 거래처 기록이 없어요. 아래 "업체 추가"로 직접 입력해 주세요.
+                아래 "업체 추가"로 항목을 만들어 주세요.
               </p>
             ) : (
               <div className="flex flex-col gap-2 overflow-y-auto pr-1">
@@ -156,14 +142,14 @@ export default function MonthEndBulkPaymentModal({
                         type="text"
                         value={r.bank_name}
                         onChange={(e) => updateRow(r.key, { bank_name: e.target.value })}
-                        placeholder="은행"
+                        placeholder="은행명"
                         className="w-24 shrink-0 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
                       />
                       <input
                         type="text"
                         value={r.account_number}
                         onChange={(e) => updateRow(r.key, { account_number: e.target.value })}
-                        placeholder="계좌"
+                        placeholder="계좌번호"
                         className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
                       />
                     </div>
