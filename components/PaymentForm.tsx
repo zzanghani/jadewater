@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { savePaymentRequest } from "@/app/(app)/payment/actions";
 import FrequentAccountsButton from "@/components/FrequentAccountsButton";
 import MonthEndBulkPaymentModal from "@/components/MonthEndBulkPaymentModal";
+import { formatAmountInput } from "@/lib/format";
 import { DEPARTMENT_LABELS } from "@/lib/types";
 import type { Department, Store } from "@/lib/types";
 import type { FrequentAccount } from "@/lib/frequentAccounts";
@@ -87,12 +88,12 @@ export default function PaymentForm({
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         금액
         <div className="relative">
+          <input type="hidden" name="amount" value={amountRaw} />
           <input
             type="text"
             inputMode="numeric"
-            name="amount"
             required
-            value={amountRaw}
+            value={formatAmountInput(amountRaw)}
             placeholder="0"
             onChange={(e) =>
               setAmountRaw(e.target.value.replace(/[^0-9]/g, ""))

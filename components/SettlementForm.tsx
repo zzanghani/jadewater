@@ -3,7 +3,7 @@
 import { forwardRef, useActionState, useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import { saveSettlement } from "@/app/(app)/settlement/actions";
-import { formatPercent, formatWon } from "@/lib/format";
+import { formatAmountInput, formatPercent, formatWon } from "@/lib/format";
 import type {
   LaborItem,
   LineItem,
@@ -410,11 +410,11 @@ function NumberField({
         )}
       </span>
       <div className="relative">
+        {name && <input type="hidden" name={name} value={value || 0} />}
         <input
           type="text"
           inputMode="numeric"
-          name={name}
-          value={value ? String(value) : ""}
+          value={value ? formatAmountInput(String(value)) : ""}
           placeholder="0"
           onChange={(e) => {
             const digits = e.target.value.replace(/[^0-9]/g, "");
@@ -536,7 +536,7 @@ function ItemListEditor<
               <input
                 type="text"
                 inputMode="numeric"
-                value={item.amount ? String(item.amount) : ""}
+                value={item.amount ? formatAmountInput(String(item.amount)) : ""}
                 onChange={(e) => {
                   const digits = e.target.value.replace(/[^0-9]/g, "");
                   updateItem(item.key, {
@@ -563,7 +563,7 @@ function ItemListEditor<
                 <input
                   type="text"
                   inputMode="numeric"
-                  value={item.deduction ? String(item.deduction) : ""}
+                  value={item.deduction ? formatAmountInput(String(item.deduction)) : ""}
                   onChange={(e) => {
                     const digits = e.target.value.replace(/[^0-9]/g, "");
                     updateItem(item.key, {

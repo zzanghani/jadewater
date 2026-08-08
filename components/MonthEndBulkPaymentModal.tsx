@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { saveBulkPaymentRequests, type BulkPaymentState } from "@/app/(app)/payment/actions";
+import { formatAmountInput } from "@/lib/format";
 import type { FrequentAccount } from "@/lib/frequentAccounts";
 
 type Row = {
@@ -134,7 +135,7 @@ export default function MonthEndBulkPaymentModal({
                       <input
                         type="text"
                         inputMode="numeric"
-                        value={r.amount}
+                        value={formatAmountInput(r.amount)}
                         onChange={(e) =>
                           updateRow(r.key, { amount: e.target.value.replace(/[^0-9]/g, "") })
                         }
