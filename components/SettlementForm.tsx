@@ -20,6 +20,9 @@ type AutoSales = {
   rentalSales: number;
   coupangSales: number;
   baeminSales: number;
+  cardSales: number;
+  cashSales: number;
+  easypaySales: number;
 };
 
 type SupplierRow = { supplier: string; amount: number };
@@ -615,6 +618,12 @@ function AutoSummary({
   return (
     <section className="flex flex-col gap-3">
       <BigStatCard label="이번달 총매출 (자동집계)" value={totalSales} tone="brand" />
+      <PaymentBreakdown
+        cardSales={autoSales.cardSales}
+        cashSales={autoSales.cashSales}
+        easypaySales={autoSales.easypaySales}
+        totalSales={totalSales}
+      />
       <BigStatCard
         label="이번달 총지출 (모든 지출의 합)"
         value={totalExpense}
@@ -695,6 +704,77 @@ function AutoSummary({
         )}
       </div>
     </section>
+  );
+}
+
+const PAYMENT_METHOD_COLORS: { label: string; color: string }[] = [
+  { label: "카드", color: "#3b82f6" },
+  { label: "현금", color: "#22c55e" },
+  { label: "간편결제", color: "#f59e0b" },
+];
+
+// 총매출을 카드/현금/간편결제로 나눠서, 비중이 큰 항목일수록 글자가 크고
+// 막대에서 차지하는 폭도 넓어지게 보여준다 (전 매장 공통으로 적용됨).
+function PaymentBreakdown({
+  cardSales,
+  cashSales,
+  easypaySales,
+  totalSales,
+}: {
+  cardSales: number;
+  cashSales: number;
+  easypaySales: number;
+  totalSales: number;
+}) {
+  const values = [cardSales, cashSales, easypaySales];
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <h3 className="mb-3 text-sm font-semibold text-foreground">결제수단별 매출</h3>
+
+      {totalSales > 0 && (
+        <div className="mb-3 flex h-3 w-full overflow-hidden rounded-full bg-background">
+          {PAYMENT_METHOD_COLORS.map((method, i) => {
+            const pct = (values[i] / totalSales) * 100;
+            if (pct <= 0) return null;
+            return (
+              <div
+                key={method.label}
+                style={{ width: `${pct}%`, backgroundColor: method.color }}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2.5">
+        {PAYMENT_METHOD_COLORS.map((method, i) => {
+          const value = values[i];
+          const pct = totalSales > 0 ? (value / totalSales) * 100 : 0;
+          return (
+            <div key={method.label} className="flex items-center gap-2">
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: method.color }}
+              />
+              <span className="w-16 shrink-0 text-xs text-muted">{method.label}</span>
+              <span
+                className="flex-1 truncate font-bold"
+                style={{
+                  color: method.color,
+                  fontSize: `${13 + (Math.min(pct, 100) / 100) * 10}px`,
+                }}
+              >
+                {formatWon(value)}
+              </span>
+              <span className="w-12 shrink-0 text-right text-xs text-muted">
+                {pct.toFixed(1)}%
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

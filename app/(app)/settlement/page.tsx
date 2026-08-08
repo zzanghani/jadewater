@@ -48,7 +48,7 @@ export default async function SettlementPage({
       supabase
         .from("daily_closings")
         .select(
-          "food_sales, beverage_sales, wine_sales, rental_sales, coupang_eats_sales, baemin_sales, grand_total, discount_amount"
+          "food_sales, beverage_sales, wine_sales, rental_sales, coupang_eats_sales, baemin_sales, card_sales, cash_sales, easypay_sales, grand_total, discount_amount"
         )
         .eq("store_id", storeId)
         .gte("date", start)
@@ -75,6 +75,9 @@ export default async function SettlementPage({
     rentalSales: sum((closingRows ?? []).map((c) => c.rental_sales)),
     coupangSales: sum((closingRows ?? []).map((c) => c.coupang_eats_sales)),
     baeminSales: sum((closingRows ?? []).map((c) => c.baemin_sales)),
+    cardSales: sum((closingRows ?? []).map((c) => c.card_sales)),
+    cashSales: sum((closingRows ?? []).map((c) => c.cash_sales)),
+    easypaySales: sum((closingRows ?? []).map((c) => c.easypay_sales)),
   };
 
   const autoDiscountTotal = sum((closingRows ?? []).map((c) => c.discount_amount));
