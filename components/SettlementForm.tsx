@@ -622,6 +622,8 @@ function AutoSummary({
         cardSales={autoSales.cardSales}
         cashSales={autoSales.cashSales}
         easypaySales={autoSales.easypaySales}
+        coupangSales={autoSales.coupangSales}
+        baeminSales={autoSales.baeminSales}
         totalSales={totalSales}
       />
       <BigStatCard
@@ -711,22 +713,30 @@ const PAYMENT_METHOD_COLORS: { label: string; color: string }[] = [
   { label: "카드", color: "#3b82f6" },
   { label: "현금", color: "#22c55e" },
   { label: "간편결제", color: "#f59e0b" },
+  { label: "쿠팡이츠", color: "#ef4444" },
+  { label: "배달의민족", color: "#06b6d4" },
 ];
 
-// 총매출을 카드/현금/간편결제로 나눠서, 비중이 큰 항목일수록 글자가 크고
-// 막대에서 차지하는 폭도 넓어지게 보여준다 (전 매장 공통으로 적용됨).
+// 총매출을 카드/현금/간편결제/쿠팡이츠/배달의민족으로 나눠서, 비중이 큰
+// 항목일수록 글자가 크고 막대에서 차지하는 폭도 넓어지게 보여준다.
+// 이 다섯 항목의 합이 곧 grand_total(총매출)이라 막대가 항상 꽉 찬다
+// (배달을 안 하는 매장은 쿠팡이츠/배달의민족이 0%라 그냥 안 보일 뿐).
 function PaymentBreakdown({
   cardSales,
   cashSales,
   easypaySales,
+  coupangSales,
+  baeminSales,
   totalSales,
 }: {
   cardSales: number;
   cashSales: number;
   easypaySales: number;
+  coupangSales: number;
+  baeminSales: number;
   totalSales: number;
 }) {
-  const values = [cardSales, cashSales, easypaySales];
+  const values = [cardSales, cashSales, easypaySales, coupangSales, baeminSales];
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
