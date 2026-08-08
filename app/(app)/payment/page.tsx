@@ -4,7 +4,6 @@ import { getStoreContext } from "@/lib/store";
 import PaymentForm from "@/components/PaymentForm";
 import PaymentRequestList from "@/components/PaymentRequestList";
 import PushSubscribeButton from "@/components/PushSubscribeButton";
-import MonthEndBulkPaymentModal from "@/components/MonthEndBulkPaymentModal";
 import { getFrequentAccounts } from "@/lib/frequentAccounts";
 import { DEPARTMENT_LABELS } from "@/lib/types";
 import type { Department, Store } from "@/lib/types";
@@ -114,12 +113,7 @@ async function RequestTab({
 
   return (
     <section>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-lg font-bold">입금요청</h1>
-        {!isTeamAccount && (
-          <MonthEndBulkPaymentModal storeId={storeId} accounts={accounts} />
-        )}
-      </div>
+      <h1 className="mb-3 text-lg font-bold">입금요청</h1>
       <PaymentForm
         storeId={storeId}
         stores={stores}

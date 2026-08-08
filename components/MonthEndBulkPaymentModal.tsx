@@ -128,7 +128,7 @@ export default function MonthEndBulkPaymentModal({
                         type="text"
                         value={r.vendor_name}
                         onChange={(e) => updateRow(r.key, { vendor_name: e.target.value })}
-                        placeholder="거래처명"
+                        placeholder="품목"
                         className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2.5 py-2 text-sm outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
                       />
                       <input
@@ -139,7 +139,7 @@ export default function MonthEndBulkPaymentModal({
                           updateRow(r.key, { amount: e.target.value.replace(/[^0-9]/g, "") })
                         }
                         placeholder="금액"
-                        className="w-24 shrink-0 rounded-lg border border-border bg-background px-2.5 py-2 text-right text-sm outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
+                        className="w-36 shrink-0 rounded-lg border border-border bg-background px-2.5 py-2 text-right text-sm outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
                       />
                       <button
                         type="button"
@@ -155,14 +155,14 @@ export default function MonthEndBulkPaymentModal({
                         type="text"
                         value={r.bank_name}
                         onChange={(e) => updateRow(r.key, { bank_name: e.target.value })}
-                        placeholder="은행명"
+                        placeholder="은행"
                         className="w-24 shrink-0 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
                       />
                       <input
                         type="text"
                         value={r.account_number}
                         onChange={(e) => updateRow(r.key, { account_number: e.target.value })}
-                        placeholder="계좌번호"
+                        placeholder="계좌"
                         className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
                       />
                     </div>

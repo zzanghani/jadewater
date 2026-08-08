@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { savePaymentRequest } from "@/app/(app)/payment/actions";
 import FrequentAccountsButton from "@/components/FrequentAccountsButton";
+import MonthEndBulkPaymentModal from "@/components/MonthEndBulkPaymentModal";
 import { DEPARTMENT_LABELS } from "@/lib/types";
 import type { Department, Store } from "@/lib/types";
 import type { FrequentAccount } from "@/lib/frequentAccounts";
@@ -35,8 +36,9 @@ export default function PaymentForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
-      {accounts.length > 0 && (
-        <div className="self-end">
+      {!department && (
+        <div className="flex items-center justify-end gap-2">
+          <MonthEndBulkPaymentModal storeId={storeId} accounts={accounts} />
           <FrequentAccountsButton accounts={accounts} onSelect={handleSelectAccount} />
         </div>
       )}
