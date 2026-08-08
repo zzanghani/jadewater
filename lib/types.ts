@@ -38,6 +38,10 @@ export type DailyClosing = {
   lunch_guests: number
   dinner_guests: number
   total_guests: number
+  lunch_teams: number
+  dinner_teams: number
+  total_teams: number
+  visit_teams: number
 
   card_sales: number
   cash_sales: number
@@ -66,6 +70,7 @@ export type DailyClosing = {
 
 type DailyClosingGenerated =
   | 'total_guests'
+  | 'total_teams'
   | 'payment_sales_total'
   | 'category_sales_total'
   | 'delivery_sales_total'

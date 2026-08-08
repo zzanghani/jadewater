@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatWon } from "@/lib/format";
 import { kstDateLabel, kstDateString } from "@/lib/date";
-import { getStoreContext } from "@/lib/store";
+import { getStoreContext, isHanamStore } from "@/lib/store";
 import ClosingForm from "@/components/ClosingForm";
 
 export default async function ClosingPage({
@@ -12,7 +12,8 @@ export default async function ClosingPage({
 }) {
   const { date: dateParam } = await searchParams;
   const supabase = await createClient();
-  const { storeId } = await getStoreContext(supabase);
+  const { storeId, storeName } = await getStoreContext(supabase);
+  const isHanam = isHanamStore(storeName);
   const today = kstDateString(0);
   const isValidDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) && dateParam <= today;
   const targetDate = isValidDate ? dateParam : today;
@@ -51,6 +52,7 @@ export default async function ClosingPage({
           storeId={storeId}
           existing={targetClosing ?? undefined}
           defaultDate={targetDate}
+          isHanam={isHanam}
         />
       </section>
 
@@ -79,7 +81,11 @@ export default async function ClosingPage({
                     </span>
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-muted">
-                    <span>총객수 {c.total_guests.toLocaleString()}명</span>
+                    <span>
+                      {isHanam
+                        ? `방문팀 ${(c.visit_teams ?? 0).toLocaleString()}팀`
+                        : `총객수 ${(c.total_teams ?? 0).toLocaleString()}팀 · ${c.total_guests.toLocaleString()}명`}
+                    </span>
                     <span>결제 {formatWon(c.payment_sales_total)}</span>
                     <span>카테고리 {formatWon(c.category_sales_total)}</span>
                     <span>배달 {formatWon(c.delivery_sales_total)}</span>

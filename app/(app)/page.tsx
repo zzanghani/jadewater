@@ -15,7 +15,7 @@ import MonthlyPlanCalendar from "@/components/MonthlyPlanCalendar";
 import MonthlyPlanAlerts from "@/components/MonthlyPlanAlerts";
 import type { PlanComment, PlanFollower } from "@/components/MonthlyPlanDetail";
 import PushSubscribeButton from "@/components/PushSubscribeButton";
-import { getStoreContext } from "@/lib/store";
+import { getStoreContext, isHanamStore } from "@/lib/store";
 import { storeColor } from "@/lib/storeColors";
 import { avatarPublicUrl } from "@/lib/avatar";
 import type { DailyClosing } from "@/lib/types";
@@ -36,7 +36,8 @@ function momLabel(current: number, prev: number): string {
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const { storeId, stores } = await getStoreContext(supabase);
+  const { storeId, storeName, stores } = await getStoreContext(supabase);
+  const isHanam = isHanamStore(storeName);
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -68,6 +69,7 @@ export default async function DashboardPage() {
   const todayClosing = byDate.get(today);
   const todaySales = todayClosing?.grand_total ?? 0;
   const todayGuests = todayClosing?.total_guests ?? 0;
+  const todayVisitTeams = todayClosing?.visit_teams ?? 0;
 
   const chartData: ChartPoint[] = days.map((date) => ({
     label: kstDateLabel(date),
@@ -327,9 +329,13 @@ if (isHq) {
           </div>
           <p className="mt-1 text-3xl font-bold">{formatWon(todaySales)}</p>
           <div className="mt-4 flex items-center justify-between border-t border-white/20 pt-3">
-            <span className="text-sm text-white/80">오늘 총객수</span>
+            <span className="text-sm text-white/80">
+              {isHanam ? "오늘 방문팀" : "오늘 총객수"}
+            </span>
             <span className="text-lg font-semibold">
-              {todayGuests.toLocaleString()}명
+              {isHanam
+                ? `${todayVisitTeams.toLocaleString()}팀`
+                : `${todayGuests.toLocaleString()}명`}
             </span>
           </div>
         </Link>

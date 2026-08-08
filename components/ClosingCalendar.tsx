@@ -19,12 +19,14 @@ export default function ClosingCalendar({
   editable,
   accentColor = "var(--brand)",
   todayDate,
+  isHanam = false,
 }: {
   days: string[];
   recordsByDate: Record<string, DailyClosing>;
   editable: boolean;
   accentColor?: string;
   todayDate?: string;
+  isHanam?: boolean;
 }) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const leadingBlanks = days.length ? kstWeekday(days[0]) : 0;
@@ -116,8 +118,20 @@ export default function ClosingCalendar({
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-muted">
-                <span>런치 {selected.lunch_guests.toLocaleString()}명</span>
-                <span>디너 {selected.dinner_guests.toLocaleString()}명</span>
+                {isHanam ? (
+                  <span>방문팀 {(selected.visit_teams ?? 0).toLocaleString()}팀</span>
+                ) : (
+                  <>
+                    <span>
+                      런치 {(selected.lunch_teams ?? 0).toLocaleString()}팀 ·{" "}
+                      {selected.lunch_guests.toLocaleString()}명
+                    </span>
+                    <span>
+                      디너 {(selected.dinner_teams ?? 0).toLocaleString()}팀 ·{" "}
+                      {selected.dinner_guests.toLocaleString()}명
+                    </span>
+                  </>
+                )}
                 <span>카드 {formatWon(selected.card_sales)}</span>
                 <span>현금 {formatWon(selected.cash_sales)}</span>
                 <span>간편결제 {formatWon(selected.easypay_sales)}</span>

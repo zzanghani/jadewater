@@ -5,6 +5,12 @@ import type { Database, Store } from "@/lib/types";
 
 export const STORE_COOKIE = "store_id";
 
+// 하남은 브레이크타임이 없고 몰 안에 있어 런치/디너 구분 및 인원 카운팅이
+// 어려워서, 일 마감에서 런치/디너 객수 대신 총 방문팀수만 기입한다.
+export function isHanamStore(name: string): boolean {
+  return name.includes("하남");
+}
+
 export type StoreContext = {
   storeId: string;
   storeName: string;

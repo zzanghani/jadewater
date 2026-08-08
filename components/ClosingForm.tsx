@@ -10,15 +10,20 @@ export default function ClosingForm({
   storeId,
   existing,
   defaultDate,
+  isHanam = false,
 }: {
   storeId: string;
   existing?: DailyClosing;
   defaultDate?: string;
+  isHanam?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(saveClosing, undefined);
 
   const [lunchGuests, setLunchGuests] = useState(existing?.lunch_guests ?? 0);
   const [dinnerGuests, setDinnerGuests] = useState(existing?.dinner_guests ?? 0);
+  const [lunchTeams, setLunchTeams] = useState(existing?.lunch_teams ?? 0);
+  const [dinnerTeams, setDinnerTeams] = useState(existing?.dinner_teams ?? 0);
+  const [visitTeams, setVisitTeams] = useState(existing?.visit_teams ?? 0);
 
   const [cardSales, setCardSales] = useState(existing?.card_sales ?? 0);
   const [cashSales, setCashSales] = useState(existing?.cash_sales ?? 0);
@@ -36,6 +41,7 @@ export default function ClosingForm({
   const [baeminSales, setBaeminSales] = useState(existing?.baemin_sales ?? 0);
 
   const totalGuests = lunchGuests + dinnerGuests;
+  const totalTeams = lunchTeams + dinnerTeams;
   const paymentTotal = cardSales + cashSales + easypaySales;
   const categoryTotal = foodSales + beverageSales + wineSales + rentalSales;
   const deliveryTotal = coupangEatsSales + baeminSales;
@@ -56,22 +62,51 @@ export default function ClosingForm({
         />
       </label>
 
-      <FieldGroup title="총객수" total={`${totalGuests.toLocaleString()}명`}>
-        <NumberField
-          label="런치 객수"
-          name="lunch_guests"
-          suffix="명"
-          value={lunchGuests}
-          onValueChange={setLunchGuests}
-        />
-        <NumberField
-          label="디너 객수"
-          name="dinner_guests"
-          suffix="명"
-          value={dinnerGuests}
-          onValueChange={setDinnerGuests}
-        />
-      </FieldGroup>
+      {isHanam ? (
+        <FieldGroup title="총 방문팀" total={`${visitTeams.toLocaleString()}팀`}>
+          <NumberField
+            label="방문팀수"
+            name="visit_teams"
+            suffix="팀"
+            value={visitTeams}
+            onValueChange={setVisitTeams}
+          />
+        </FieldGroup>
+      ) : (
+        <FieldGroup
+          title="총객수"
+          total={`${totalTeams.toLocaleString()}팀 · ${totalGuests.toLocaleString()}명`}
+        >
+          <NumberField
+            label="런치 팀수"
+            name="lunch_teams"
+            suffix="팀"
+            value={lunchTeams}
+            onValueChange={setLunchTeams}
+          />
+          <NumberField
+            label="런치 객수"
+            name="lunch_guests"
+            suffix="명"
+            value={lunchGuests}
+            onValueChange={setLunchGuests}
+          />
+          <NumberField
+            label="디너 팀수"
+            name="dinner_teams"
+            suffix="팀"
+            value={dinnerTeams}
+            onValueChange={setDinnerTeams}
+          />
+          <NumberField
+            label="디너 객수"
+            name="dinner_guests"
+            suffix="명"
+            value={dinnerGuests}
+            onValueChange={setDinnerGuests}
+          />
+        </FieldGroup>
+      )}
 
       <FieldGroup title="총매출" total={formatWon(paymentTotal)}>
         <NumberField

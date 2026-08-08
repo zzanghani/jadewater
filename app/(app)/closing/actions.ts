@@ -8,6 +8,9 @@ export type ClosingFormState = { error?: string; success?: boolean } | undefined
 const NUMBER_FIELDS = [
   "lunch_guests",
   "dinner_guests",
+  "lunch_teams",
+  "dinner_teams",
+  "visit_teams",
   "card_sales",
   "cash_sales",
   "easypay_sales",

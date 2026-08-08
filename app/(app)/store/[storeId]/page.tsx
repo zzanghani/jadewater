@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatWon } from "@/lib/format";
 import { daysInMonthKST, kstDateString } from "@/lib/date";
-import { getStoreContext } from "@/lib/store";
+import { getStoreContext, isHanamStore } from "@/lib/store";
 import { storeColor } from "@/lib/storeColors";
 import ClosingCalendar from "@/components/ClosingCalendar";
 import type { DailyClosing } from "@/lib/types";
@@ -98,6 +98,7 @@ export default async function StoreHistoryPage({
         editable={isOwnStore}
         accentColor={color}
         todayDate={today}
+        isHanam={isHanamStore(store.name)}
       />
     </div>
   );
