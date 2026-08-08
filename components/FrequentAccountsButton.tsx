@@ -5,20 +5,16 @@ import type { FrequentAccount } from "@/lib/frequentAccounts";
 
 export default function FrequentAccountsButton({
   accounts,
+  onSelect,
 }: {
   accounts: FrequentAccount[];
+  onSelect: (account: FrequentAccount) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  async function handleCopy(acc: FrequentAccount) {
-    try {
-      await navigator.clipboard.writeText(acc.account_number);
-      setCopiedKey(acc.account_number);
-      setTimeout(() => setCopiedKey((k) => (k === acc.account_number ? null : k)), 1500);
-    } catch {
-      // 클립보드 접근 실패는 조용히 무시한다.
-    }
+  function handleSelect(acc: FrequentAccount) {
+    onSelect(acc);
+    setOpen(false);
   }
 
   return (
@@ -71,10 +67,10 @@ export default function FrequentAccountsButton({
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleCopy(acc)}
+                      onClick={() => handleSelect(acc)}
                       className="shrink-0 rounded-full border border-brand bg-brand/10 px-3 py-1.5 text-xs font-semibold text-brand"
                     >
-                      {copiedKey === acc.account_number ? "복사됨 ✓" : "복사"}
+                      확인
                     </button>
                   </li>
                 ))}

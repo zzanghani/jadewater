@@ -2,17 +2,21 @@
 
 import { useActionState, useState } from "react";
 import { savePaymentRequest } from "@/app/(app)/payment/actions";
+import FrequentAccountsButton from "@/components/FrequentAccountsButton";
 import { DEPARTMENT_LABELS } from "@/lib/types";
 import type { Department, Store } from "@/lib/types";
+import type { FrequentAccount } from "@/lib/frequentAccounts";
 
 export default function PaymentForm({
   storeId,
   stores,
   department,
+  accounts = [],
 }: {
   storeId: string;
   stores: Store[];
   department?: Department | null;
+  accounts?: FrequentAccount[];
 }) {
   const [state, formAction, pending] = useActionState(
     savePaymentRequest,
@@ -23,8 +27,20 @@ export default function PaymentForm({
   const [bankName, setBankName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
 
+  function handleSelectAccount(acc: FrequentAccount) {
+    setVendorName(acc.vendor_name);
+    setBankName(acc.bank_name ?? "");
+    setAccountNumber(acc.account_number);
+  }
+
   return (
     <form action={formAction} className="flex flex-col gap-3">
+      {accounts.length > 0 && (
+        <div className="self-end">
+          <FrequentAccountsButton accounts={accounts} onSelect={handleSelectAccount} />
+        </div>
+      )}
+
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         {department ? "요청 부서" : "지점"}
         {department ? (
