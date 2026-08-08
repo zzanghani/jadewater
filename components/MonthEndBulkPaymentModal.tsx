@@ -73,7 +73,7 @@ export default function MonthEndBulkPaymentModal({ storeId }: { storeId: string 
         onClick={openModal}
         className="inline-flex h-8 items-center rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground"
       >
-        🧾 월말입금표
+        🧾 급여&월말입금표
       </button>
 
       {open && (
@@ -86,7 +86,7 @@ export default function MonthEndBulkPaymentModal({ storeId }: { storeId: string 
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold">월말입금표</h3>
+              <h3 className="text-base font-bold">급여&월말입금표</h3>
               <button
                 type="button"
                 onClick={() => setOpen(false)}

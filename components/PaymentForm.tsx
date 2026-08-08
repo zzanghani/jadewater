@@ -37,12 +37,15 @@ export default function PaymentForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
-      {!department && (
-        <div className="flex items-center justify-end gap-2">
-          <MonthEndBulkPaymentModal storeId={storeId} />
-          <FrequentAccountsButton accounts={accounts} onSelect={handleSelectAccount} />
-        </div>
-      )}
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-lg font-bold">입금요청</h1>
+        {!department && (
+          <div className="flex items-center gap-2">
+            <MonthEndBulkPaymentModal storeId={storeId} />
+            <FrequentAccountsButton accounts={accounts} onSelect={handleSelectAccount} />
+          </div>
+        )}
+      </div>
 
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         {department ? "요청 부서" : "지점"}

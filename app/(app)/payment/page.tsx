@@ -113,7 +113,6 @@ async function RequestTab({
 
   return (
     <section>
-      <h1 className="mb-3 text-lg font-bold">입금요청</h1>
       <PaymentForm
         storeId={storeId}
         stores={stores}
