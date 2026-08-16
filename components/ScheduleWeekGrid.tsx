@@ -2,8 +2,9 @@
 
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
-import { unlockScheduleAdmin } from "@/app/(app)/schedule/actions";
-import { roleColor } from "@/lib/scheduleColors";
+import { useRouter } from "next/navigation";
+import { deleteEmployeeShifts, unlockScheduleAdmin } from "@/app/(app)/schedule/actions";
+import { SCHEDULE_ROLES, roleColor } from "@/lib/scheduleColors";
 import { kstWeekdayShortLabel, shiftDateString, sundayWeekRangeLabel } from "@/lib/date";
 import ScheduleCellForm from "@/components/ScheduleCellForm";
 import type { ScheduleRole, ScheduleShift } from "@/lib/types";
@@ -25,6 +26,7 @@ export default function ScheduleWeekGrid({
   rows: WeekGridRow[];
   todayDate: string;
 }) {
+  const router = useRouter();
   const [unlockState, unlockAction, unlockPending] = useActionState(
     unlockScheduleAdmin,
     undefined
@@ -51,7 +53,10 @@ export default function ScheduleWeekGrid({
   const pendingRows: WeekGridRow[] = extraNames
     .filter((n) => !existingNames.has(n))
     .map((name) => ({ employeeName: name, role: "사원", cells: Array(7).fill(null) }));
-  const displayRows = [...rows, ...pendingRows];
+  const displayRows = [...rows, ...pendingRows].sort((a, b) => {
+    const roleDiff = SCHEDULE_ROLES.indexOf(a.role) - SCHEDULE_ROLES.indexOf(b.role);
+    return roleDiff !== 0 ? roleDiff : a.employeeName.localeCompare(b.employeeName, "ko");
+  });
 
   function addRow() {
     const name = newName.trim();
@@ -60,6 +65,25 @@ export default function ScheduleWeekGrid({
       setExtraNames((prev) => [...prev, name]);
     }
     setNewName("");
+  }
+
+  function deleteRow(row: WeekGridRow) {
+    const isPending = !existingNames.has(row.employeeName);
+    if (
+      !window.confirm(
+        `${row.employeeName} 님을 명단에서 삭제할까요?${
+          isPending ? "" : " 등록된 근무 기록도 모두 삭제됩니다."
+        }`
+      )
+    )
+      return;
+    if (isPending) {
+      setExtraNames((prev) => prev.filter((n) => n !== row.employeeName));
+      return;
+    }
+    const formData = new FormData();
+    formData.set("employee_name", row.employeeName);
+    deleteEmployeeShifts(formData).then(() => router.refresh());
   }
 
   return (
@@ -163,14 +187,29 @@ export default function ScheduleWeekGrid({
                 </td>
               </tr>
             ) : (
-              displayRows.map((row) => (
+              displayRows.map((row) => {
+                const isPending = !existingNames.has(row.employeeName);
+                const canDeleteRow = unlocked || isPending;
+                return (
                 <tr key={row.employeeName} className="border-t border-border">
                   <td className="sticky left-0 z-10 bg-card px-2 py-2 text-left font-semibold text-foreground">
-                    <span
-                      className="mr-1 inline-block h-1.5 w-1.5 rounded-full"
-                      style={{ backgroundColor: roleColor(row.role) }}
-                    />
-                    {row.employeeName}
+                    <div className="flex items-center gap-1">
+                      <span
+                        className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: roleColor(row.role) }}
+                      />
+                      <span className="truncate">{row.employeeName}</span>
+                      {canDeleteRow && (
+                        <button
+                          type="button"
+                          onClick={() => deleteRow(row)}
+                          aria-label={`${row.employeeName} 삭제`}
+                          className="ml-0.5 shrink-0 text-[11px] text-muted hover:text-red-600"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                   </td>
                   {weekDates.map((d, i) => {
                     const cellShift = row.cells[i];
@@ -203,7 +242,8 @@ export default function ScheduleWeekGrid({
                     );
                   })}
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>

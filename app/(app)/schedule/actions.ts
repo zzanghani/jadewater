@@ -338,3 +338,26 @@ export async function deleteShift(formData: FormData) {
   if (date) revalidatePath(`/schedule/${date}`);
   revalidatePath("/schedule");
 }
+
+// 주간표 명단에서 직원 한 명을 통째로 지운다(중복 입력/퇴사자 정리용).
+// 별도 직원 마스터가 없어 명단이 schedule_shifts 이력에서 나오는 구조라,
+// 이 매장에서 그 이름으로 등록된 근무 기록을 전부 지워야 명단에서도 사라진다.
+export async function deleteEmployeeShifts(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const employeeName = String(formData.get("employee_name") ?? "").trim();
+  if (!employeeName) return;
+
+  const { storeId } = await getStoreContext(supabase);
+  await supabase
+    .from("schedule_shifts")
+    .delete()
+    .eq("store_id", storeId)
+    .eq("employee_name", employeeName);
+
+  revalidatePath("/schedule");
+}
