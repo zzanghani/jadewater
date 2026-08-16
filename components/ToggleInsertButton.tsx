@@ -1,9 +1,29 @@
 "use client";
 
 import type { RefObject } from "react";
+import { TOGGLE_OPEN_PREFIX } from "@/lib/boardBody";
 
 const TOGGLE_TITLE_PLACEHOLDER = "제목";
 const TOGGLE_BODY_PLACEHOLDER = "내용을 입력하세요";
+const TOGGLE_TITLE_LINE = `${TOGGLE_OPEN_PREFIX} ${TOGGLE_TITLE_PLACEHOLDER}`;
+
+// 아직 안 건드린 placeholder 줄(제목 또는 내용) 위에 클릭해서 커서만
+// 놓였다면, 그 줄 전체를 선택 상태로 바꿔준다 — 그래야 바로 이어서
+// 타이핑했을 때 placeholder가 즉시 덮어써진다. 엔터로 다음 줄에 넘어갈
+// 때와 똑같은 사용자 경험을 클릭으로 들어갔을 때도 주기 위함.
+function selectPlaceholderLineIfAny(el: HTMLTextAreaElement) {
+  const pos = el.selectionStart;
+  const lineStart = el.value.lastIndexOf("\n", pos - 1) + 1;
+  const lineEndRaw = el.value.indexOf("\n", pos);
+  const lineEnd = lineEndRaw === -1 ? el.value.length : lineEndRaw;
+  const line = el.value.slice(lineStart, lineEnd);
+
+  if (line === TOGGLE_TITLE_LINE) {
+    el.setSelectionRange(lineStart + TOGGLE_OPEN_PREFIX.length + 1, lineEnd);
+  } else if (line === TOGGLE_BODY_PLACEHOLDER) {
+    el.setSelectionRange(lineStart, lineEnd);
+  }
+}
 
 export default function ToggleInsertButton({
   textareaRef,
@@ -57,6 +77,13 @@ export default function ToggleInsertButton({
       });
     }
     el.addEventListener("keydown", handleEnter);
+
+    // 클릭으로 placeholder 줄에 들어간 경우도 똑같이 처리한다. 여러 번
+    // 토글을 삽입해도 리스너가 중복으로 쌓이지 않게 한 번만 붙인다.
+    if (!el.dataset.toggleClickBound) {
+      el.dataset.toggleClickBound = "1";
+      el.addEventListener("click", () => selectPlaceholderLineIfAny(el));
+    }
   }
 
   return (
