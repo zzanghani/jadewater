@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { deleteEmployeeShifts, unlockScheduleAdmin } from "@/app/(app)/schedule/actions";
 import { SCHEDULE_ROLES, roleColor } from "@/lib/scheduleColors";
-import { kstWeekdayShortLabel, shiftDateString, sundayWeekRangeLabel } from "@/lib/date";
+import { kstWeekdayShortLabel, mondayWeekRangeLabel, shiftDateString } from "@/lib/date";
 import ScheduleCellForm from "@/components/ScheduleCellForm";
 import type { ScheduleRole, ScheduleShift } from "@/lib/types";
 
@@ -96,7 +96,7 @@ export default function ScheduleWeekGrid({
         >
           ←
         </Link>
-        <span className="text-sm font-bold">{sundayWeekRangeLabel(weekStart)}</span>
+        <span className="text-sm font-bold">{mondayWeekRangeLabel(weekStart)}</span>
         <Link
           href={`/schedule?week=${shiftDateString(weekStart, 7)}`}
           aria-label="다음주"

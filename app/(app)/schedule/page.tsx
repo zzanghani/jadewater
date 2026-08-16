@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
-import { kstDateString, shiftDateString, sundayOfWeekKST, sundayWeekDatesKST } from "@/lib/date";
+import { kstDateString, shiftDateString, mondayOfWeekKST, mondayWeekDatesKST } from "@/lib/date";
 import { SCHEDULE_ROLES, roleColor } from "@/lib/scheduleColors";
 import ScheduleDayTimeline from "@/components/ScheduleDayTimeline";
 import ScheduleWeekGrid, { type WeekGridRow } from "@/components/ScheduleWeekGrid";
@@ -16,9 +16,9 @@ export default async function SchedulePage({
 
   const weekStart =
     weekParam && /^\d{4}-\d{2}-\d{2}$/.test(weekParam)
-      ? sundayOfWeekKST(weekParam)
-      : sundayOfWeekKST(today);
-  const weekDates = sundayWeekDatesKST(weekStart);
+      ? mondayOfWeekKST(weekParam)
+      : mondayOfWeekKST(today);
+  const weekDates = mondayWeekDatesKST(weekStart);
   // 그 주에 근무가 없어도(휴무만 있는 주 등) 이름이 계속 보이도록, 최근
   // 90일치 이력에서 등장한 이름을 명단으로 삼는다(별도 직원 마스터 없음).
   const rosterStart = shiftDateString(weekStart, -90);
