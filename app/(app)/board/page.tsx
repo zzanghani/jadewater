@@ -6,6 +6,7 @@ import BoardArchiveButton from "@/components/BoardArchiveButton";
 import BoardTopTabs from "@/components/BoardTopTabs";
 import Avatar from "@/components/Avatar";
 import { fetchAvatarUrlById } from "@/lib/avatar";
+import { flattenBoardBodyForPreview } from "@/lib/boardBody";
 import { NOTICE, WORK_CATEGORIES, ALL_CATEGORIES } from "@/lib/board";
 import type { BoardCategory } from "@/lib/types";
 
@@ -146,7 +147,9 @@ export default async function BoardPage({
                   </span>
                 )}
                 <p className="truncate text-sm font-semibold">{post.title}</p>
-                <p className="line-clamp-2 text-xs text-muted">{post.body}</p>
+                <p className="line-clamp-2 text-xs text-muted">
+                  {flattenBoardBodyForPreview(post.body)}
+                </p>
                 <div className="mt-1 flex items-center gap-2 text-[11px] text-muted">
                   <Avatar
                     name={nameById.get(post.created_by) ?? "?"}

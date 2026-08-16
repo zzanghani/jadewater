@@ -1,8 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { updateBoardPost, type BoardFormState } from "@/app/(app)/board/actions";
 import BoardTaskCheckboxes from "@/components/BoardTaskCheckboxes";
+import BoardBody from "@/components/BoardBody";
+import ToggleInsertButton from "@/components/ToggleInsertButton";
 import Avatar from "@/components/Avatar";
 
 type Follower = { userId: string; name: string; confirmed: boolean };
@@ -39,6 +41,7 @@ export default function BoardPostHeader({
     updateBoardPost,
     undefined
   );
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   if (editing) {
     return (
@@ -55,12 +58,14 @@ export default function BoardPostHeader({
           className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-bold outline-none ring-brand/30 focus:ring-2"
         />
         <textarea
+          ref={bodyRef}
           name="body"
           required
           rows={6}
           defaultValue={body}
           className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none ring-brand/30 focus:ring-2"
         />
+        <ToggleInsertButton textareaRef={bodyRef} />
         {state?.error && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{state.error}</p>
         )}
@@ -119,7 +124,7 @@ export default function BoardPostHeader({
           />
         )}
       </div>
-      <p className="whitespace-pre-wrap text-sm text-foreground">{body}</p>
+      <BoardBody body={body} />
     </>
   );
 }

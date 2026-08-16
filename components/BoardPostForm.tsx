@@ -2,6 +2,7 @@
 
 import { useActionState, useRef, useState } from "react";
 import { createBoardPost, type BoardFormState } from "@/app/(app)/board/actions";
+import ToggleInsertButton from "@/components/ToggleInsertButton";
 import type { BoardCategory } from "@/lib/types";
 
 const NOTICE: BoardCategory = "공지사항";
@@ -23,6 +24,7 @@ export default function BoardPostForm({
     undefined
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const [fileNames, setFileNames] = useState<string[]>([]);
   const [followerIds, setFollowerIds] = useState<string[]>([]);
   const [category, setCategory] = useState<BoardCategory>(defaultCategory);
@@ -92,12 +94,14 @@ export default function BoardPostForm({
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         내용
         <textarea
+          ref={bodyRef}
           name="body"
           required
           rows={6}
           placeholder="내용을 입력하세요"
           className="rounded-xl border border-border bg-card px-4 py-3 outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
         />
+        <ToggleInsertButton textareaRef={bodyRef} />
       </label>
 
       <div className="flex flex-col gap-1.5 text-sm font-medium">
