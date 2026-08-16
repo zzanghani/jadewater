@@ -6,10 +6,14 @@ import {
   kstDateString,
   kstWeekday,
   monthRangeFromMonthString,
+  shiftDateString,
   shiftMonthString,
+  sundayOfWeekKST,
+  sundayWeekDatesKST,
 } from "@/lib/date";
 import { SCHEDULE_ROLES, roleColor } from "@/lib/scheduleColors";
 import ScheduleDayTimeline from "@/components/ScheduleDayTimeline";
+import ScheduleWeekGrid, { type WeekGridRow } from "@/components/ScheduleWeekGrid";
 import type { ScheduleRole } from "@/lib/types";
 
 const WEEKDAY_HEADER = ["일", "월", "화", "수", "목", "금", "토"];
@@ -17,31 +21,54 @@ const WEEKDAY_HEADER = ["일", "월", "화", "수", "목", "금", "토"];
 export default async function SchedulePage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ month?: string; week?: string }>;
 }) {
-  const { month: monthParam } = await searchParams;
+  const { month: monthParam, week: weekParam } = await searchParams;
   const today = kstDateString(0);
   const month = monthParam && /^\d{4}-\d{2}$/.test(monthParam) ? monthParam : today.slice(0, 7);
   const range = monthRangeFromMonthString(month);
   const days = daysInMonthKST(range.start);
 
+  const weekStart =
+    weekParam && /^\d{4}-\d{2}-\d{2}$/.test(weekParam)
+      ? sundayOfWeekKST(weekParam)
+      : sundayOfWeekKST(today);
+  const weekDates = sundayWeekDatesKST(weekStart);
+  // 그 주에 근무가 없어도(휴무만 있는 주 등) 이름이 계속 보이도록, 최근
+  // 90일치 이력에서 등장한 이름을 명단으로 삼는다(별도 직원 마스터 없음).
+  const rosterStart = shiftDateString(weekStart, -90);
+
   const supabase = await createClient();
   const { storeId } = await getStoreContext(supabase);
 
-  const [{ data: shifts }, { data: todayShifts }] = await Promise.all([
-    supabase
-      .from("schedule_shifts")
-      .select("date, role")
-      .eq("store_id", storeId)
-      .gte("date", range.start)
-      .lte("date", range.end),
-    supabase
-      .from("schedule_shifts")
-      .select("*")
-      .eq("store_id", storeId)
-      .eq("date", today)
-      .order("created_at", { ascending: true }),
-  ]);
+  const [{ data: shifts }, { data: todayShifts }, { data: weekShifts }, { data: rosterShifts }] =
+    await Promise.all([
+      supabase
+        .from("schedule_shifts")
+        .select("date, role")
+        .eq("store_id", storeId)
+        .gte("date", range.start)
+        .lte("date", range.end),
+      supabase
+        .from("schedule_shifts")
+        .select("*")
+        .eq("store_id", storeId)
+        .eq("date", today)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("schedule_shifts")
+        .select("*")
+        .eq("store_id", storeId)
+        .gte("date", weekStart)
+        .lte("date", weekDates[6]),
+      supabase
+        .from("schedule_shifts")
+        .select("employee_name, role, created_at")
+        .eq("store_id", storeId)
+        .gte("date", rosterStart)
+        .lte("date", weekDates[6])
+        .order("created_at", { ascending: true }),
+    ]);
 
   const rolesByDate = new Map<string, Set<ScheduleRole>>();
   for (const s of shifts ?? []) {
@@ -49,6 +76,26 @@ export default async function SchedulePage({
     set.add(s.role);
     rolesByDate.set(s.date, set);
   }
+
+  // 등장 순서(처음 나온 날짜 오름차순)대로 이름을 명단에 올리고, 직급은
+  // 가장 최근 근무 기준으로 표시한다.
+  const roleByName = new Map<string, ScheduleRole>();
+  const nameOrder: string[] = [];
+  for (const s of rosterShifts ?? []) {
+    if (!roleByName.has(s.employee_name)) nameOrder.push(s.employee_name);
+    roleByName.set(s.employee_name, s.role);
+  }
+
+  const weekGridRows: WeekGridRow[] = nameOrder.map((employeeName) => ({
+    employeeName,
+    role: roleByName.get(employeeName)!,
+    cells: weekDates.map(
+      (d) =>
+        (weekShifts ?? []).find(
+          (s) => s.employee_name === employeeName && s.date === d
+        ) ?? null
+    ),
+  }));
 
   const firstWeekday = kstWeekday(days[0]);
   const leadingBlanks = Array.from({ length: firstWeekday }, () => null);
@@ -69,6 +116,16 @@ export default async function SchedulePage({
           <ScheduleDayTimeline shifts={todayShifts ?? []} />
         </div>
       )}
+
+      <div>
+        <p className="mb-1.5 text-xs font-medium text-muted">주간 스케줄</p>
+        <ScheduleWeekGrid
+          weekStart={weekStart}
+          weekDates={weekDates}
+          rows={weekGridRows}
+          todayDate={today}
+        />
+      </div>
 
       <div className="flex items-center justify-between rounded-2xl bg-card p-1.5">
         <Link

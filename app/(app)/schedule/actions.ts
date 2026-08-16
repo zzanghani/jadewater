@@ -260,6 +260,68 @@ export async function updateShift(
   return { success: true };
 }
 
+export type CellShiftState = { error?: string; success?: boolean } | undefined;
+
+// 주간표에서 칸 하나(직원+날짜)를 바로 추가/수정하기 위한 단순 버전.
+// addShift/updateShift는 여러 날짜를 한 번에 묶는 배치(batch_id) 로직이
+// 있어서, 주간표처럼 칸 하나만 바로 고칠 때 쓰기엔 맞지 않는다.
+export async function saveCellShift(
+  _prevState: CellShiftState,
+  formData: FormData
+): Promise<CellShiftState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "로그인이 필요합니다." };
+
+  const id = String(formData.get("id") ?? "").trim() || null;
+  const date = String(formData.get("date") ?? "");
+  const roleRaw = String(formData.get("role") ?? "");
+  const employeeName = String(formData.get("employee_name") ?? "").trim();
+  const startTime = String(formData.get("start_time") ?? "");
+  const endTime = String(formData.get("end_time") ?? "");
+  const breakMinutes = Number(formData.get("break_minutes") ?? 0);
+  const notes = String(formData.get("notes") ?? "").trim();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "날짜가 올바르지 않습니다." };
+  if (!SCHEDULE_ROLES.includes(roleRaw as ScheduleRole)) {
+    return { error: "직급을 선택해 주세요." };
+  }
+  if (!employeeName) return { error: "이름을 입력해 주세요." };
+  if (!startTime || !endTime) return { error: "근무 시간을 입력해 주세요." };
+  if (!Number.isFinite(breakMinutes) || breakMinutes < 0) {
+    return { error: "휴게시간을 올바르게 입력해 주세요." };
+  }
+
+  const { storeId } = await getStoreContext(supabase);
+  const payload = {
+    store_id: storeId,
+    date,
+    role: roleRaw as ScheduleRole,
+    employee_name: employeeName,
+    start_time: startTime,
+    end_time: endTime,
+    break_minutes: breakMinutes,
+    notes: notes || null,
+  };
+
+  const { error } = id
+    ? await supabase
+        .from("schedule_shifts")
+        .update({ ...payload, updated_by: user.id })
+        .eq("id", id)
+    : await supabase.from("schedule_shifts").insert({ ...payload, created_by: user.id });
+
+  if (error) {
+    return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+  }
+
+  revalidatePath(`/schedule/${date}`);
+  revalidatePath("/schedule");
+  return { success: true };
+}
+
 export async function deleteShift(formData: FormData) {
   const supabase = await createClient();
   const {

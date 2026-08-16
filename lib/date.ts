@@ -143,6 +143,25 @@ export function weekDatesKST(weeksAgo = 0): string[] {
   return Array.from({ length: 7 }, (_, i) => kstDateString(mondayDaysAgo - i));
 }
 
+// date가 속한 일~토 주의 일요일 날짜('YYYY-MM-DD', KST).
+export function sundayOfWeekKST(date: string): string {
+  return shiftDateString(date, -kstWeekdayIndex(date));
+}
+
+// 일요일 날짜 기준 일~토 7일치 'YYYY-MM-DD' 배열(KST). weekDatesKST는
+// 월요일 시작이라, 스케줄러 주간표처럼 일요일 시작 주가 필요한 화면에서 쓴다.
+export function sundayWeekDatesKST(sunday: string): string[] {
+  return Array.from({ length: 7 }, (_, i) => shiftDateString(sunday, i));
+}
+
+// 'YYYY-MM-DD'(일요일) → "7/20 ~ 7/26" 형태의 주간 라벨.
+export function sundayWeekRangeLabel(sunday: string): string {
+  const saturday = shiftDateString(sunday, 6);
+  const [, sm, sd] = sunday.split("-").map(Number);
+  const [, em, ed] = saturday.split("-").map(Number);
+  return `${Number(sm)}/${Number(sd)} ~ ${Number(em)}/${Number(ed)}`;
+}
+
 // monthsAgo=0(이번달) 기준 그 달의 첫날/마지막날/라벨(KST).
 export function monthRangeKST(monthsAgo = 0): {
   start: string;
