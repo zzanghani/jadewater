@@ -1,13 +1,11 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useState } from "react";
 import { updateBoardPost, type BoardFormState } from "@/app/(app)/board/actions";
 import BoardTaskCheckboxes from "@/components/BoardTaskCheckboxes";
 import BoardBody from "@/components/BoardBody";
+import BoardContentEditor from "@/components/BoardContentEditor";
 import BoardDeleteButton from "@/components/BoardDeleteButton";
-import MediaInsertButton from "@/components/MediaInsertButton";
-import TableInsertButton from "@/components/TableInsertButton";
-import ToggleInsertButton from "@/components/ToggleInsertButton";
 import Avatar from "@/components/Avatar";
 
 type Follower = { userId: string; name: string; confirmed: boolean };
@@ -51,7 +49,6 @@ export default function BoardPostHeader({
     updateBoardPost,
     undefined
   );
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const [followerIds, setFollowerIds] = useState<string[]>(() => followers.map((f) => f.userId));
   const [bodyPreview, setBodyPreview] = useState(body);
   const [previewUrlByPath, setPreviewUrlByPath] = useState<Record<string, string>>(urlByPath);
@@ -74,25 +71,12 @@ export default function BoardPostHeader({
           defaultValue={title}
           className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-bold outline-none ring-brand/30 focus:ring-2"
         />
-        <textarea
-          ref={bodyRef}
+        <BoardContentEditor
           name="body"
-          required
-          rows={6}
-          defaultValue={body}
-          onChange={(e) => setBodyPreview(e.target.value)}
-          className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none ring-brand/30 focus:ring-2"
+          initialBody={body}
+          onSerializedChange={setBodyPreview}
+          onUploaded={(path, url) => setPreviewUrlByPath((prev) => ({ ...prev, [path]: url }))}
         />
-        <div className="flex flex-wrap gap-2">
-          <ToggleInsertButton textareaRef={bodyRef} />
-          <MediaInsertButton
-            textareaRef={bodyRef}
-            onUploaded={(path, url) =>
-              setPreviewUrlByPath((prev) => ({ ...prev, [path]: url }))
-            }
-          />
-          <TableInsertButton textareaRef={bodyRef} />
-        </div>
         {HAS_RICH_CONTENT.test(bodyPreview) && (
           <div className="flex flex-col gap-1.5 rounded-xl border border-dashed border-border bg-card p-3">
             <p className="text-xs font-semibold text-muted">미리보기</p>

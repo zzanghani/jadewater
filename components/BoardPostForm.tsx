@@ -3,9 +3,7 @@
 import { useActionState, useRef, useState } from "react";
 import { createBoardPost, type BoardFormState } from "@/app/(app)/board/actions";
 import BoardBody from "@/components/BoardBody";
-import MediaInsertButton from "@/components/MediaInsertButton";
-import TableInsertButton from "@/components/TableInsertButton";
-import ToggleInsertButton from "@/components/ToggleInsertButton";
+import BoardContentEditor from "@/components/BoardContentEditor";
 import type { BoardCategory } from "@/lib/types";
 
 const HAS_RICH_CONTENT = /[▶]|!\[.*\]\(.*\)|\[📎|^\|.*\|$/m;
@@ -29,7 +27,6 @@ export default function BoardPostForm({
     undefined
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const [fileNames, setFileNames] = useState<string[]>([]);
   const [followerIds, setFollowerIds] = useState<string[]>([]);
   const [category, setCategory] = useState<BoardCategory>(defaultCategory);
@@ -98,32 +95,20 @@ export default function BoardPostForm({
         />
       </label>
 
-      <label className="flex flex-col gap-1.5 text-sm font-medium">
+      <div className="flex flex-col gap-1.5 text-sm font-medium">
         내용
-        <textarea
-          ref={bodyRef}
+        <BoardContentEditor
           name="body"
-          required
-          rows={6}
-          placeholder="내용을 입력하세요"
-          onChange={(e) => setBodyPreview(e.target.value)}
-          className="rounded-xl border border-border bg-card px-4 py-3 outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
+          onSerializedChange={setBodyPreview}
+          onUploaded={(path, url) => setUrlByPath((prev) => ({ ...prev, [path]: url }))}
         />
-        <div className="flex flex-wrap gap-2">
-          <ToggleInsertButton textareaRef={bodyRef} />
-          <MediaInsertButton
-            textareaRef={bodyRef}
-            onUploaded={(path, url) => setUrlByPath((prev) => ({ ...prev, [path]: url }))}
-          />
-          <TableInsertButton textareaRef={bodyRef} />
-        </div>
         {HAS_RICH_CONTENT.test(bodyPreview) && (
           <div className="flex flex-col gap-1.5 rounded-xl border border-dashed border-border bg-background p-3">
             <p className="text-xs font-semibold text-muted">미리보기</p>
             <BoardBody body={bodyPreview} urlByPath={urlByPath} />
           </div>
         )}
-      </label>
+      </div>
 
       <div className="flex flex-col gap-1.5 text-sm font-medium">
         Follower <span className="font-normal text-muted">(업무 처리가 필요한 글이면 여러 명 지정 가능)</span>
