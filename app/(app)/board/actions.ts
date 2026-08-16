@@ -148,7 +148,9 @@ export async function createBoardPost(
   redirect(`/board/${inserted.id}`);
 }
 
-// 제목/내용 수정. 마스터 계정만 할 수 있다(카테고리·첨부파일·Follower는 그대로 둔다).
+// 제목/내용 수정. 마스터 계정만 할 수 있다(카테고리·첨부파일·Follower 명단은
+// 그대로 둔다). Order/Follower 확인 체크는 수정 폼에서 함께 다시 켜고 끌 수
+// 있게 해서, 잘못 체크된 상태를 마스터가 바로잡을 수 있게 한다.
 export async function updateBoardPost(
   _prevState: BoardFormState,
   formData: FormData
@@ -172,18 +174,84 @@ export async function updateBoardPost(
     return { error: "수정은 마스터 계정만 할 수 있습니다." };
   }
 
+  const requesterConfirmed = formData.get("requester_confirmed") === "on";
+
   const { error } = await supabase
     .from("board_posts")
-    .update({ title, body })
+    .update({ title, body, requester_confirmed: requesterConfirmed })
     .eq("id", postId);
 
   if (error) {
     return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
+  const { data: followerRows } = await supabase
+    .from("board_post_followers")
+    .select("id, user_id")
+    .eq("post_id", postId);
+
+  for (const f of followerRows ?? []) {
+    const confirmed = formData.get(`follower_confirmed_${f.user_id}`) === "on";
+    await supabase.from("board_post_followers").update({ confirmed }).eq("id", f.id);
+  }
+
+  await recomputePostCompletion(supabase, postId);
+
   revalidatePath(`/board/${postId}`);
   revalidatePath("/board");
   redirect(`/board/${postId}`);
+}
+
+export type DeletePostState = { error?: string; success?: boolean } | undefined;
+
+// 글 삭제. 작성자 본인 또는 마스터 계정만 할 수 있다(RLS에서도 동일하게
+// 막혀 있어 이중으로 확인). 첨부파일은 Storage에서 별도로 지워야 하고,
+// 댓글/Follower/첨부파일 행은 board_posts를 지우면 cascade로 같이 지워진다.
+export async function deleteBoardPostAction(postId: string): Promise<DeletePostState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "로그인이 필요합니다." };
+
+  const { data: post } = await supabase
+    .from("board_posts")
+    .select("created_by")
+    .eq("id", postId)
+    .single();
+  if (!post) return { error: "글을 찾을 수 없습니다." };
+
+  if (post.created_by !== user.id && !(await isMasterAccount(supabase, user.id))) {
+    return { error: "본인이 쓴 글만 삭제할 수 있습니다." };
+  }
+
+  const { data: comments } = await supabase
+    .from("board_comments")
+    .select("id")
+    .eq("post_id", postId);
+  const commentIds = (comments ?? []).map((c) => c.id);
+
+  const [{ data: postAttachments }, { data: commentAttachments }] = await Promise.all([
+    supabase.from("board_attachments").select("storage_path").eq("post_id", postId),
+    commentIds.length > 0
+      ? supabase.from("board_attachments").select("storage_path").in("comment_id", commentIds)
+      : Promise.resolve({ data: [] as { storage_path: string }[] }),
+  ]);
+
+  const storagePaths = [...(postAttachments ?? []), ...(commentAttachments ?? [])].map(
+    (a) => a.storage_path
+  );
+  if (storagePaths.length > 0) {
+    await supabase.storage.from("board").remove(storagePaths);
+  }
+
+  const { error } = await supabase.from("board_posts").delete().eq("id", postId);
+  if (error) {
+    return { error: "삭제 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+  }
+
+  revalidatePath("/board");
+  return { success: true };
 }
 
 export async function createBoardComment(

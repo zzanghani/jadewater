@@ -4,6 +4,7 @@ import { useActionState, useRef, useState } from "react";
 import { updateBoardPost, type BoardFormState } from "@/app/(app)/board/actions";
 import BoardTaskCheckboxes from "@/components/BoardTaskCheckboxes";
 import BoardBody from "@/components/BoardBody";
+import BoardDeleteButton from "@/components/BoardDeleteButton";
 import ToggleInsertButton from "@/components/ToggleInsertButton";
 import Avatar from "@/components/Avatar";
 
@@ -66,6 +67,31 @@ export default function BoardPostHeader({
           className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none ring-brand/30 focus:ring-2"
         />
         <ToggleInsertButton textareaRef={bodyRef} />
+
+        {followers.length > 0 && (
+          <div className="flex flex-col gap-2 rounded-xl border border-border bg-background p-3 text-sm">
+            <p className="text-xs font-semibold text-muted">확인 체크 수정</p>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                name="requester_confirmed"
+                defaultChecked={requesterConfirmed}
+              />
+              Order {requesterName}
+            </label>
+            {followers.map((f) => (
+              <label key={f.userId} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  name={`follower_confirmed_${f.userId}`}
+                  defaultChecked={f.confirmed}
+                />
+                Follower {f.name}
+              </label>
+            ))}
+          </div>
+        )}
+
         {state?.error && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{state.error}</p>
         )}
@@ -106,6 +132,7 @@ export default function BoardPostHeader({
                 수정
               </button>
             )}
+            {(isMaster || canConfirmRequester) && <BoardDeleteButton postId={postId} />}
           </div>
           <h1 className="mt-1.5 text-lg font-bold">{title}</h1>
           <p className="mt-1 flex items-center gap-1.5 text-xs text-muted">
