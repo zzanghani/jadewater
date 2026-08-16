@@ -163,10 +163,10 @@ export default function ScheduleWeekGrid({
                   <th
                     key={d}
                     className={`px-1.5 py-2 text-center text-[11px] font-semibold ${
-                      isToday
-                        ? "text-brand"
-                        : isSun
+                      isSun
                         ? "text-red-500"
+                        : isToday
+                        ? "text-brand"
                         : isSat
                         ? "text-blue-500"
                         : "text-muted"
@@ -233,7 +233,7 @@ export default function ScheduleWeekGrid({
                           className={`w-full rounded-lg px-1 py-1.5 text-[11px] font-semibold transition-opacity ${
                             cellShift
                               ? "bg-brand-light text-brand-dark"
-                              : "text-muted"
+                              : "text-orange-500"
                           } ${canOpen ? "hover:opacity-70" : "opacity-60"}`}
                         >
                           {cellShift ? cellShift.start_time.slice(0, 5) : "OFF"}
