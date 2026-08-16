@@ -16,7 +16,7 @@ export default function BoardBody({ body }: { body: string }) {
             <summary className="cursor-pointer select-none text-sm font-semibold text-foreground marker:text-brand">
               {seg.title}
             </summary>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">
+            <p className="mt-2 ml-4 whitespace-pre-wrap border-l-2 border-border pl-3 text-sm text-foreground">
               {seg.content}
             </p>
           </details>
