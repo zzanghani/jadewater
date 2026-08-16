@@ -7,6 +7,7 @@ import { getStoreContext } from "@/lib/store";
 import { sendPush } from "@/lib/webpush";
 import { archiveBoardPostToDrive } from "@/lib/boardArchive";
 import { NOTICE } from "@/lib/board";
+import { extractInlineStoragePaths } from "@/lib/boardBody";
 import type { BoardCategory } from "@/lib/types";
 
 const BOARD_CATEGORIES: BoardCategory[] = ["공지사항", "마케팅", "운영HR", "디자인", "R&D"];
@@ -50,6 +51,74 @@ async function uploadAttachments(
   }
 }
 
+export type InlineUploadResult =
+  | { path: string; url: string; fileName: string; isImage: boolean }
+  | { error: string };
+
+// 토글/본문 안에 사진·파일을 바로 넣기 위한 즉시 업로드. 글이 아직 저장
+// 전이라 post_id가 없으므로, 일단 스토리지에만 올려두고 경로를 돌려주면
+// 클라이언트가 "![파일명](경로)" 같은 참조를 본문에 바로 삽입한다. 실제
+// board_attachments 등록은 글이 실제로 저장될 때(createBoardPost/
+// updateBoardPost) 본문에서 참조를 다시 읽어 처리한다.
+export async function uploadInlineBoardFile(formData: FormData): Promise<InlineUploadResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "로그인이 필요합니다." };
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "파일을 선택해 주세요." };
+
+  const ext = file.name.split(".").pop() || "bin";
+  const path = `${user.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+  const { error: uploadError } = await supabase.storage
+    .from("board")
+    .upload(path, file, { contentType: file.type || "application/octet-stream" });
+  if (uploadError) return { error: "업로드 중 오류가 발생했습니다." };
+
+  const { data: signed } = await supabase.storage.from("board").createSignedUrl(path, 3600);
+  if (!signed?.signedUrl) return { error: "미리보기를 불러오는 중 오류가 발생했습니다." };
+
+  return {
+    path,
+    url: signed.signedUrl,
+    fileName: file.name,
+    isImage: file.type.startsWith("image/"),
+  };
+}
+
+// 본문(토글 안 포함)에 사진/파일로 참조된 스토리지 경로를, 아직
+// board_attachments에 없는 것만 새로 등록한다. 첨부파일 목록·글 삭제 시
+// 정리 대상에 자동으로 포함되게 하기 위함.
+async function registerInlineAttachments(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  postId: string,
+  body: string
+) {
+  const referenced = extractInlineStoragePaths(body);
+  if (referenced.length === 0) return;
+
+  const { data: existing } = await supabase
+    .from("board_attachments")
+    .select("storage_path")
+    .eq("post_id", postId);
+  const existingPaths = new Set((existing ?? []).map((a) => a.storage_path));
+
+  const toInsert = referenced.filter((r) => !existingPaths.has(r.path));
+  if (toInsert.length === 0) return;
+
+  await supabase.from("board_attachments").insert(
+    toInsert.map((r) => ({
+      post_id: postId,
+      storage_path: r.path,
+      file_name: r.fileName,
+      created_by: userId,
+    }))
+  );
+}
+
 export async function createBoardPost(
   _prevState: BoardFormState,
   formData: FormData
@@ -63,7 +132,7 @@ export async function createBoardPost(
 
   const categoryRaw = String(formData.get("category") ?? "");
   const title = String(formData.get("title") ?? "").trim();
-  const body = String(formData.get("body") ?? "").trim();
+  const body = String(formData.get("body") ?? "").replace(/\r\n/g, "\n").trim();
   const followerIds = [...new Set(formData.getAll("follower_ids").map(String))];
   const files = formData.getAll("attachments").filter((f): f is File => f instanceof File);
 
@@ -90,6 +159,7 @@ export async function createBoardPost(
   }
 
   await uploadAttachments(supabase, user.id, files, { post_id: inserted.id });
+  await registerInlineAttachments(supabase, user.id, inserted.id, body);
 
   if (followerIds.length > 0) {
     await supabase.from("board_post_followers").insert(
@@ -165,7 +235,7 @@ export async function updateBoardPost(
 
   const postId = String(formData.get("post_id") ?? "");
   const title = String(formData.get("title") ?? "").trim();
-  const body = String(formData.get("body") ?? "").trim();
+  const body = String(formData.get("body") ?? "").replace(/\r\n/g, "\n").trim();
   const followerIds = [...new Set(formData.getAll("follower_ids").map(String))];
 
   if (!postId) return { error: "잘못된 요청입니다." };
@@ -186,6 +256,8 @@ export async function updateBoardPost(
   if (error) {
     return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
+
+  await registerInlineAttachments(supabase, user.id, postId, body);
 
   const { data: existingFollowers } = await supabase
     .from("board_post_followers")

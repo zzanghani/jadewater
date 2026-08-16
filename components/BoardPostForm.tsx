@@ -3,9 +3,12 @@
 import { useActionState, useRef, useState } from "react";
 import { createBoardPost, type BoardFormState } from "@/app/(app)/board/actions";
 import BoardBody from "@/components/BoardBody";
+import MediaInsertButton from "@/components/MediaInsertButton";
+import TableInsertButton from "@/components/TableInsertButton";
 import ToggleInsertButton from "@/components/ToggleInsertButton";
-import { TOGGLE_OPEN_PREFIX } from "@/lib/boardBody";
 import type { BoardCategory } from "@/lib/types";
+
+const HAS_RICH_CONTENT = /[▶]|!\[.*\]\(.*\)|\[📎|^\|.*\|$/m;
 
 const NOTICE: BoardCategory = "공지사항";
 const WORK_CATEGORIES: BoardCategory[] = ["마케팅", "운영HR", "디자인", "R&D"];
@@ -31,6 +34,7 @@ export default function BoardPostForm({
   const [followerIds, setFollowerIds] = useState<string[]>([]);
   const [category, setCategory] = useState<BoardCategory>(defaultCategory);
   const [bodyPreview, setBodyPreview] = useState("");
+  const [urlByPath, setUrlByPath] = useState<Record<string, string>>({});
 
   function toggleFollower(id: string) {
     setFollowerIds((prev) =>
@@ -105,11 +109,18 @@ export default function BoardPostForm({
           onChange={(e) => setBodyPreview(e.target.value)}
           className="rounded-xl border border-border bg-card px-4 py-3 outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
         />
-        <ToggleInsertButton textareaRef={bodyRef} />
-        {bodyPreview.includes(TOGGLE_OPEN_PREFIX) && (
+        <div className="flex flex-wrap gap-2">
+          <ToggleInsertButton textareaRef={bodyRef} />
+          <MediaInsertButton
+            textareaRef={bodyRef}
+            onUploaded={(path, url) => setUrlByPath((prev) => ({ ...prev, [path]: url }))}
+          />
+          <TableInsertButton textareaRef={bodyRef} />
+        </div>
+        {HAS_RICH_CONTENT.test(bodyPreview) && (
           <div className="flex flex-col gap-1.5 rounded-xl border border-dashed border-border bg-background p-3">
             <p className="text-xs font-semibold text-muted">미리보기</p>
-            <BoardBody body={bodyPreview} />
+            <BoardBody body={bodyPreview} urlByPath={urlByPath} />
           </div>
         )}
       </label>

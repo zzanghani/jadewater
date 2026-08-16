@@ -7,6 +7,7 @@ import BoardCommentForm from "@/components/BoardCommentForm";
 import BoardPostHeader from "@/components/BoardPostHeader";
 import Avatar from "@/components/Avatar";
 import { fetchAvatarUrlById } from "@/lib/avatar";
+import { extractInlineStoragePaths } from "@/lib/boardBody";
 import { daysSinceKST, kstDateTimeLabel as dateTimeLabel } from "@/lib/date";
 
 export default async function BoardPostPage({
@@ -84,11 +85,18 @@ export default async function BoardPostPage({
     }
   }
 
-  const postAttachmentRows = (postAttachments ?? []).map((a) => ({
-    id: a.id,
-    file_name: a.file_name,
-    url: signedUrlByPath.get(a.storage_path),
-  }));
+  const urlByPath = Object.fromEntries(signedUrlByPath);
+
+  // 본문/토글 안에 사진·파일로 이미 표시되는 첨부는 아래 "첨부파일" 목록에
+  // 중복으로 뜨지 않게 뺀다.
+  const inlinePaths = new Set(extractInlineStoragePaths(post.body).map((p) => p.path));
+  const postAttachmentRows = (postAttachments ?? [])
+    .filter((a) => !inlinePaths.has(a.storage_path))
+    .map((a) => ({
+      id: a.id,
+      file_name: a.file_name,
+      url: signedUrlByPath.get(a.storage_path),
+    }));
 
   const commentAttachmentsByCommentId = new Map<string, { id: string; file_name: string; url?: string }[]>();
   for (const a of commentAttachments ?? []) {
@@ -122,6 +130,7 @@ export default async function BoardPostPage({
           canConfirmRequester={user?.id === post.created_by}
           currentUserId={user?.id}
           allProfiles={allProfiles ?? []}
+          urlByPath={urlByPath}
         />
         <BoardAttachmentList attachments={postAttachmentRows} />
 

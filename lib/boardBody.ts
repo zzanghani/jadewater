@@ -12,7 +12,9 @@ export type BoardBodySegment =
   | { type: "toggle"; title: string; content: string };
 
 export function parseBoardBody(body: string): BoardBodySegment[] {
-  const lines = body.split("\n");
+  // 윈도우/엑셀 등에서 붙여넣으면 줄바꿈이 \r\n으로 들어올 수 있는데, 남은
+  // \r 하나가 정규식 끝 앵커(▶/◀/사진·파일·표 줄 매칭)를 깨뜨리므로 미리 없앤다.
+  const lines = body.replace(/\r\n/g, "\n").split("\n");
   const segments: BoardBodySegment[] = [];
   let textBuffer: string[] = [];
 
@@ -56,11 +58,101 @@ export function parseBoardBody(body: string): BoardBodySegment[] {
   return segments;
 }
 
-// 목록 미리보기처럼 한두 줄로 잘라 보여줘야 하는 곳에서, 토글 표시 기호
-// 없이 제목과 내용을 이어서 평문으로 보여주기 위한 변환.
+// 목록 미리보기처럼 한두 줄로 잘라 보여줘야 하는 곳에서, 토글 표시 기호나
+// 사진/파일/표 마크업 없이 제목과 내용을 이어서 평문으로 보여주기 위한 변환.
 export function flattenBoardBodyForPreview(body: string): string {
   return parseBoardBody(body)
-    .map((seg) => (seg.type === "toggle" ? `${seg.title} ${seg.content}` : seg.content))
+    .map((seg) => {
+      const content = flattenInlineContentForPreview(seg.content);
+      return seg.type === "toggle" ? `${seg.title} ${content}` : content;
+    })
     .join(" ")
     .trim();
+}
+
+// 본문/토글 내용 한 덩어리 안에 텍스트와 함께 들어갈 수 있는 사진·파일·표.
+// 한 줄이 통째로 해당 마크업이면 그 종류로, 아니면 일반 텍스트로 취급한다.
+// 표는 "|칸|칸|" 형태 줄이 연속되는 구간을 하나의 표로 묶고, 첫 줄을
+// 헤더로 삼는다(구분선 줄 같은 건 따로 없음 — 최대한 단순하게).
+export type InlineNode =
+  | { kind: "text"; text: string }
+  | { kind: "image"; path: string; alt: string }
+  | { kind: "file"; path: string; name: string }
+  | { kind: "table"; rows: string[][] };
+
+const IMAGE_LINE = /^!\[(.*)\]\((.+)\)$/;
+const FILE_LINE = /^\[📎 (.*)\]\((.+)\)$/;
+const TABLE_ROW = /^\|(.+)\|$/;
+
+export function parseInlineContent(content: string): InlineNode[] {
+  const lines = content.split("\n");
+  const nodes: InlineNode[] = [];
+  let textBuffer: string[] = [];
+  let tableBuffer: string[][] = [];
+
+  function flushText() {
+    const text = textBuffer.join("\n");
+    if (text.trim()) nodes.push({ kind: "text", text });
+    textBuffer = [];
+  }
+  function flushTable() {
+    if (tableBuffer.length > 0) nodes.push({ kind: "table", rows: tableBuffer });
+    tableBuffer = [];
+  }
+
+  for (const line of lines) {
+    const tableMatch = line.match(TABLE_ROW);
+    if (tableMatch) {
+      flushText();
+      tableBuffer.push(tableMatch[1].split("|").map((c) => c.trim()));
+      continue;
+    }
+    flushTable();
+
+    const imageMatch = line.match(IMAGE_LINE);
+    if (imageMatch) {
+      flushText();
+      nodes.push({ kind: "image", alt: imageMatch[1] || "사진", path: imageMatch[2] });
+      continue;
+    }
+
+    const fileMatch = line.match(FILE_LINE);
+    if (fileMatch) {
+      flushText();
+      nodes.push({ kind: "file", name: fileMatch[1] || "파일", path: fileMatch[2] });
+      continue;
+    }
+
+    textBuffer.push(line);
+  }
+  flushText();
+  flushTable();
+
+  return nodes;
+}
+
+function flattenInlineContentForPreview(content: string): string {
+  return parseInlineContent(content)
+    .map((n) => {
+      if (n.kind === "text") return n.text;
+      if (n.kind === "image") return "[사진]";
+      if (n.kind === "file") return `[파일: ${n.name}]`;
+      return "[표]";
+    })
+    .join(" ");
+}
+
+// 본문 전체(모든 토글 포함)에서 사진/파일로 참조된 스토리지 경로를 뽑아낸다.
+// 글 저장 시 board_attachments에 등록해 첨부파일 목록·삭제 시 정리 대상에
+// 포함시키기 위해 쓴다.
+export function extractInlineStoragePaths(body: string): { path: string; fileName: string }[] {
+  const segments = parseBoardBody(body);
+  const found: { path: string; fileName: string }[] = [];
+  for (const seg of segments) {
+    for (const node of parseInlineContent(seg.content)) {
+      if (node.kind === "image") found.push({ path: node.path, fileName: node.alt });
+      if (node.kind === "file") found.push({ path: node.path, fileName: node.name });
+    }
+  }
+  return found;
 }

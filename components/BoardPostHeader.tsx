@@ -5,12 +5,15 @@ import { updateBoardPost, type BoardFormState } from "@/app/(app)/board/actions"
 import BoardTaskCheckboxes from "@/components/BoardTaskCheckboxes";
 import BoardBody from "@/components/BoardBody";
 import BoardDeleteButton from "@/components/BoardDeleteButton";
+import MediaInsertButton from "@/components/MediaInsertButton";
+import TableInsertButton from "@/components/TableInsertButton";
 import ToggleInsertButton from "@/components/ToggleInsertButton";
 import Avatar from "@/components/Avatar";
-import { TOGGLE_OPEN_PREFIX } from "@/lib/boardBody";
 
 type Follower = { userId: string; name: string; confirmed: boolean };
 type Profile = { id: string; name: string };
+
+const HAS_RICH_CONTENT = /[▶]|!\[.*\]\(.*\)|\[📎|^\|.*\|$/m;
 
 export default function BoardPostHeader({
   postId,
@@ -26,6 +29,7 @@ export default function BoardPostHeader({
   canConfirmRequester,
   currentUserId,
   allProfiles,
+  urlByPath = {},
 }: {
   postId: string;
   category: string;
@@ -40,6 +44,7 @@ export default function BoardPostHeader({
   canConfirmRequester: boolean;
   currentUserId?: string;
   allProfiles: Profile[];
+  urlByPath?: Record<string, string>;
 }) {
   const [editing, setEditing] = useState(false);
   const [state, formAction, pending] = useActionState<BoardFormState, FormData>(
@@ -49,6 +54,7 @@ export default function BoardPostHeader({
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const [followerIds, setFollowerIds] = useState<string[]>(() => followers.map((f) => f.userId));
   const [bodyPreview, setBodyPreview] = useState(body);
+  const [previewUrlByPath, setPreviewUrlByPath] = useState<Record<string, string>>(urlByPath);
 
   function toggleFollower(id: string) {
     setFollowerIds((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
@@ -77,11 +83,20 @@ export default function BoardPostHeader({
           onChange={(e) => setBodyPreview(e.target.value)}
           className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none ring-brand/30 focus:ring-2"
         />
-        <ToggleInsertButton textareaRef={bodyRef} />
-        {bodyPreview.includes(TOGGLE_OPEN_PREFIX) && (
+        <div className="flex flex-wrap gap-2">
+          <ToggleInsertButton textareaRef={bodyRef} />
+          <MediaInsertButton
+            textareaRef={bodyRef}
+            onUploaded={(path, url) =>
+              setPreviewUrlByPath((prev) => ({ ...prev, [path]: url }))
+            }
+          />
+          <TableInsertButton textareaRef={bodyRef} />
+        </div>
+        {HAS_RICH_CONTENT.test(bodyPreview) && (
           <div className="flex flex-col gap-1.5 rounded-xl border border-dashed border-border bg-card p-3">
             <p className="text-xs font-semibold text-muted">미리보기</p>
-            <BoardBody body={bodyPreview} />
+            <BoardBody body={bodyPreview} urlByPath={previewUrlByPath} />
           </div>
         )}
 
@@ -181,7 +196,7 @@ export default function BoardPostHeader({
           />
         )}
       </div>
-      <BoardBody body={body} />
+      <BoardBody body={body} urlByPath={urlByPath} />
     </>
   );
 }
