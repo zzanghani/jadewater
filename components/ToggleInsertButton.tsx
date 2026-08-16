@@ -37,6 +37,26 @@ export default function ToggleInsertButton({
       el.focus();
       el.setSelectionRange(titleStart, titleEnd);
     });
+
+    // 제목을 쓰고 엔터를 치면, 바로 아래 줄에 있는 내용 placeholder를
+    // 통째로 선택해 준다 — 선택된 상태라 다음 글자를 치는 순간 바로
+    // 덮어써져서, 따로 클릭하고 드래그해서 지울 필요가 없다.
+    function handleEnter(e: KeyboardEvent) {
+      if (e.key !== "Enter") return;
+      el!.removeEventListener("keydown", handleEnter);
+
+      const titleLineEnd = el!.value.indexOf("\n", el!.selectionStart);
+      if (titleLineEnd === -1) return;
+      const bodyStart = titleLineEnd + 1;
+      const bodyEnd = bodyStart + TOGGLE_BODY_PLACEHOLDER.length;
+      if (el!.value.slice(bodyStart, bodyEnd) !== TOGGLE_BODY_PLACEHOLDER) return;
+
+      e.preventDefault();
+      requestAnimationFrame(() => {
+        el!.setSelectionRange(bodyStart, bodyEnd);
+      });
+    }
+    el.addEventListener("keydown", handleEnter);
   }
 
   return (
