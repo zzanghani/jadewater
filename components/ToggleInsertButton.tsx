@@ -17,7 +17,9 @@ export default function ToggleInsertButton({
     const start = el.selectionStart ?? el.value.length;
     const end = el.selectionEnd ?? el.value.length;
     const needsLeadingNewline = start > 0 && el.value[start - 1] !== "\n";
-    const template = `${needsLeadingNewline ? "\n" : ""}▶ ${TOGGLE_TITLE_PLACEHOLDER}\n${TOGGLE_BODY_PLACEHOLDER}\n◀\n`;
+    // 닫는 줄(◀) 없이 넣는다 — 다음 토글이나 글 끝에서 자동으로 닫히므로
+    // 지우면 안 되는 줄을 신경 쓸 필요가 없다.
+    const template = `${needsLeadingNewline ? "\n" : ""}▶ ${TOGGLE_TITLE_PLACEHOLDER}\n${TOGGLE_BODY_PLACEHOLDER}\n`;
 
     const newValue = el.value.slice(0, start) + template + el.value.slice(end);
 

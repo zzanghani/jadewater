@@ -2,7 +2,9 @@
 
 import { useActionState, useRef, useState } from "react";
 import { createBoardPost, type BoardFormState } from "@/app/(app)/board/actions";
+import BoardBody from "@/components/BoardBody";
 import ToggleInsertButton from "@/components/ToggleInsertButton";
+import { TOGGLE_OPEN_PREFIX } from "@/lib/boardBody";
 import type { BoardCategory } from "@/lib/types";
 
 const NOTICE: BoardCategory = "공지사항";
@@ -28,6 +30,7 @@ export default function BoardPostForm({
   const [fileNames, setFileNames] = useState<string[]>([]);
   const [followerIds, setFollowerIds] = useState<string[]>([]);
   const [category, setCategory] = useState<BoardCategory>(defaultCategory);
+  const [bodyPreview, setBodyPreview] = useState("");
 
   function toggleFollower(id: string) {
     setFollowerIds((prev) =>
@@ -99,9 +102,16 @@ export default function BoardPostForm({
           required
           rows={6}
           placeholder="내용을 입력하세요"
+          onChange={(e) => setBodyPreview(e.target.value)}
           className="rounded-xl border border-border bg-card px-4 py-3 outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
         />
         <ToggleInsertButton textareaRef={bodyRef} />
+        {bodyPreview.includes(TOGGLE_OPEN_PREFIX) && (
+          <div className="flex flex-col gap-1.5 rounded-xl border border-dashed border-border bg-background p-3">
+            <p className="text-xs font-semibold text-muted">미리보기</p>
+            <BoardBody body={bodyPreview} />
+          </div>
+        )}
       </label>
 
       <div className="flex flex-col gap-1.5 text-sm font-medium">

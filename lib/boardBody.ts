@@ -1,7 +1,9 @@
 // 게시글 본문에 노션처럼 토글(접기/펼치기)을 쓸 수 있게 하는 아주 단순한
-// 마크업. "▶ 제목" 줄로 시작해서 "◀" 줄로 끝나면 그 사이 내용이 토글
-// 안에 들어간다. 직접 타이핑하기보단 ToggleInsertButton으로 틀을 넣고
-// 제목/내용만 채우는 걸 기본 사용법으로 삼는다.
+// 마크업. "▶ 제목" 줄로 시작하면 토글이 열리고, 그 다음 "▶" 줄(다음
+// 토글) 또는 본문 끝에서 자동으로 닫힌다. "◀" 줄을 직접 넣으면 다음
+// 토글을 기다리지 않고 그 자리에서 먼저 닫을 수 있다(토글 뒤에 일반
+// 문단을 이어 쓰고 싶을 때). 명시적으로 닫아야만 하던 예전 방식보다
+// 실수할 일이 적도록, ◀는 있으면 쓰고 없어도 되는 선택 사항으로 뒀다.
 export const TOGGLE_OPEN_PREFIX = "▶";
 export const TOGGLE_CLOSE_MARK = "◀";
 
@@ -29,22 +31,21 @@ export function parseBoardBody(body: string): BoardBodySegment[] {
       const title = line.slice(TOGGLE_OPEN_PREFIX.length).trim() || "토글";
       const contentLines: string[] = [];
       let j = i + 1;
-      let closeIndex = -1;
+      let explicitCloseIndex = -1;
       while (j < lines.length) {
         if (lines[j].trim() === TOGGLE_CLOSE_MARK) {
-          closeIndex = j;
+          explicitCloseIndex = j;
           break;
         }
+        if (lines[j].startsWith(TOGGLE_OPEN_PREFIX)) break;
         contentLines.push(lines[j]);
         j++;
       }
 
-      if (closeIndex !== -1) {
-        flushText();
-        segments.push({ type: "toggle", title, content: contentLines.join("\n") });
-        i = closeIndex + 1;
-        continue;
-      }
+      flushText();
+      segments.push({ type: "toggle", title, content: contentLines.join("\n") });
+      i = explicitCloseIndex !== -1 ? explicitCloseIndex + 1 : j;
+      continue;
     }
 
     textBuffer.push(line);

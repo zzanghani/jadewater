@@ -7,6 +7,7 @@ import BoardBody from "@/components/BoardBody";
 import BoardDeleteButton from "@/components/BoardDeleteButton";
 import ToggleInsertButton from "@/components/ToggleInsertButton";
 import Avatar from "@/components/Avatar";
+import { TOGGLE_OPEN_PREFIX } from "@/lib/boardBody";
 
 type Follower = { userId: string; name: string; confirmed: boolean };
 type Profile = { id: string; name: string };
@@ -47,6 +48,7 @@ export default function BoardPostHeader({
   );
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const [followerIds, setFollowerIds] = useState<string[]>(() => followers.map((f) => f.userId));
+  const [bodyPreview, setBodyPreview] = useState(body);
 
   function toggleFollower(id: string) {
     setFollowerIds((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
@@ -72,9 +74,16 @@ export default function BoardPostHeader({
           required
           rows={6}
           defaultValue={body}
+          onChange={(e) => setBodyPreview(e.target.value)}
           className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none ring-brand/30 focus:ring-2"
         />
         <ToggleInsertButton textareaRef={bodyRef} />
+        {bodyPreview.includes(TOGGLE_OPEN_PREFIX) && (
+          <div className="flex flex-col gap-1.5 rounded-xl border border-dashed border-border bg-card p-3">
+            <p className="text-xs font-semibold text-muted">미리보기</p>
+            <BoardBody body={bodyPreview} />
+          </div>
+        )}
 
         <div className="flex flex-col gap-2 rounded-xl border border-border bg-background p-3 text-sm">
           <p className="text-xs font-semibold text-muted">Order 확인 체크 수정</p>
