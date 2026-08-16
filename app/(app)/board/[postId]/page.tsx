@@ -121,6 +121,7 @@ export default async function BoardPostPage({
           requesterName={nameById.get(post.created_by) ?? "알 수 없음"}
           canConfirmRequester={user?.id === post.created_by}
           currentUserId={user?.id}
+          allProfiles={allProfiles ?? []}
         />
         <BoardAttachmentList attachments={postAttachmentRows} />
 

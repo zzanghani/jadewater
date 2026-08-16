@@ -9,6 +9,7 @@ import ToggleInsertButton from "@/components/ToggleInsertButton";
 import Avatar from "@/components/Avatar";
 
 type Follower = { userId: string; name: string; confirmed: boolean };
+type Profile = { id: string; name: string };
 
 export default function BoardPostHeader({
   postId,
@@ -23,6 +24,7 @@ export default function BoardPostHeader({
   requesterName,
   canConfirmRequester,
   currentUserId,
+  allProfiles,
 }: {
   postId: string;
   category: string;
@@ -36,6 +38,7 @@ export default function BoardPostHeader({
   requesterName: string;
   canConfirmRequester: boolean;
   currentUserId?: string;
+  allProfiles: Profile[];
 }) {
   const [editing, setEditing] = useState(false);
   const [state, formAction, pending] = useActionState<BoardFormState, FormData>(
@@ -43,6 +46,11 @@ export default function BoardPostHeader({
     undefined
   );
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const [followerIds, setFollowerIds] = useState<string[]>(() => followers.map((f) => f.userId));
+
+  function toggleFollower(id: string) {
+    setFollowerIds((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
+  }
 
   if (editing) {
     return (
@@ -68,29 +76,42 @@ export default function BoardPostHeader({
         />
         <ToggleInsertButton textareaRef={bodyRef} />
 
-        {followers.length > 0 && (
-          <div className="flex flex-col gap-2 rounded-xl border border-border bg-background p-3 text-sm">
-            <p className="text-xs font-semibold text-muted">확인 체크 수정</p>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                name="requester_confirmed"
-                defaultChecked={requesterConfirmed}
-              />
-              Order {requesterName}
-            </label>
-            {followers.map((f) => (
-              <label key={f.userId} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  name={`follower_confirmed_${f.userId}`}
-                  defaultChecked={f.confirmed}
-                />
-                Follower {f.name}
-              </label>
-            ))}
+        <div className="flex flex-col gap-2 rounded-xl border border-border bg-background p-3 text-sm">
+          <p className="text-xs font-semibold text-muted">Order 확인 체크 수정</p>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" name="requester_confirmed" defaultChecked={requesterConfirmed} />
+            Order {requesterName}
+          </label>
+        </div>
+
+        <div className="flex flex-col gap-1.5 text-sm font-medium">
+          Follower{" "}
+          <span className="font-normal text-muted">
+            (꺼진 팔로워는 완전히 빠지고, 체크 여부와 상관없이 글이 완료로 넘어가지 않음)
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {allProfiles.map((p) => {
+              const selected = followerIds.includes(p.id);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => toggleFollower(p.id)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    selected
+                      ? "border-brand bg-brand/10 text-brand"
+                      : "border-border bg-card text-muted"
+                  }`}
+                >
+                  {p.name}
+                </button>
+              );
+            })}
           </div>
-        )}
+          {followerIds.map((id) => (
+            <input key={id} type="hidden" name="follower_ids" value={id} />
+          ))}
+        </div>
 
         {state?.error && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{state.error}</p>

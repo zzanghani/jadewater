@@ -148,9 +148,10 @@ export async function createBoardPost(
   redirect(`/board/${inserted.id}`);
 }
 
-// 제목/내용 수정. 마스터 계정만 할 수 있다(카테고리·첨부파일·Follower 명단은
-// 그대로 둔다). Order/Follower 확인 체크는 수정 폼에서 함께 다시 켜고 끌 수
-// 있게 해서, 잘못 체크된 상태를 마스터가 바로잡을 수 있게 한다.
+// 제목/내용 수정. 마스터 계정만 할 수 있다. Order 확인 체크는 수정 폼에서
+// 다시 켜고 끌 수 있고, Follower는 명단 자체를 더하거나 뺄 수 있다(뺀
+// 사람은 확인 여부와 무관하게 완전히 빠지고, Follower가 하나도 안 남으면
+// 이 글은 완료 처리 대상에서 제외돼 그냥 게시판에 남는다).
 export async function updateBoardPost(
   _prevState: BoardFormState,
   formData: FormData
@@ -165,6 +166,7 @@ export async function updateBoardPost(
   const postId = String(formData.get("post_id") ?? "");
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
+  const followerIds = [...new Set(formData.getAll("follower_ids").map(String))];
 
   if (!postId) return { error: "잘못된 요청입니다." };
   if (!title) return { error: "제목을 입력해 주세요." };
@@ -185,14 +187,26 @@ export async function updateBoardPost(
     return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
-  const { data: followerRows } = await supabase
+  const { data: existingFollowers } = await supabase
     .from("board_post_followers")
-    .select("id, user_id")
+    .select("user_id")
     .eq("post_id", postId);
 
-  for (const f of followerRows ?? []) {
-    const confirmed = formData.get(`follower_confirmed_${f.user_id}`) === "on";
-    await supabase.from("board_post_followers").update({ confirmed }).eq("id", f.id);
+  const existingIds = new Set((existingFollowers ?? []).map((f) => f.user_id));
+  const toAdd = followerIds.filter((id) => !existingIds.has(id));
+  const toRemove = [...existingIds].filter((id) => !followerIds.includes(id));
+
+  if (toRemove.length > 0) {
+    await supabase
+      .from("board_post_followers")
+      .delete()
+      .eq("post_id", postId)
+      .in("user_id", toRemove);
+  }
+  if (toAdd.length > 0) {
+    await supabase
+      .from("board_post_followers")
+      .insert(toAdd.map((userId) => ({ post_id: postId, user_id: userId })));
   }
 
   await recomputePostCompletion(supabase, postId);
