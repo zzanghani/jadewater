@@ -386,20 +386,47 @@ export async function toggleFollowerConfirm(postId: string): Promise<void> {
   } = await supabase.auth.getUser();
   if (!user) return;
 
-  const { data: follower } = await supabase
-    .from("board_post_followers")
-    .select("id, confirmed")
-    .eq("post_id", postId)
-    .eq("user_id", user.id)
-    .single();
+  const [{ data: follower }, { data: allFollowers }, { data: post }] = await Promise.all([
+    supabase
+      .from("board_post_followers")
+      .select("id, confirmed")
+      .eq("post_id", postId)
+      .eq("user_id", user.id)
+      .single(),
+    supabase.from("board_post_followers").select("user_id, confirmed").eq("post_id", postId),
+    supabase.from("board_posts").select("created_by, title").eq("id", postId).single(),
+  ]);
   if (!follower) return;
+
+  const newConfirmed = !follower.confirmed;
 
   await supabase
     .from("board_post_followers")
-    .update({ confirmed: !follower.confirmed })
+    .update({ confirmed: newConfirmed })
     .eq("id", follower.id);
 
   await recomputePostCompletion(supabase, postId);
+
+  // 팔로워 전원 확인이 방금(이번 클릭으로) 완료된 시점이면 작성자에게 알림.
+  // 이미 전원 확인된 상태에서 다시 껐다 켜는 경우는 그때마다 다시 알린다.
+  const followerCount = allFollowers?.length ?? 0;
+  const othersAllConfirmed = (allFollowers ?? [])
+    .filter((f) => f.user_id !== user.id)
+    .every((f) => f.confirmed);
+  const wasAllConfirmed = followerCount > 0 && othersAllConfirmed && follower.confirmed;
+  const isAllConfirmedNow = followerCount > 0 && othersAllConfirmed && newConfirmed;
+
+  if (!wasAllConfirmed && isAllConfirmedNow && post && post.created_by !== user.id) {
+    try {
+      await sendPushToUser(supabase, post.created_by, {
+        title: "팔로워 전원 확인 완료",
+        body: `"${post.title}" 담당자 전원이 확인을 완료했습니다.`,
+        url: `/board/${postId}`,
+      });
+    } catch (err) {
+      console.error("[toggleFollowerConfirm] 알림 발송 중 오류", err);
+    }
+  }
 }
 
 export type ArchiveState = { error?: string; success?: boolean } | undefined;
