@@ -4,7 +4,7 @@ import { useState } from "react";
 
 const IMAGE_EXT = new Set(["jpg", "jpeg", "png", "gif", "webp", "heic"]);
 
-type Attachment = { id: string; file_name: string; url?: string };
+type Attachment = { id: string; file_name: string; url?: string; downloadUrl?: string };
 
 function isImageFile(fileName: string): boolean {
   const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
@@ -84,12 +84,9 @@ export default function BoardAttachmentList({
 
             <p className="truncate text-sm font-medium text-foreground">{selected.file_name}</p>
 
-            {selected.url && (
+            {(selected.downloadUrl ?? selected.url) && (
               <a
-                href={selected.url}
-                download={selected.file_name}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={selected.downloadUrl ?? selected.url}
                 className="rounded-xl bg-brand py-2.5 text-center text-sm font-semibold text-white shadow-sm shadow-brand/30"
               >
                 다운로드

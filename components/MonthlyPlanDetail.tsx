@@ -7,7 +7,7 @@ import MonthlyPlanCommentForm from "@/components/MonthlyPlanCommentForm";
 import BoardAttachmentList from "@/components/BoardAttachmentList";
 import Avatar from "@/components/Avatar";
 
-type Attachment = { id: string; file_name: string; url?: string };
+type Attachment = { id: string; file_name: string; url?: string; downloadUrl?: string };
 type HqProfile = { id: string; name: string };
 
 export type PlanComment = {

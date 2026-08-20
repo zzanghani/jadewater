@@ -73,15 +73,21 @@ export default async function BoardPostPage({
 
   const allAttachments = [...(postAttachments ?? []), ...(commentAttachments ?? [])];
   const signedUrlByPath = new Map<string, string>();
+  const downloadUrlByPath = new Map<string, string>();
   if (allAttachments.length > 0) {
-    const { data: signedUrls } = await supabase.storage
-      .from("board")
-      .createSignedUrls(
-        allAttachments.map((a) => a.storage_path),
-        3600
-      );
+    const paths = allAttachments.map((a) => a.storage_path);
+    // 다운로드 버튼용 서명 URL은 따로 받는다 — Content-Disposition을
+    // attachment로 붙여야 다른 도메인 URL이라도 <a download>가 아닌
+    // 진짜 다운로드로 동작한다(사파리에서 그냥 열리기만 하던 문제).
+    const [{ data: signedUrls }, { data: downloadSignedUrls }] = await Promise.all([
+      supabase.storage.from("board").createSignedUrls(paths, 3600),
+      supabase.storage.from("board").createSignedUrls(paths, 3600, { download: true }),
+    ]);
     for (const s of signedUrls ?? []) {
       if (s.signedUrl) signedUrlByPath.set(s.path ?? "", s.signedUrl);
+    }
+    for (const s of downloadSignedUrls ?? []) {
+      if (s.signedUrl) downloadUrlByPath.set(s.path ?? "", s.signedUrl);
     }
   }
 
@@ -96,13 +102,22 @@ export default async function BoardPostPage({
       id: a.id,
       file_name: a.file_name,
       url: signedUrlByPath.get(a.storage_path),
+      downloadUrl: downloadUrlByPath.get(a.storage_path),
     }));
 
-  const commentAttachmentsByCommentId = new Map<string, { id: string; file_name: string; url?: string }[]>();
+  const commentAttachmentsByCommentId = new Map<
+    string,
+    { id: string; file_name: string; url?: string; downloadUrl?: string }[]
+  >();
   for (const a of commentAttachments ?? []) {
     if (!a.comment_id) continue;
     const list = commentAttachmentsByCommentId.get(a.comment_id) ?? [];
-    list.push({ id: a.id, file_name: a.file_name, url: signedUrlByPath.get(a.storage_path) });
+    list.push({
+      id: a.id,
+      file_name: a.file_name,
+      url: signedUrlByPath.get(a.storage_path),
+      downloadUrl: downloadUrlByPath.get(a.storage_path),
+    });
     commentAttachmentsByCommentId.set(a.comment_id, list);
   }
 
