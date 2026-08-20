@@ -22,6 +22,8 @@ const TEAM_ITEMS = [
 const HR_ITEM = { href: "/hr", label: "HR", icon: HrIcon } as const;
 const INVENTORY_ITEM = { href: "/inventory", label: "재고관리", icon: BoxIcon } as const;
 const MESSAGES_ITEM = { href: "/messages", label: "메시지", icon: MessageIcon } as const;
+// 지점장(매장) 계정은 리뷰리포트가 하단 메뉴 대신 여기로 옮겨왔다.
+const REVIEW_REPORT_ITEM = { href: "/review-report", label: "리뷰리포트", icon: StarIcon } as const;
 
 export default function QuickMenu({
   isMaster = false,
@@ -36,6 +38,8 @@ export default function QuickMenu({
   showInventory?: boolean;
   hasUnreadMessages?: boolean;
 }) {
+  // 매장/마스터 계정은 하단 메뉴에 메시지가 있어서 여기엔 안 넣는다.
+  // 하단 메뉴가 없는 본사 팀 계정만 여기서 메시지로 들어간다.
   const items = teamOnly
     ? [
         ...TEAM_ITEMS,
@@ -44,8 +48,8 @@ export default function QuickMenu({
         MESSAGES_ITEM,
       ]
     : isMaster
-      ? [...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), HR_ITEM, MESSAGES_ITEM]
-      : [...ALL_ITEMS, MESSAGES_ITEM];
+      ? [...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), HR_ITEM]
+      : [...ALL_ITEMS, REVIEW_REPORT_ITEM];
 
   return (
     <section>

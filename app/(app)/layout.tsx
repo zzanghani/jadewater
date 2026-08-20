@@ -38,10 +38,15 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  const [{ data: profile }, storeContext, myAvatarById] = await Promise.all([
+  const [{ data: profile }, storeContext, myAvatarById, { count: unreadMessageCount }] = await Promise.all([
     supabase.from("profiles").select("name, department").eq("id", user.id).single(),
     getStoreContext(supabase),
     fetchAvatarUrlById(supabase, [user.id]),
+    supabase
+      .from("direct_messages")
+      .select("id", { count: "exact", head: true })
+      .eq("recipient_id", user.id)
+      .is("read_at", null),
   ]);
   const { storeId, stores } = storeContext;
   const isTeamAccount = !!profile?.department;
@@ -125,7 +130,9 @@ export default async function AppLayout({
         <PullToRefresh>{children}</PullToRefresh>
       </main>
 
-      {!isTeamAccount && <BottomNav isMaster={isMaster} />}
+      {!isTeamAccount && (
+        <BottomNav isMaster={isMaster} hasUnreadMessages={(unreadMessageCount ?? 0) > 0} />
+      )}
     </div>
   );
 }

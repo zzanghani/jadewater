@@ -3,17 +3,33 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const ALL_TABS = [
+// 지점장 계정은 리뷰리포트를 빠른 메뉴로 옮기고 그 자리에 메시지를
+// 넣어 달라는 요청으로 매장/마스터 탭 구성이 서로 달라졌다.
+const STORE_TABS = [
   { href: "/board", label: "게시판", icon: BoardIcon },
   { href: "/inventory", label: "재고관리", icon: InventoryIcon },
   { href: "/settlement", label: "월말정산", icon: ReportIcon },
-  { href: "/review-report", label: "리뷰리포트", icon: StarIcon },
   { href: "/payment", label: "입금요청", icon: SendIcon },
+  { href: "/messages", label: "메시지", icon: MessageIcon },
 ] as const;
 
-export default function BottomNav({ isMaster = false }: { isMaster?: boolean }) {
+const MASTER_TABS = [
+  { href: "/board", label: "게시판", icon: BoardIcon },
+  { href: "/settlement", label: "월말정산", icon: ReportIcon },
+  { href: "/review-report", label: "리뷰리포트", icon: StarIcon },
+  { href: "/payment", label: "입금요청", icon: SendIcon },
+  { href: "/messages", label: "메시지", icon: MessageIcon },
+] as const;
+
+export default function BottomNav({
+  isMaster = false,
+  hasUnreadMessages = false,
+}: {
+  isMaster?: boolean;
+  hasUnreadMessages?: boolean;
+}) {
   const pathname = usePathname();
-  const tabs = isMaster ? ALL_TABS.filter((t) => t.href !== "/inventory") : ALL_TABS;
+  const tabs = isMaster ? MASTER_TABS : STORE_TABS;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
@@ -25,11 +41,16 @@ export default function BottomNav({ isMaster = false }: { isMaster?: boolean }) 
             <Link
               key={href}
               href={href}
-              className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium transition-colors ${
+              className={`relative flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium transition-colors ${
                 active ? "text-brand" : "text-muted"
               }`}
             >
-              <Icon active={active} />
+              <span className="relative">
+                <Icon active={active} />
+                {href === "/messages" && hasUnreadMessages && (
+                  <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500" />
+                )}
+              </span>
               {label}
             </Link>
           );
@@ -80,6 +101,15 @@ function SendIcon({ active }: { active: boolean }) {
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 1.8} strokeLinecap="round" strokeLinejoin="round">
       <path d="M22 2 11 13" />
       <path d="M22 2 15 22l-4-9-9-4Z" />
+    </svg>
+  );
+}
+
+function MessageIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4h16v13H8l-4 4Z" />
+      <path d="M8 9h8M8 13h5" />
     </svg>
   );
 }
