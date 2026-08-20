@@ -58,14 +58,22 @@ export default async function ChatRoomPage({
     }
   }
 
-  const senderIds = [...new Set(rows.map((m) => m.sender_id))];
-  const [{ data: senderProfiles }, avatarById] = await Promise.all([
-    senderIds.length > 0
-      ? supabase.from("profiles").select("id, name").in("id", senderIds)
+  const { data: memberRows } = await supabase
+    .from("chat_room_members")
+    .select("user_id")
+    .eq("room_id", roomId);
+  const memberIds = (memberRows ?? []).map((m) => m.user_id);
+
+  const senderIds = rows.map((m) => m.sender_id);
+  const profileIds = [...new Set([...memberIds, ...senderIds])];
+  const [{ data: profiles }, avatarById] = await Promise.all([
+    profileIds.length > 0
+      ? supabase.from("profiles").select("id, name").in("id", profileIds)
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
-    fetchAvatarUrlById(supabase, senderIds),
+    fetchAvatarUrlById(supabase, profileIds),
   ]);
-  const nameById = new Map((senderProfiles ?? []).map((p) => [p.id, p.name]));
+  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name]));
+  const members = memberIds.map((id) => ({ id, name: nameById.get(id) ?? "알 수 없음" }));
 
   return (
     <div className="flex flex-col gap-4">
@@ -78,7 +86,21 @@ export default async function ChatRoomPage({
         <span aria-hidden>←</span> 채팅방
       </Link>
 
-      <h1 className="text-base font-bold"># {room.name}</h1>
+      <div className="flex flex-col gap-2">
+        <h1 className="text-base font-bold"># {room.name}</h1>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-medium text-muted">참여자 {members.length}명</span>
+          {members.map((m) => (
+            <span
+              key={m.id}
+              className="flex items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-[11px] font-medium text-foreground"
+            >
+              <Avatar name={m.name} avatarUrl={avatarById.get(m.id)} size={14} />
+              {m.name}
+            </span>
+          ))}
+        </div>
+      </div>
 
       {rows.length === 0 ? (
         <p className="text-sm text-muted">아직 메시지가 없습니다. 먼저 보내보세요.</p>
