@@ -50,7 +50,7 @@ export default function ChatMessageList({
       const el = scrollRef.current;
       if (!el) return;
       const top = el.getBoundingClientRect().top;
-      const RESERVED_BELOW_PX = 215; // 입력창(~96px) + 하단 메뉴(~80px) + 여유분
+      const RESERVED_BELOW_PX = 185; // 입력창(~96px) + 하단 메뉴(~80px) + 여유분
       setBoxHeight(Math.max(160, window.innerHeight - top - RESERVED_BELOW_PX));
     }
     recalc();
@@ -138,7 +138,7 @@ export default function ChatMessageList({
     <ul
       ref={scrollRef}
       style={{ height: boxHeight ?? undefined }}
-      className="flex flex-col justify-end gap-2 overflow-y-auto pb-3"
+      className="flex flex-col justify-end gap-2 overflow-y-auto pb-1"
     >
       {messages.map((m) => {
         const mine = m.sender_id === currentUserId;
