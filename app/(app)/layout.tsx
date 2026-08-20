@@ -11,7 +11,6 @@ import StoreSwitcher from "@/components/StoreSwitcher";
 import LayoutModeToggle from "@/components/LayoutModeToggle";
 import PullToRefresh from "@/components/PullToRefresh";
 import Avatar from "@/components/Avatar";
-import MessagesHeaderLink from "@/components/MessagesHeaderLink";
 import { fetchAvatarUrlById } from "@/lib/avatar";
 
 // 매장 운영/재무 화면에는 접근을 주지 않는 본사 팀 계정(디자인/마케팅/운영/R&D)이
@@ -39,15 +38,10 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  const [{ data: profile }, storeContext, myAvatarById, { count: unreadMessageCount }] = await Promise.all([
+  const [{ data: profile }, storeContext, myAvatarById] = await Promise.all([
     supabase.from("profiles").select("name, department").eq("id", user.id).single(),
     getStoreContext(supabase),
     fetchAvatarUrlById(supabase, [user.id]),
-    supabase
-      .from("direct_messages")
-      .select("id", { count: "exact", head: true })
-      .eq("recipient_id", user.id)
-      .is("read_at", null),
   ]);
   const { storeId, stores } = storeContext;
   const isTeamAccount = !!profile?.department;
@@ -112,7 +106,6 @@ export default async function AppLayout({
               </div>
               <Avatar name={name} avatarUrl={myAvatarById.get(user.id)} size={28} />
             </Link>
-            <MessagesHeaderLink hasUnread={(unreadMessageCount ?? 0) > 0} />
             <LayoutModeToggle desktopMode={desktopMode} />
             <LogoutButton />
           </div>

@@ -21,27 +21,31 @@ const TEAM_ITEMS = [
 
 const HR_ITEM = { href: "/hr", label: "HR", icon: HrIcon } as const;
 const INVENTORY_ITEM = { href: "/inventory", label: "재고관리", icon: BoxIcon } as const;
+const MESSAGES_ITEM = { href: "/messages", label: "메시지", icon: MessageIcon } as const;
 
 export default function QuickMenu({
   isMaster = false,
   teamOnly = false,
   showHr = false,
   showInventory = false,
+  hasUnreadMessages = false,
 }: {
   isMaster?: boolean;
   teamOnly?: boolean;
   showHr?: boolean;
   showInventory?: boolean;
+  hasUnreadMessages?: boolean;
 }) {
   const items = teamOnly
     ? [
         ...TEAM_ITEMS,
         ...(showHr ? [HR_ITEM] : []),
         ...(showInventory ? [INVENTORY_ITEM] : []),
+        MESSAGES_ITEM,
       ]
     : isMaster
-      ? [...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), HR_ITEM]
-      : ALL_ITEMS;
+      ? [...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), HR_ITEM, MESSAGES_ITEM]
+      : [...ALL_ITEMS, MESSAGES_ITEM];
 
   return (
     <section>
@@ -51,10 +55,13 @@ export default function QuickMenu({
           <Link
             key={href}
             href={href}
-            className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-2 py-3 text-center transition-colors hover:border-brand"
+            className="relative flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-2 py-3 text-center transition-colors hover:border-brand"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-light text-brand">
+            <span className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-brand-light text-brand">
               <Icon />
+              {href === "/messages" && hasUnreadMessages && (
+                <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500" />
+              )}
             </span>
             <span className="text-[11px] font-medium leading-tight text-foreground">
               {label}
@@ -165,6 +172,15 @@ function GaugeIcon() {
       <path d="M4 14a8 8 0 1 1 16 0" />
       <path d="M12 14 16 9" />
       <path d="M12 17.5h.01" />
+    </svg>
+  );
+}
+
+function MessageIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4h16v13H8l-4 4Z" />
+      <path d="M8 9h8M8 13h5" />
     </svg>
   );
 }

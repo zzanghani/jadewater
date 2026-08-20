@@ -48,6 +48,15 @@ export default async function DashboardPage() {
   const isMaster = stores.length > 1 && !isTeamAccount;
   const isHq = isMaster || isTeamAccount;
 
+  const { count: unreadMessageCount } = user
+    ? await supabase
+        .from("direct_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("recipient_id", user.id)
+        .is("read_at", null)
+    : { count: 0 };
+  const hasUnreadMessages = (unreadMessageCount ?? 0) > 0;
+
   const days = last7DaysKST();
   const today = kstDateString(0);
   const todayLabel = kstShortDateLabel(today);
@@ -271,6 +280,7 @@ if (isHq) {
           teamOnly
           showHr={profile?.department === "rnd" || profile?.department === "ops"}
           showInventory={profile?.department === "rnd"}
+          hasUnreadMessages={hasUnreadMessages}
         />
 
         <section className="rounded-2xl border border-border bg-card p-4">
@@ -341,7 +351,7 @@ if (isHq) {
         </Link>
       )}
 
-      <QuickMenu isMaster={isMaster} />
+      <QuickMenu isMaster={isMaster} hasUnreadMessages={hasUnreadMessages} />
 
       {!isMaster && !todayClosing && (
         <Link
