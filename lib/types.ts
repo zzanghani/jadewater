@@ -390,6 +390,15 @@ export type InventoryCount = {
   updated_at: string
 }
 
+export type DirectMessage = {
+  id: string
+  sender_id: string
+  recipient_id: string
+  body: string
+  read_at: string | null
+  created_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -628,6 +637,16 @@ export type Database = {
           created_by: string
         }
         Update: Partial<MonthlyPlanAttachment>
+        Relationships: []
+      }
+      direct_messages: {
+        Row: DirectMessage
+        Insert: Partial<DirectMessage> & {
+          sender_id: string
+          recipient_id: string
+          body: string
+        }
+        Update: Partial<Pick<DirectMessage, "read_at">>
         Relationships: []
       }
     }
