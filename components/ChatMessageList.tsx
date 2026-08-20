@@ -38,7 +38,25 @@ export default function ChatMessageList({
     initialDownloadUrlByPath
   );
   const seenIds = useRef<Set<string>>(new Set(initialMessages.map((m) => m.id)));
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLUListElement>(null);
+  const [boxHeight, setBoxHeight] = useState<number | null>(null);
+
+  // 메시지 영역이 내용 길이에 따라 늘었다 줄었다 하면(짧은 대화 =
+  // 빈틈, 긴 대화 = 고정된 입력창에 마지막 메시지가 가려짐) 화면마다
+  // 다르게 보이는 문제가 있어서, 화면에 실제로 남는 공간을 재서 그
+  // 높이를 그대로 쓴다 — 고정 입력창 + 하단 메뉴 높이만큼만 빼고.
+  useLayoutEffect(() => {
+    function recalc() {
+      const el = scrollRef.current;
+      if (!el) return;
+      const top = el.getBoundingClientRect().top;
+      const RESERVED_BELOW_PX = 215; // 입력창(~96px) + 하단 메뉴(~80px) + 여유분
+      setBoxHeight(Math.max(160, window.innerHeight - top - RESERVED_BELOW_PX));
+    }
+    recalc();
+    window.addEventListener("resize", recalc);
+    return () => window.removeEventListener("resize", recalc);
+  }, []);
 
   // 새 메시지가 오면(내가 보낸 것 포함) 실시간 구독으로만 목록에
   // 추가한다 — 서버 revalidate로도 같이 넣으면 중복될 수 있어서, 이
@@ -105,12 +123,23 @@ export default function ChatMessageList({
   }, [messages.length]);
 
   if (messages.length === 0) {
-    return <p className="text-sm text-muted">아직 메시지가 없습니다. 먼저 보내보세요.</p>;
+    return (
+      <ul
+        ref={scrollRef}
+        style={{ height: boxHeight ?? undefined }}
+        className="flex flex-col justify-end overflow-y-auto"
+      >
+        <li className="text-sm text-muted">아직 메시지가 없습니다. 먼저 보내보세요.</li>
+      </ul>
+    );
   }
 
   return (
-    <div ref={scrollRef} className="flex max-h-[42dvh] flex-col gap-2 overflow-y-auto pb-3">
-    <ul className="flex flex-col gap-2">
+    <ul
+      ref={scrollRef}
+      style={{ height: boxHeight ?? undefined }}
+      className="flex flex-col justify-end gap-2 overflow-y-auto pb-3"
+    >
       {messages.map((m) => {
         const mine = m.sender_id === currentUserId;
         return (
@@ -178,6 +207,5 @@ export default function ChatMessageList({
         );
       })}
     </ul>
-    </div>
   );
 }
