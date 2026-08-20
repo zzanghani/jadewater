@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import CreateChatRoomButton from "@/components/CreateChatRoomButton";
+import MessagesTopTabs from "@/components/MessagesTopTabs";
 import { kstDateTimeLabel } from "@/lib/date";
 
 function timeAgoLabel(iso: string): string {
@@ -62,17 +63,11 @@ export default async function ChatRoomsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold">채팅방</h1>
-          <Link
-            href="/messages"
-            className="text-xs font-medium text-muted underline-offset-2 hover:underline"
-          >
-            1:1 메시지
-          </Link>
-        </div>
+        <h1 className="text-lg font-bold">채팅방</h1>
         <CreateChatRoomButton />
       </div>
+
+      <MessagesTopTabs active="rooms" />
 
       {sortedRooms.length === 0 ? (
         <p className="text-sm text-muted">아직 만들어진 채팅방이 없습니다. 새로 만들어보세요.</p>

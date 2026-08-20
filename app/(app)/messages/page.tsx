@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import Avatar from "@/components/Avatar";
+import MessagesTopTabs from "@/components/MessagesTopTabs";
 import NewMessageButton from "@/components/NewMessageButton";
 import { fetchAvatarUrlById } from "@/lib/avatar";
 import { kstDateTimeLabel } from "@/lib/date";
@@ -74,17 +75,11 @@ export default async function MessagesPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold">메시지</h1>
-          <Link
-            href="/messages/rooms"
-            className="text-xs font-medium text-muted underline-offset-2 hover:underline"
-          >
-            채팅방
-          </Link>
-        </div>
+        <h1 className="text-lg font-bold">메시지</h1>
         <NewMessageButton profiles={allProfiles ?? []} />
       </div>
+
+      <MessagesTopTabs active="dm" />
 
       {conversations.length === 0 ? (
         <p className="text-sm text-muted">아직 주고받은 메시지가 없습니다.</p>
