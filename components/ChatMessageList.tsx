@@ -109,7 +109,7 @@ export default function ChatMessageList({
   }
 
   return (
-    <div ref={scrollRef} className="flex max-h-[55vh] flex-col gap-2 overflow-y-auto">
+    <div ref={scrollRef} className="flex max-h-[42dvh] flex-col gap-2 overflow-y-auto">
     <ul className="flex flex-col gap-2">
       {messages.map((m) => {
         const mine = m.sender_id === currentUserId;
