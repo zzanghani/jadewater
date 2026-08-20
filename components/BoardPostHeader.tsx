@@ -164,8 +164,8 @@ export default function BoardPostHeader({
             {(isMaster || canConfirmRequester) && <BoardDeleteButton postId={postId} />}
           </div>
           <h1 className="mt-1.5 text-lg font-bold">{title}</h1>
-          <p className="mt-1 flex items-center gap-1.5 text-xs text-muted">
-            <Avatar name={requesterName} avatarUrl={authorAvatarUrl} size={16} />
+          <p className="mt-1 flex items-center gap-2 text-2xl text-muted">
+            <Avatar name={requesterName} avatarUrl={authorAvatarUrl} size={32} />
             {authorLabel}
           </p>
         </div>
