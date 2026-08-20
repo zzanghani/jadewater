@@ -86,20 +86,23 @@ export async function createChatRoom(
     (id) => id !== user.id
   );
 
-  const { data: room, error } = await supabase
+  // 방을 select까지 해서 돌려받으려 하면, 초대 전용으로 바뀐 select
+  // 정책(chat_rooms_select_member) 때문에 "만든 사람 자신도 아직
+  // chat_room_members에 없는" 이 시점엔 막혀서 room이 null로 온다.
+  // id를 미리 만들어서 넘기면 insert만으로 끝나 select 권한이 필요 없다.
+  const roomId = crypto.randomUUID();
+  const { error } = await supabase
     .from("chat_rooms")
-    .insert({ name, created_by: user.id })
-    .select()
-    .single();
+    .insert({ id: roomId, name, created_by: user.id });
 
-  if (error || !room) {
+  if (error) {
     return { error: "채팅방을 만드는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
   const now = new Date().toISOString();
   await supabase.from("chat_room_members").insert([
-    { room_id: room.id, user_id: user.id, last_read_at: now },
-    ...inviteeIds.map((id) => ({ room_id: room.id, user_id: id })),
+    { room_id: roomId, user_id: user.id, last_read_at: now },
+    ...inviteeIds.map((id) => ({ room_id: roomId, user_id: id })),
   ]);
 
   try {
@@ -114,7 +117,7 @@ export async function createChatRoom(
         sendPushToUser(supabase, id, {
           title: `${creatorName}님이 채팅방에 초대했습니다`,
           body: name,
-          url: `/messages/rooms/${room.id}`,
+          url: `/messages/rooms/${roomId}`,
         })
       )
     );
@@ -123,7 +126,7 @@ export async function createChatRoom(
   }
 
   revalidatePath("/messages/rooms");
-  redirect(`/messages/rooms/${room.id}`);
+  redirect(`/messages/rooms/${roomId}`);
 }
 
 export type SendRoomMessageState = { error?: string } | undefined;
