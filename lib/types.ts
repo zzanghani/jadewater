@@ -399,6 +399,29 @@ export type DirectMessage = {
   created_at: string
 }
 
+export type ChatRoom = {
+  id: string
+  name: string
+  created_by: string
+  created_at: string
+}
+
+export type ChatRoomMember = {
+  id: string
+  room_id: string
+  user_id: string
+  last_read_at: string | null
+  created_at: string
+}
+
+export type ChatMessage = {
+  id: string
+  room_id: string
+  sender_id: string
+  body: string
+  created_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -647,6 +670,24 @@ export type Database = {
           body: string
         }
         Update: Partial<Pick<DirectMessage, "read_at">>
+        Relationships: []
+      }
+      chat_rooms: {
+        Row: ChatRoom
+        Insert: Partial<ChatRoom> & { name: string; created_by: string }
+        Update: Partial<ChatRoom>
+        Relationships: []
+      }
+      chat_room_members: {
+        Row: ChatRoomMember
+        Insert: Partial<ChatRoomMember> & { room_id: string; user_id: string }
+        Update: Partial<Pick<ChatRoomMember, "last_read_at">>
+        Relationships: []
+      }
+      chat_messages: {
+        Row: ChatMessage
+        Insert: Partial<ChatMessage> & { room_id: string; sender_id: string; body: string }
+        Update: Partial<ChatMessage>
         Relationships: []
       }
     }

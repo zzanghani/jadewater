@@ -74,7 +74,15 @@ export default async function MessagesPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold">메시지</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-bold">메시지</h1>
+          <Link
+            href="/messages/rooms"
+            className="text-xs font-medium text-muted underline-offset-2 hover:underline"
+          >
+            채팅방
+          </Link>
+        </div>
         <NewMessageButton profiles={allProfiles ?? []} />
       </div>
 
