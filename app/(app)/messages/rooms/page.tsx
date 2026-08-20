@@ -23,11 +23,10 @@ export default async function ChatRoomsPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: rooms } = await supabase
-    .from("chat_rooms")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(100);
+  const [{ data: rooms }, { data: allProfiles }] = await Promise.all([
+    supabase.from("chat_rooms").select("*").order("created_at", { ascending: false }).limit(100),
+    supabase.from("profiles").select("id, name").neq("id", user.id).order("name"),
+  ]);
 
   const roomIds = (rooms ?? []).map((r) => r.id);
 
@@ -64,7 +63,7 @@ export default async function ChatRoomsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold">채팅방</h1>
-        <CreateChatRoomButton />
+        <CreateChatRoomButton profiles={allProfiles ?? []} />
       </div>
 
       <MessagesTopTabs active="rooms" />

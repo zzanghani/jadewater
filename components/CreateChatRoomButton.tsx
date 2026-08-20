@@ -3,12 +3,19 @@
 import { useActionState, useState } from "react";
 import { createChatRoom, type RoomFormState } from "@/app/(app)/messages/rooms/actions";
 
-export default function CreateChatRoomButton() {
+type Profile = { id: string; name: string };
+
+export default function CreateChatRoomButton({ profiles }: { profiles: Profile[] }) {
   const [open, setOpen] = useState(false);
+  const [inviteeIds, setInviteeIds] = useState<string[]>([]);
   const [state, formAction, pending] = useActionState<RoomFormState, FormData>(
     createChatRoom,
     undefined
   );
+
+  function toggleInvitee(id: string) {
+    setInviteeIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
+  }
 
   return (
     <>
@@ -48,6 +55,33 @@ export default function CreateChatRoomButton() {
               placeholder="채팅방 이름"
               className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none ring-brand/30 focus:ring-2"
             />
+
+            <div className="flex flex-col gap-1.5 text-sm font-medium">
+              초대할 사람 <span className="font-normal text-muted">(초대된 사람만 볼 수 있어요)</span>
+              <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto">
+                {profiles.map((p) => {
+                  const selected = inviteeIds.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => toggleInvitee(p.id)}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                        selected
+                          ? "border-brand bg-brand/10 text-brand"
+                          : "border-border bg-background text-muted"
+                      }`}
+                    >
+                      {p.name}
+                    </button>
+                  );
+                })}
+              </div>
+              {inviteeIds.map((id) => (
+                <input key={id} type="hidden" name="invitee_ids" value={id} />
+              ))}
+            </div>
+
             {state?.error && (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{state.error}</p>
             )}

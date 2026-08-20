@@ -46,6 +46,10 @@ export async function createChatRoom(
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "채팅방 이름을 입력해 주세요." };
 
+  const inviteeIds = [...new Set(formData.getAll("invitee_ids").map(String))].filter(
+    (id) => id !== user.id
+  );
+
   const { data: room, error } = await supabase
     .from("chat_rooms")
     .insert({ name, created_by: user.id })
@@ -56,9 +60,31 @@ export async function createChatRoom(
     return { error: "채팅방을 만드는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
-  await supabase
-    .from("chat_room_members")
-    .insert({ room_id: room.id, user_id: user.id, last_read_at: new Date().toISOString() });
+  const now = new Date().toISOString();
+  await supabase.from("chat_room_members").insert([
+    { room_id: room.id, user_id: user.id, last_read_at: now },
+    ...inviteeIds.map((id) => ({ room_id: room.id, user_id: id })),
+  ]);
+
+  try {
+    const { data: creatorProfile } = await supabase
+      .from("profiles")
+      .select("name")
+      .eq("id", user.id)
+      .single();
+    const creatorName = creatorProfile?.name ?? "누군가";
+    await Promise.all(
+      inviteeIds.map((id) =>
+        sendPushToUser(supabase, id, {
+          title: `${creatorName}님이 채팅방에 초대했습니다`,
+          body: name,
+          url: `/messages/rooms/${room.id}`,
+        })
+      )
+    );
+  } catch (err) {
+    console.error("[createChatRoom] 초대 알림 발송 중 오류", err);
+  }
 
   revalidatePath("/messages/rooms");
   redirect(`/messages/rooms/${room.id}`);
