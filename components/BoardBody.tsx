@@ -1,4 +1,38 @@
+import type { ReactNode } from "react";
 import { parseBoardBody, parseInlineContent } from "@/lib/boardBody";
+
+// 본문에 그냥 텍스트로 적힌 http(s) 링크를 눌러서 바로 이동할 수 있는
+// <a>로 바꿔준다. 매 호출마다 정규식을 새로 만들어서(lastIndex 공유
+// 문제 방지) 안전하게 처리한다.
+function linkifyText(text: string): ReactNode[] {
+  const urlPattern = /https?:\/\/[^\s]+/g;
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+
+  while ((match = urlPattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    const url = match[0];
+    parts.push(
+      <a
+        key={key++}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="cursor-pointer break-all text-brand underline"
+      >
+        {url}
+      </a>
+    );
+    lastIndex = match.index + url.length;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+
+  return parts;
+}
 
 // <details>/<summary>는 JS 없이도 브라우저가 알아서 접고 펼쳐주므로
 // 서버 컴포넌트로 그냥 렌더링해도 된다.
@@ -49,7 +83,7 @@ function InlineContent({
         if (node.kind === "text") {
           return (
             <p key={i} className="whitespace-pre-wrap text-sm text-foreground">
-              {node.text}
+              {linkifyText(node.text)}
             </p>
           );
         }
