@@ -99,11 +99,27 @@ export async function createChatRoom(
     return { error: "채팅방을 만드는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
+  // 방 만든 사람 본인의 참여 기록은 따로, 반드시 확인하면서 넣는다 —
+  // 이게 실패하면 redirect 뒤에 자기가 만든 방이 select 정책에 막혀
+  // 404로 보이게 되므로, 실패 시 리다이렉트하지 않고 바로 에러를 알린다.
   const now = new Date().toISOString();
-  await supabase.from("chat_room_members").insert([
-    { room_id: roomId, user_id: user.id, last_read_at: now },
-    ...inviteeIds.map((id) => ({ room_id: roomId, user_id: id })),
-  ]);
+  const { error: selfMemberError } = await supabase
+    .from("chat_room_members")
+    .insert({ room_id: roomId, user_id: user.id, last_read_at: now });
+
+  if (selfMemberError) {
+    console.error("[createChatRoom] 본인 참여 등록 실패", selfMemberError);
+    return { error: "채팅방을 만드는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+  }
+
+  if (inviteeIds.length > 0) {
+    const { error: inviteError } = await supabase
+      .from("chat_room_members")
+      .insert(inviteeIds.map((id) => ({ room_id: roomId, user_id: id })));
+    if (inviteError) {
+      console.error("[createChatRoom] 초대 등록 실패", inviteError);
+    }
+  }
 
   try {
     const { data: creatorProfile } = await supabase
