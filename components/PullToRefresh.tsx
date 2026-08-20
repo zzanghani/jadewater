@@ -26,6 +26,15 @@ export default function PullToRefresh({
         pulling = false;
         return;
       }
+      // 채팅 메시지 목록처럼 자체 스크롤 영역 안에서 시작한 터치는
+      // 당겨서 새로고침 대상이 아니다 — 안 그러면 그 안에서 위로
+      // 스크롤하려는 손짓(=아래로 드래그)이 새로고침 제스처로 오인돼
+      // 스크롤이 안 먹히고 화면이 튕기는 문제가 생긴다.
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("[data-no-pull-refresh]")) {
+        pulling = false;
+        return;
+      }
       // 페이지 최상단에서 아래로 당기기 시작할 때만 제스처를 활성화한다.
       if (window.scrollY <= 0) {
         startY = e.touches[0].clientY;

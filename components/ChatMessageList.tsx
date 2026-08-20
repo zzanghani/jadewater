@@ -126,6 +126,7 @@ export default function ChatMessageList({
     return (
       <ul
         ref={scrollRef}
+        data-no-pull-refresh
         style={{ height: boxHeight ?? undefined }}
         className="flex flex-col justify-end overflow-y-auto"
       >
@@ -137,6 +138,7 @@ export default function ChatMessageList({
   return (
     <ul
       ref={scrollRef}
+      data-no-pull-refresh
       style={{ height: boxHeight ?? undefined }}
       className="flex flex-col justify-end gap-2 overflow-y-auto pb-1"
     >
