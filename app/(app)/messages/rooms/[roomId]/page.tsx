@@ -121,7 +121,7 @@ export default async function ChatRoomPage({
         downloadUrlByPath={downloadUrlByPath}
       />
 
-      <RoomMessageForm roomId={roomId} />
+      <RoomMessageForm roomId={roomId} members={members} />
     </div>
   );
 }

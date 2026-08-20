@@ -222,14 +222,28 @@ export async function sendRoomMessage(
     const senderName = senderProfile?.name ?? "누군가";
     const roomName = room?.name ?? "채팅방";
     const targets = (members ?? []).map((m) => m.user_id).filter((id) => id !== user.id);
+
+    // 메시지에 "@이름"으로 태그된 사람에게는 일반 새 메시지 알림 대신
+    // 태그 전용 알림을 보낸다(둘 다 보내면 같은 메시지로 알림이 중복됨).
+    const { data: targetProfiles } = await supabase.from("profiles").select("id, name").in("id", targets);
+    const nameById = new Map((targetProfiles ?? []).map((p) => [p.id, p.name]));
+
     await Promise.all(
-      targets.map((id) =>
-        sendPushToUser(supabase, id, {
-          title: `${roomName} · ${senderName}`,
-          body: body.slice(0, 80),
-          url: `/messages/rooms/${roomId}`,
-        })
-      )
+      targets.map((id) => {
+        const name = nameById.get(id);
+        const mentioned = name ? body.includes(`@${name}`) : false;
+        return sendPushToUser(supabase, id, mentioned
+          ? {
+              title: `${senderName}님이 회원님을 태그했습니다`,
+              body: body.slice(0, 80),
+              url: `/messages/rooms/${roomId}`,
+            }
+          : {
+              title: `${roomName} · ${senderName}`,
+              body: body.slice(0, 80),
+              url: `/messages/rooms/${roomId}`,
+            });
+      })
     );
   } catch (err) {
     console.error("[sendRoomMessage] 알림 발송 중 오류", err);
