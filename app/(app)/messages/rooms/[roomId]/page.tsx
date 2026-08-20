@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Avatar from "@/components/Avatar";
+import ChatImageBubble from "@/components/ChatImageBubble";
 import MarkRoomRead from "@/components/MarkRoomRead";
 import RoomMessageForm from "@/components/RoomMessageForm";
 import { fetchAvatarUrlById } from "@/lib/avatar";
@@ -49,12 +50,21 @@ export default async function ChatRoomPage({
     ),
   ];
   const urlByPath: Record<string, string> = {};
+  const downloadUrlByPath: Record<string, string> = {};
   if (referencedPaths.length > 0) {
-    const { data: signedUrls } = await supabase.storage
-      .from("chat")
-      .createSignedUrls(referencedPaths, 3600);
+    const [{ data: signedUrls }, { data: downloadSignedUrls }] = await Promise.all([
+      supabase.storage.from("chat").createSignedUrls(referencedPaths, 3600),
+      // 사진 팝업의 "다운로드" 버튼용 — Content-Disposition을 attachment로
+      // 붙여야 <a download>가 안 먹는 다른 도메인 URL에서도 실제로
+      // 다운로드된다. 미리보기용 URL은 그대로 인라인으로 열려야 하므로
+      // 서명을 따로 받는다.
+      supabase.storage.from("chat").createSignedUrls(referencedPaths, 3600, { download: true }),
+    ]);
     for (const s of signedUrls ?? []) {
       if (s.signedUrl) urlByPath[s.path ?? ""] = s.signedUrl;
+    }
+    for (const s of downloadSignedUrls ?? []) {
+      if (s.signedUrl) downloadUrlByPath[s.path ?? ""] = s.signedUrl;
     }
   }
 
@@ -129,14 +139,9 @@ export default async function ChatRoomPage({
                     {parseInlineContent(m.body).map((node, i) => {
                       if (node.kind === "image") {
                         const src = urlByPath[node.path];
-                        return src ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            key={i}
-                            src={src}
-                            alt={node.alt}
-                            className="max-w-full rounded-xl"
-                          />
+                        const downloadHref = downloadUrlByPath[node.path];
+                        return src && downloadHref ? (
+                          <ChatImageBubble key={i} src={src} downloadHref={downloadHref} alt={node.alt} />
                         ) : (
                           <p key={i} className="text-sm">
                             [사진: {node.alt}]
