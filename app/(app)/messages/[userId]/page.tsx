@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { markThreadRead } from "@/app/(app)/messages/actions";
 import Avatar from "@/components/Avatar";
+import MarkThreadRead from "@/components/MarkThreadRead";
 import MessageThreadForm from "@/components/MessageThreadForm";
 import { fetchAvatarUrlById } from "@/lib/avatar";
 import { kstDateTimeLabel } from "@/lib/date";
@@ -27,8 +27,6 @@ export default async function MessageThreadPage({
     .maybeSingle();
   if (!otherProfile) notFound();
 
-  await markThreadRead(otherId);
-
   const { data: messages } = await supabase
     .from("direct_messages")
     .select("*")
@@ -42,6 +40,8 @@ export default async function MessageThreadPage({
 
   return (
     <div className="flex flex-col gap-4">
+      <MarkThreadRead otherUserId={otherId} />
+
       <Link href="/messages" className="flex items-center gap-1 text-sm font-medium text-muted">
         <span aria-hidden>←</span> 메시지
       </Link>
