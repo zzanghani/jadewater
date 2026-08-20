@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { saveOrShareFile } from "@/lib/saveFile";
 
 export default function ChatImageBubble({
   src,
@@ -40,12 +41,13 @@ export default function ChatImageBubble({
               className="max-h-[70vh] max-w-full rounded-xl object-contain"
             />
             <div className="flex gap-2">
-              <a
-                href={downloadHref}
+              <button
+                type="button"
+                onClick={() => saveOrShareFile(downloadHref, alt)}
                 className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white shadow-md shadow-brand/30"
               >
                 다운로드
-              </a>
+              </button>
               <button
                 type="button"
                 onClick={() => setOpen(false)}

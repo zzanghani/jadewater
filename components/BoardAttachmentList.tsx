@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { saveOrShareFile } from "@/lib/saveFile";
 
 const IMAGE_EXT = new Set(["jpg", "jpeg", "png", "gif", "webp", "heic"]);
 
@@ -85,12 +86,18 @@ export default function BoardAttachmentList({
             <p className="truncate text-sm font-medium text-foreground">{selected.file_name}</p>
 
             {(selected.downloadUrl ?? selected.url) && (
-              <a
-                href={selected.downloadUrl ?? selected.url}
+              <button
+                type="button"
+                onClick={() =>
+                  saveOrShareFile(
+                    (selected.downloadUrl ?? selected.url) as string,
+                    selected.file_name
+                  )
+                }
                 className="rounded-xl bg-brand py-2.5 text-center text-sm font-semibold text-white shadow-sm shadow-brand/30"
               >
                 다운로드
-              </a>
+              </button>
             )}
           </div>
         </div>
