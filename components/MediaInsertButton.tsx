@@ -1,7 +1,10 @@
 "use client";
 
 import { useRef, useState, type RefObject } from "react";
-import { uploadInlineBoardFile } from "@/app/(app)/board/actions";
+
+export type InlineUploadResult =
+  | { path: string; url: string; fileName: string; isImage: boolean }
+  | { error: string };
 
 // 커서가 있던 자리에 텍스트를 끼워 넣는다. 토글 삽입과 같은 방식으로
 // uncontrolled textarea의 DOM value를 직접 바꾸고 input 이벤트를 흘려서
@@ -30,9 +33,11 @@ function insertAtCursor(el: HTMLTextAreaElement, text: string) {
 export default function MediaInsertButton({
   textareaRef,
   onUploaded,
+  uploadAction,
 }: {
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   onUploaded: (path: string, url: string) => void;
+  uploadAction: (formData: FormData) => Promise<InlineUploadResult>;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -48,7 +53,7 @@ export default function MediaInsertButton({
     try {
       const formData = new FormData();
       formData.set("file", file);
-      const result = await uploadInlineBoardFile(formData);
+      const result = await uploadAction(formData);
 
       if ("error" in result) {
         setError(result.error);

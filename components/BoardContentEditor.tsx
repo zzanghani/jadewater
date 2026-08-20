@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { uploadInlineBoardFile } from "@/app/(app)/board/actions";
 import MediaInsertButton from "@/components/MediaInsertButton";
 import ToggleInsertButton from "@/components/ToggleInsertButton";
 
@@ -309,7 +310,13 @@ export default function BoardContentEditor({
 
       <div className="flex flex-wrap gap-2">
         <ToggleInsertButton textareaRef={activeTextareaRef()} />
-        {onUploaded && <MediaInsertButton textareaRef={activeTextareaRef()} onUploaded={onUploaded} />}
+        {onUploaded && (
+          <MediaInsertButton
+            textareaRef={activeTextareaRef()}
+            onUploaded={onUploaded}
+            uploadAction={uploadInlineBoardFile}
+          />
+        )}
         <button
           type="button"
           onClick={insertTableAtCursor}

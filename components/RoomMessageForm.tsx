@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import { sendRoomMessage, type SendRoomMessageState } from "@/app/(app)/messages/rooms/actions";
+import { sendRoomMessage, uploadInlineChatFile, type SendRoomMessageState } from "@/app/(app)/messages/rooms/actions";
+import MediaInsertButton from "@/components/MediaInsertButton";
 
 export default function RoomMessageForm({ roomId }: { roomId: string }) {
   const [state, formAction, pending] = useActionState<SendRoomMessageState, FormData>(
@@ -9,6 +10,7 @@ export default function RoomMessageForm({ roomId }: { roomId: string }) {
     undefined
   );
   const formRef = useRef<HTMLFormElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (state?.error) return;
@@ -20,6 +22,7 @@ export default function RoomMessageForm({ roomId }: { roomId: string }) {
       <input type="hidden" name="room_id" value={roomId} />
       <div className="flex items-end gap-2">
         <textarea
+          ref={textareaRef}
           name="body"
           required
           rows={2}
@@ -34,6 +37,7 @@ export default function RoomMessageForm({ roomId }: { roomId: string }) {
           {pending ? "전송 중..." : "전송"}
         </button>
       </div>
+      <MediaInsertButton textareaRef={textareaRef} onUploaded={() => {}} uploadAction={uploadInlineChatFile} />
       {state?.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{state.error}</p>
       )}

@@ -131,7 +131,7 @@ export function parseInlineContent(content: string): InlineNode[] {
   return nodes;
 }
 
-function flattenInlineContentForPreview(content: string): string {
+export function flattenInlineContentForPreview(content: string): string {
   return parseInlineContent(content)
     .map((n) => {
       if (n.kind === "text") return n.text;

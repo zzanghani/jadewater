@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import CreateChatRoomButton from "@/components/CreateChatRoomButton";
 import MessagesTopTabs from "@/components/MessagesTopTabs";
+import { flattenInlineContentForPreview } from "@/lib/boardBody";
 import { kstDateTimeLabel } from "@/lib/date";
 
 function timeAgoLabel(iso: string): string {
@@ -96,7 +97,7 @@ export default async function ChatRoomsPage() {
                       )}
                     </div>
                     <p className="truncate text-xs text-muted">
-                      {last?.body ?? "아직 메시지가 없습니다."}
+                      {last ? flattenInlineContentForPreview(last.body) : "아직 메시지가 없습니다."}
                     </p>
                   </div>
                   {hasUnread && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-brand" />}

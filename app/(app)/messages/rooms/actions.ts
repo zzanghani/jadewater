@@ -31,6 +31,42 @@ async function sendPushToUser(
   }
 }
 
+export type InlineUploadResult =
+  | { path: string; url: string; fileName: string; isImage: boolean }
+  | { error: string };
+
+// 채팅방 메시지 안에 사진·파일을 바로 넣기 위한 즉시 업로드. board의
+// uploadInlineBoardFile과 같은 방식이되, 별도 'chat' 스토리지 버킷에
+// 올린다. 방 멤버 여부는 확인하지 않는다 — 어차피 메시지를 보낼 때
+// chat_messages insert RLS(멤버만 가능)가 다시 한번 막아준다.
+export async function uploadInlineChatFile(formData: FormData): Promise<InlineUploadResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "로그인이 필요합니다." };
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "파일을 선택해 주세요." };
+
+  const ext = file.name.split(".").pop() || "bin";
+  const path = `${user.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+  const { error: uploadError } = await supabase.storage
+    .from("chat")
+    .upload(path, file, { contentType: file.type || "application/octet-stream" });
+  if (uploadError) return { error: "업로드 중 오류가 발생했습니다." };
+
+  const { data: signed } = await supabase.storage.from("chat").createSignedUrl(path, 3600);
+  if (!signed?.signedUrl) return { error: "미리보기를 불러오는 중 오류가 발생했습니다." };
+
+  return {
+    path,
+    url: signed.signedUrl,
+    fileName: file.name,
+    isImage: file.type.startsWith("image/"),
+  };
+}
+
 export type RoomFormState = { error?: string } | undefined;
 
 export async function createChatRoom(
