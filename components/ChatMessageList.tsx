@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { resolveChatFileUrls } from "@/app/(app)/messages/rooms/actions";
 import Avatar from "@/components/Avatar";
 import ChatImageBubble from "@/components/ChatImageBubble";
@@ -38,60 +38,78 @@ export default function ChatMessageList({
     initialDownloadUrlByPath
   );
   const seenIds = useRef<Set<string>>(new Set(initialMessages.map((m) => m.id)));
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // 새 메시지가 오면(내가 보낸 것 포함) 실시간 구독으로만 목록에
   // 추가한다 — 서버 revalidate로도 같이 넣으면 중복될 수 있어서, 이
   // 화면 안에서는 Realtime이 유일한 갱신 경로다.
   useEffect(() => {
     const supabase = createClient();
-    const channel = supabase
-      .channel(`chat_messages_room_${roomId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "chat_messages",
-          filter: `room_id=eq.${roomId}`,
-        },
-        async (payload) => {
-          const row = payload.new as ChatMessageRow;
-          if (seenIds.current.has(row.id)) return;
-          seenIds.current.add(row.id);
-          setMessages((prev) => [...prev, row]);
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
 
-          const paths = parseInlineContent(row.body)
-            .filter((n) => n.kind === "image" || n.kind === "file")
-            .map((n) => (n as { path: string }).path);
-          if (paths.length === 0) return;
+    // 구독을 걸기 전에 세션(JWT)이 브라우저 클라이언트에 완전히
+    // 붙었는지 먼저 확인한다 — 그렇지 않으면 Realtime 소켓이 익명으로
+    // 붙어서 RLS에 막혀 이벤트가 조용히 안 옴(에러 없이 그냥 안 옴).
+    supabase.auth.getSession().then(() => {
+      if (cancelled) return;
+      channel = supabase
+        .channel(`chat_messages_room_${roomId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "chat_messages",
+            filter: `room_id=eq.${roomId}`,
+          },
+          async (payload) => {
+            const row = payload.new as ChatMessageRow;
+            if (seenIds.current.has(row.id)) return;
+            seenIds.current.add(row.id);
+            setMessages((prev) => [...prev, row]);
 
-          const resolved = await resolveChatFileUrls(paths);
-          if (Object.keys(resolved).length === 0) return;
-          setUrlByPath((prev) => {
-            const next = { ...prev };
-            for (const [path, r] of Object.entries(resolved)) next[path] = r.url;
-            return next;
-          });
-          setDownloadUrlByPath((prev) => {
-            const next = { ...prev };
-            for (const [path, r] of Object.entries(resolved)) next[path] = r.downloadUrl;
-            return next;
-          });
-        }
-      )
-      .subscribe();
+            const paths = parseInlineContent(row.body)
+              .filter((n) => n.kind === "image" || n.kind === "file")
+              .map((n) => (n as { path: string }).path);
+            if (paths.length === 0) return;
+
+            const resolved = await resolveChatFileUrls(paths);
+            if (Object.keys(resolved).length === 0) return;
+            setUrlByPath((prev) => {
+              const next = { ...prev };
+              for (const [path, r] of Object.entries(resolved)) next[path] = r.url;
+              return next;
+            });
+            setDownloadUrlByPath((prev) => {
+              const next = { ...prev };
+              for (const [path, r] of Object.entries(resolved)) next[path] = r.downloadUrl;
+              return next;
+            });
+          }
+        )
+        .subscribe();
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]);
+
+  // 메시지가 늘어날 때마다 가장 아래(최신 메시지)로 자동 스크롤한다.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages.length]);
 
   if (messages.length === 0) {
     return <p className="text-sm text-muted">아직 메시지가 없습니다. 먼저 보내보세요.</p>;
   }
 
   return (
+    <div ref={scrollRef} className="flex max-h-[65vh] flex-col gap-2 overflow-y-auto">
     <ul className="flex flex-col gap-2">
       {messages.map((m) => {
         const mine = m.sender_id === currentUserId;
@@ -158,5 +176,6 @@ export default function ChatMessageList({
         );
       })}
     </ul>
+    </div>
   );
 }

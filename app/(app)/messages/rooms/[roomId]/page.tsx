@@ -121,6 +121,8 @@ export default async function ChatRoomPage({
         downloadUrlByPath={downloadUrlByPath}
       />
 
+      {/* 아래 고정된 입력창에 마지막 내용이 가리지 않도록 여백만 확보 */}
+      <div className="h-32" aria-hidden />
       <RoomMessageForm roomId={roomId} />
     </div>
   );
