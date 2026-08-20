@@ -165,11 +165,11 @@ export default async function BoardPostPage({
           <ul className="flex flex-col gap-3">
             {commentRows.map((c) => (
               <li key={c.id} className="flex flex-col gap-1.5 rounded-2xl border border-border bg-card p-3">
-                <p className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                <p className="flex items-center gap-2 text-2xl font-semibold text-foreground">
                   <Avatar
                     name={nameById.get(c.created_by) ?? "?"}
                     avatarUrl={avatarById.get(c.created_by)}
-                    size={18}
+                    size={36}
                   />
                   {nameById.get(c.created_by) ?? "알 수 없음"}
                   <span className="ml-1 font-normal text-muted">{dateTimeLabel(c.created_at)}</span>
