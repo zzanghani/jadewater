@@ -67,6 +67,34 @@ export async function uploadInlineChatFile(formData: FormData): Promise<InlineUp
   };
 }
 
+export type ResolvedFileUrls = Record<string, { url: string; downloadUrl: string }>;
+
+// 실시간으로 새로 도착한 메시지 안에 사진/파일 참조가 있으면, 그
+// 경로들만 즉석에서 서명 URL을 받아온다(초기 로드 때 하던 일괄 서명과
+// 같은 방식, 새 메시지 하나 분량만).
+export async function resolveChatFileUrls(paths: string[]): Promise<ResolvedFileUrls> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || paths.length === 0) return {};
+
+  const [{ data: signedUrls }, { data: downloadSignedUrls }] = await Promise.all([
+    supabase.storage.from("chat").createSignedUrls(paths, 3600),
+    supabase.storage.from("chat").createSignedUrls(paths, 3600, { download: true }),
+  ]);
+
+  const downloadByPath = new Map((downloadSignedUrls ?? []).map((s) => [s.path, s.signedUrl]));
+  const result: ResolvedFileUrls = {};
+  for (const s of signedUrls ?? []) {
+    const downloadUrl = s.path ? downloadByPath.get(s.path) : null;
+    if (s.path && s.signedUrl && downloadUrl) {
+      result[s.path] = { url: s.signedUrl, downloadUrl };
+    }
+  }
+  return result;
+}
+
 export type RoomFormState = { error?: string } | undefined;
 
 export async function createChatRoom(
@@ -179,8 +207,11 @@ export async function sendRoomMessage(
       { onConflict: "room_id,user_id" }
     );
 
+  // 대화창 안의 새 메시지는 이제 Realtime 구독으로 바로 반영되므로,
+  // 여기서 그 경로를 다시 revalidate하면 서버가 다시 렌더링한 목록이
+  // Realtime으로 받은 목록과 겹쳐 중복으로 보일 수 있어 뺐다. 방 목록
+  // 화면의 "마지막 메시지 미리보기"만 최신화한다.
   revalidatePath("/messages/rooms");
-  revalidatePath(`/messages/rooms/${roomId}`);
 
   try {
     const [{ data: senderProfile }, { data: room }, { data: members }] = await Promise.all([

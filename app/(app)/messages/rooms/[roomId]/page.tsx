@@ -2,12 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Avatar from "@/components/Avatar";
-import ChatImageBubble from "@/components/ChatImageBubble";
+import ChatMessageList from "@/components/ChatMessageList";
 import MarkRoomRead from "@/components/MarkRoomRead";
 import RoomMessageForm from "@/components/RoomMessageForm";
 import { fetchAvatarUrlById } from "@/lib/avatar";
 import { parseInlineContent } from "@/lib/boardBody";
-import { kstDateTimeLabel } from "@/lib/date";
 
 export default async function ChatRoomPage({
   params,
@@ -112,79 +111,15 @@ export default async function ChatRoomPage({
         </div>
       </div>
 
-      {rows.length === 0 ? (
-        <p className="text-sm text-muted">아직 메시지가 없습니다. 먼저 보내보세요.</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {rows.map((m) => {
-            const mine = m.sender_id === user.id;
-            return (
-              <li key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                <div className={`flex max-w-[80%] flex-col gap-0.5 ${mine ? "items-end" : "items-start"}`}>
-                  {!mine && (
-                    <span className="flex items-center gap-1 px-1 text-[11px] font-semibold text-muted">
-                      <Avatar
-                        name={nameById.get(m.sender_id) ?? "?"}
-                        avatarUrl={avatarById.get(m.sender_id)}
-                        size={16}
-                      />
-                      {nameById.get(m.sender_id) ?? "알 수 없음"}
-                    </span>
-                  )}
-                  <div
-                    className={`flex flex-col gap-1.5 rounded-2xl px-4 py-2.5 ${
-                      mine ? "bg-brand text-white" : "border border-border bg-card text-foreground"
-                    }`}
-                  >
-                    {parseInlineContent(m.body).map((node, i) => {
-                      if (node.kind === "image") {
-                        const src = urlByPath[node.path];
-                        const downloadHref = downloadUrlByPath[node.path];
-                        return src && downloadHref ? (
-                          <ChatImageBubble key={i} src={src} downloadHref={downloadHref} alt={node.alt} />
-                        ) : (
-                          <p key={i} className="text-sm">
-                            [사진: {node.alt}]
-                          </p>
-                        );
-                      }
-                      if (node.kind === "file") {
-                        const href = urlByPath[node.path];
-                        return href ? (
-                          <a
-                            key={i}
-                            href={href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`inline-flex w-fit items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold underline ${
-                              mine ? "text-white" : "text-brand"
-                            }`}
-                          >
-                            📎 {node.name}
-                          </a>
-                        ) : (
-                          <p key={i} className="text-sm">
-                            [파일: {node.name}]
-                          </p>
-                        );
-                      }
-                      const text = node.kind === "table" ? node.rows.map((r) => r.join(" ")).join("\n") : node.text;
-                      return (
-                        <p key={i} className="whitespace-pre-wrap text-sm">
-                          {text}
-                        </p>
-                      );
-                    })}
-                    <span className={`self-end text-[10px] ${mine ? "text-white/70" : "text-muted"}`}>
-                      {kstDateTimeLabel(m.created_at)}
-                    </span>
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <ChatMessageList
+        roomId={roomId}
+        currentUserId={user.id}
+        initialMessages={rows}
+        nameById={Object.fromEntries(nameById)}
+        avatarById={Object.fromEntries(avatarById)}
+        urlByPath={urlByPath}
+        downloadUrlByPath={downloadUrlByPath}
+      />
 
       <RoomMessageForm roomId={roomId} />
     </div>
