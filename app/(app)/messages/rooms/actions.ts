@@ -96,7 +96,8 @@ export async function createChatRoom(
     .insert({ id: roomId, name, created_by: user.id });
 
   if (error) {
-    return { error: "채팅방을 만드는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+    // TODO(디버그용, 원인 파악되면 제거): 실제 DB 에러를 그대로 보여준다.
+    return { error: `[방 생성 실패] ${error.message} (code: ${error.code ?? "?"})` };
   }
 
   // 방 만든 사람 본인의 참여 기록은 따로, 반드시 확인하면서 넣는다 —
@@ -109,7 +110,10 @@ export async function createChatRoom(
 
   if (selfMemberError) {
     console.error("[createChatRoom] 본인 참여 등록 실패", selfMemberError);
-    return { error: "채팅방을 만드는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+    // TODO(디버그용, 원인 파악되면 제거): 실제 DB 에러를 그대로 보여준다.
+    return {
+      error: `[참여 등록 실패] ${selfMemberError.message} (code: ${selfMemberError.code ?? "?"})`,
+    };
   }
 
   if (inviteeIds.length > 0) {
