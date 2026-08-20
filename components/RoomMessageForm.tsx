@@ -41,7 +41,7 @@ export default function RoomMessageForm({ roomId }: { roomId: string }) {
             ref={textareaRef}
             name="body"
             required
-            rows={2}
+            rows={1}
             placeholder="메시지를 입력하세요 (Shift+Enter로 줄바꿈)"
             onKeyDown={handleKeyDown}
             className="flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
