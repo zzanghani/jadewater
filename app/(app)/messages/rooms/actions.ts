@@ -54,7 +54,10 @@ export async function uploadInlineChatFile(formData: FormData): Promise<InlineUp
   const { error: uploadError } = await supabase.storage
     .from("chat")
     .upload(path, file, { contentType: file.type || "application/octet-stream" });
-  if (uploadError) return { error: "업로드 중 오류가 발생했습니다." };
+  if (uploadError) {
+    // TODO(디버그용, 원인 파악되면 제거)
+    return { error: `[업로드 실패] ${uploadError.message}` };
+  }
 
   const { data: signed } = await supabase.storage.from("chat").createSignedUrl(path, 3600);
   if (!signed?.signedUrl) return { error: "미리보기를 불러오는 중 오류가 발생했습니다." };
