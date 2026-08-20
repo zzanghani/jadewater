@@ -353,7 +353,12 @@ export async function createBoardComment(
 
   const postId = String(formData.get("post_id") ?? "");
   const body = String(formData.get("body") ?? "").trim();
-  const files = formData.getAll("attachments").filter((f): f is File => f instanceof File);
+  // 사진/파일은 이제 댓글 등록 전에 uploadInlineBoardFile로 미리
+  // 올려두고, 그 경로만 여기로 받아서 댓글에 연결한다(채팅과 같은
+  // 방식) — 예전처럼 폼 제출과 동시에 올리던 방식에서 사진 첨부가
+  // 가끔 깨지던 문제가 있어 바꿨다.
+  const attachmentPaths = formData.getAll("attachment_path").map(String);
+  const attachmentNames = formData.getAll("attachment_name").map(String);
 
   if (!postId) return { error: "잘못된 요청입니다." };
   if (!body) return { error: "댓글 내용을 입력해 주세요." };
@@ -368,7 +373,16 @@ export async function createBoardComment(
     return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
-  await uploadAttachments(supabase, user.id, files, { comment_id: inserted.id });
+  if (attachmentPaths.length > 0) {
+    await supabase.from("board_attachments").insert(
+      attachmentPaths.map((path, i) => ({
+        comment_id: inserted.id,
+        storage_path: path,
+        file_name: attachmentNames[i] ?? path,
+        created_by: user.id,
+      }))
+    );
+  }
 
   revalidatePath(`/board/${postId}`);
 

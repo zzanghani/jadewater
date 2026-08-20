@@ -1,9 +1,14 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { createBoardComment, type BoardFormState } from "@/app/(app)/board/actions";
+import {
+  createBoardComment,
+  uploadInlineBoardFile,
+  type BoardFormState,
+} from "@/app/(app)/board/actions";
 
 type Profile = { id: string; name: string };
+type UploadedAttachment = { path: string; fileName: string; url: string; isImage: boolean };
 
 export default function BoardCommentForm({
   postId,
@@ -19,7 +24,9 @@ export default function BoardCommentForm({
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [fileNames, setFileNames] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<UploadedAttachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [body, setBody] = useState("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionStart, setMentionStart] = useState<number | null>(null);
@@ -27,12 +34,41 @@ export default function BoardCommentForm({
   useEffect(() => {
     if (state) return;
     formRef.current?.reset();
-    setFileNames([]);
+    setAttachments([]);
+    setUploadError(null);
     setBody("");
   }, [state]);
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setFileNames(Array.from(e.target.files ?? []).map((f) => f.name));
+  // 채팅과 같은 방식 — 고르는 즉시 올려서 결과(성공/사진인지)를 바로
+  // 확인할 수 있게 하고, 댓글 등록 시점엔 이미 올라간 경로만 넘긴다.
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0) return;
+
+    setUploading(true);
+    setUploadError(null);
+    try {
+      for (const file of files) {
+        const formData = new FormData();
+        formData.set("file", file);
+        const result = await uploadInlineBoardFile(formData);
+        if ("error" in result) {
+          setUploadError(result.error);
+          continue;
+        }
+        setAttachments((prev) => [
+          ...prev,
+          { path: result.path, fileName: result.fileName, url: result.url, isImage: result.isImage },
+        ]);
+      }
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function removeAttachment(path: string) {
+    setAttachments((prev) => prev.filter((a) => a.path !== path));
   }
 
   function handleBodyChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
@@ -112,21 +148,54 @@ export default function BoardCommentForm({
         )}
       </div>
 
+      {attachments.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {attachments.map((a) => (
+            <div key={a.path} className="relative">
+              {a.isImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={a.url}
+                  alt={a.fileName}
+                  className="h-16 w-16 rounded-lg border border-border object-cover"
+                />
+              ) : (
+                <div className="flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-lg border border-border bg-background px-1 text-center text-[10px] font-medium text-muted">
+                  📎
+                  <span className="line-clamp-2 break-all">{a.fileName}</span>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => removeAttachment(a.path)}
+                aria-label="첨부 제거"
+                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-xs text-white"
+              >
+                ✕
+              </button>
+              <input type="hidden" name="attachment_path" value={a.path} />
+              <input type="hidden" name="attachment_name" value={a.fileName} />
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-2">
         <input
           ref={fileInputRef}
           type="file"
-          name="attachments"
+          accept="image/*,application/pdf,.xlsx,.xls,.doc,.docx,.hwp"
           multiple
           onChange={handleFileChange}
           className="hidden"
         />
         <button
           type="button"
+          disabled={uploading}
           onClick={() => fileInputRef.current?.click()}
-          className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:border-brand hover:text-brand"
+          className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:border-brand hover:text-brand disabled:opacity-60"
         >
-          📎 {fileNames.length > 0 ? `${fileNames.length}개 선택됨` : "파일 첨부"}
+          {uploading ? "업로드 중..." : "🖼️ 사진·파일 첨부"}
         </button>
         <button
           type="submit"
@@ -136,6 +205,10 @@ export default function BoardCommentForm({
           {pending ? "등록 중..." : "댓글 등록"}
         </button>
       </div>
+
+      {uploadError && (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{uploadError}</p>
+      )}
 
       {state?.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
