@@ -124,7 +124,9 @@ export default function ChatMessageList({
               )}
               <div
                 className={`flex flex-col gap-1.5 rounded-2xl px-4 py-2.5 ${
-                  mine ? "bg-brand text-white" : "border border-border bg-card text-foreground"
+                  mine
+                    ? "bg-blue-100 text-blue-950"
+                    : "border border-border bg-card text-foreground"
                 }`}
               >
                 {parseInlineContent(m.body).map((node, i) => {
@@ -148,7 +150,7 @@ export default function ChatMessageList({
                         target="_blank"
                         rel="noopener noreferrer"
                         className={`inline-flex w-fit items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold underline ${
-                          mine ? "text-white" : "text-brand"
+                          mine ? "text-blue-800" : "text-brand"
                         }`}
                       >
                         📎 {node.name}
@@ -167,7 +169,7 @@ export default function ChatMessageList({
                     </p>
                   );
                 })}
-                <span className={`self-end text-[10px] ${mine ? "text-white/70" : "text-muted"}`}>
+                <span className={`self-end text-[10px] ${mine ? "text-blue-700/70" : "text-muted"}`}>
                   {kstDateTimeLabel(m.created_at)}
                 </span>
               </div>

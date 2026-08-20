@@ -32,8 +32,8 @@ export default function BottomNav({
   const tabs = isMaster ? MASTER_TABS : STORE_TABS;
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-      <div className="mx-auto flex max-w-md items-stretch justify-around px-2 pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 pb-[env(safe-area-inset-bottom)]">
+      <div className="mx-auto flex h-20 max-w-md items-center justify-around px-2">
         {tabs.map(({ href, label, icon: Icon }) => {
           const active =
             pathname.startsWith(href) || (href === "/board" && pathname.startsWith("/weekly-report"));
@@ -41,7 +41,7 @@ export default function BottomNav({
             <Link
               key={href}
               href={href}
-              className={`relative flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium transition-colors ${
+              className={`relative flex flex-1 flex-col items-center justify-center gap-1 text-xs font-medium transition-colors ${
                 active ? "text-brand" : "text-muted"
               }`}
             >
