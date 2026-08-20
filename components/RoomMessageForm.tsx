@@ -33,10 +33,10 @@ export default function RoomMessageForm({ roomId }: { roomId: string }) {
       <form
         ref={formRef}
         action={formAction}
-        className="mx-auto flex max-w-md flex-col gap-2 px-4 py-2.5"
+        className="mx-auto flex max-w-md flex-col gap-1.5 px-3 py-2"
       >
         <input type="hidden" name="room_id" value={roomId} />
-        <div className="flex items-end gap-2">
+        <div className="flex items-center gap-2">
           <textarea
             ref={textareaRef}
             name="body"
@@ -44,12 +44,12 @@ export default function RoomMessageForm({ roomId }: { roomId: string }) {
             rows={1}
             placeholder="메시지를 입력하세요 (Shift+Enter로 줄바꿈)"
             onKeyDown={handleKeyDown}
-            className="flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
+            className="flex-1 resize-none rounded-full border border-border bg-background px-3.5 py-2 leading-tight text-sm outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
           />
           <button
             type="submit"
             disabled={pending}
-            className="rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand/30 disabled:opacity-60"
+            className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-brand/30 disabled:opacity-60"
           >
             {pending ? "전송 중..." : "전송"}
           </button>
