@@ -6,6 +6,7 @@ import Avatar from "@/components/Avatar";
 import ChatImageBubble from "@/components/ChatImageBubble";
 import { createClient } from "@/lib/supabase/client";
 import { parseInlineContent } from "@/lib/boardBody";
+import { renderRichText } from "@/lib/richText";
 import { kstDateTimeLabel } from "@/lib/date";
 
 type ChatMessageRow = {
@@ -37,6 +38,7 @@ export default function ChatMessageList({
   const [downloadUrlByPath, setDownloadUrlByPath] = useState<Record<string, string>>(
     initialDownloadUrlByPath
   );
+  const mentionNames = Object.values(nameById);
   const seenIds = useRef<Set<string>>(new Set(initialMessages.map((m) => m.id)));
   const scrollRef = useRef<HTMLUListElement>(null);
   const [boxHeight, setBoxHeight] = useState<number | null>(null);
@@ -196,7 +198,7 @@ export default function ChatMessageList({
                     node.kind === "table" ? node.rows.map((r) => r.join(" ")).join("\n") : node.text;
                   return (
                     <p key={i} className="whitespace-pre-wrap break-words text-sm">
-                      {text}
+                      {renderRichText(text, mentionNames)}
                     </p>
                   );
                 })}

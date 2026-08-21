@@ -80,7 +80,7 @@ export default function BoardPostHeader({
         {HAS_RICH_CONTENT.test(bodyPreview) && (
           <div className="flex flex-col gap-1.5 rounded-xl border border-dashed border-border bg-card p-3">
             <p className="text-xs font-semibold text-muted">미리보기</p>
-            <BoardBody body={bodyPreview} urlByPath={previewUrlByPath} />
+            <BoardBody body={bodyPreview} urlByPath={previewUrlByPath} mentionNames={allProfiles.map((p) => p.name)} />
           </div>
         )}
 
@@ -180,7 +180,7 @@ export default function BoardPostHeader({
           />
         )}
       </div>
-      <BoardBody body={body} urlByPath={urlByPath} />
+      <BoardBody body={body} urlByPath={urlByPath} mentionNames={allProfiles.map((p) => p.name)} />
     </>
   );
 }

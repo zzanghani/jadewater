@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { deletePlanComment, togglePlanFollowerConfirm } from "@/app/(app)/plan/actions";
 import { kstDateTimeLabel as dateTimeLabel } from "@/lib/date";
+import { renderRichText } from "@/lib/richText";
 import MonthlyPlanCommentForm from "@/components/MonthlyPlanCommentForm";
 import BoardAttachmentList from "@/components/BoardAttachmentList";
 import Avatar from "@/components/Avatar";
@@ -102,7 +103,11 @@ export default function MonthlyPlanDetail({
                   )}
                 </div>
               </div>
-              {c.body && <p className="whitespace-pre-wrap text-sm text-foreground">{c.body}</p>}
+              {c.body && (
+                <p className="whitespace-pre-wrap text-sm text-foreground">
+                  {renderRichText(c.body, hqProfiles.map((p) => p.name))}
+                </p>
+              )}
               <BoardAttachmentList attachments={c.attachments} />
             </div>
           ))}

@@ -1,47 +1,16 @@
-import type { ReactNode } from "react";
 import { parseBoardBody, parseInlineContent } from "@/lib/boardBody";
-
-// 본문에 그냥 텍스트로 적힌 http(s) 링크를 눌러서 바로 이동할 수 있는
-// <a>로 바꿔준다. 매 호출마다 정규식을 새로 만들어서(lastIndex 공유
-// 문제 방지) 안전하게 처리한다.
-function linkifyText(text: string): ReactNode[] {
-  const urlPattern = /https?:\/\/[^\s]+/g;
-  const parts: ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  let key = 0;
-
-  while ((match = urlPattern.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-    const url = match[0];
-    parts.push(
-      <a
-        key={key++}
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="cursor-pointer break-all text-brand underline"
-      >
-        {url}
-      </a>
-    );
-    lastIndex = match.index + url.length;
-  }
-  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
-
-  return parts;
-}
+import { renderRichText } from "@/lib/richText";
 
 // <details>/<summary>는 JS 없이도 브라우저가 알아서 접고 펼쳐주므로
 // 서버 컴포넌트로 그냥 렌더링해도 된다.
 export default function BoardBody({
   body,
   urlByPath = {},
+  mentionNames = [],
 }: {
   body: string;
   urlByPath?: Record<string, string>;
+  mentionNames?: string[];
 }) {
   const segments = parseBoardBody(body);
 
@@ -57,11 +26,11 @@ export default function BoardBody({
               {seg.title}
             </summary>
             <div className="mt-2 ml-4 flex flex-col gap-2 border-l-2 border-border pl-3">
-              <InlineContent content={seg.content} urlByPath={urlByPath} />
+              <InlineContent content={seg.content} urlByPath={urlByPath} mentionNames={mentionNames} />
             </div>
           </details>
         ) : (
-          <InlineContent key={i} content={seg.content} urlByPath={urlByPath} />
+          <InlineContent key={i} content={seg.content} urlByPath={urlByPath} mentionNames={mentionNames} />
         )
       )}
     </div>
@@ -71,9 +40,11 @@ export default function BoardBody({
 function InlineContent({
   content,
   urlByPath,
+  mentionNames,
 }: {
   content: string;
   urlByPath: Record<string, string>;
+  mentionNames: string[];
 }) {
   const nodes = parseInlineContent(content);
 
@@ -83,7 +54,7 @@ function InlineContent({
         if (node.kind === "text") {
           return (
             <p key={i} className="whitespace-pre-wrap break-words text-sm text-foreground">
-              {linkifyText(node.text)}
+              {renderRichText(node.text, mentionNames)}
             </p>
           );
         }
