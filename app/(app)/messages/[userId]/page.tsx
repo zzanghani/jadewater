@@ -6,6 +6,7 @@ import MarkThreadRead from "@/components/MarkThreadRead";
 import MessageThreadForm from "@/components/MessageThreadForm";
 import { fetchAvatarUrlById } from "@/lib/avatar";
 import { kstDateTimeLabel } from "@/lib/date";
+import { storeShortLabel } from "@/lib/storeColors";
 
 export default async function MessageThreadPage({
   params,
@@ -22,10 +23,17 @@ export default async function MessageThreadPage({
 
   const { data: otherProfile } = await supabase
     .from("profiles")
-    .select("id, name")
+    .select("id, name, store_id")
     .eq("id", otherId)
     .maybeSingle();
   if (!otherProfile) notFound();
+
+  const { data: otherStore } = otherProfile.store_id
+    ? await supabase.from("stores").select("name").eq("id", otherProfile.store_id).maybeSingle()
+    : { data: null };
+  const otherDisplayName = otherStore
+    ? `${otherProfile.name} [${storeShortLabel(otherStore.name)}]`
+    : otherProfile.name;
 
   const { data: messages } = await supabase
     .from("direct_messages")
@@ -48,7 +56,7 @@ export default async function MessageThreadPage({
 
       <div className="flex items-center gap-2">
         <Avatar name={otherProfile.name} avatarUrl={avatarById.get(otherId)} size={28} />
-        <h1 className="text-base font-bold">{otherProfile.name}</h1>
+        <h1 className="text-base font-bold">{otherDisplayName}</h1>
       </div>
 
       {(messages?.length ?? 0) === 0 ? (

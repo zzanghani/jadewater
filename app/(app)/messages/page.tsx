@@ -5,6 +5,7 @@ import MessagesTopTabs from "@/components/MessagesTopTabs";
 import NewMessageButton from "@/components/NewMessageButton";
 import { fetchAvatarUrlById } from "@/lib/avatar";
 import { kstDateTimeLabel } from "@/lib/date";
+import { storeShortLabel } from "@/lib/storeColors";
 
 function timeAgoLabel(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -39,7 +40,7 @@ export default async function MessagesPage() {
     .single();
   const isStaff = !myProfile?.department && !!myProfile?.store_id && myProfile.role === "staff";
 
-  const [{ data: messages }, { data: allProfiles }] = await Promise.all([
+  const [{ data: messages }, { data: allProfiles }, { data: stores }] = await Promise.all([
     supabase
       .from("direct_messages")
       .select("*")
@@ -51,13 +52,28 @@ export default async function MessagesPage() {
     isStaff
       ? supabase
           .from("profiles")
-          .select("id, name")
+          .select("id, name, store_id")
           .eq("store_id", myProfile!.store_id as string)
           .is("department", null)
           .neq("id", user.id)
           .order("name")
-      : supabase.from("profiles").select("id, name").neq("id", user.id).order("name"),
+      : supabase.from("profiles").select("id, name, store_id").neq("id", user.id).order("name"),
+    supabase.from("stores").select("id, name"),
   ]);
+
+  // 같은 이름이 여러 매장에 있을 수 있어서, 이름 뒤에 소속 매장을
+  // "[옥수]"처럼 짧게 붙여 구분한다. 매장이 없는 계정(마스터/본사
+  // 팀)은 태그 없이 이름만.
+  const storeNameById = new Map((stores ?? []).map((s) => [s.id, s.name]));
+  function withStoreTag(name: string, storeId: string | null): string {
+    const storeName = storeId ? storeNameById.get(storeId) : null;
+    return storeName ? `${name} [${storeShortLabel(storeName)}]` : name;
+  }
+
+  const profilesWithTag = (allProfiles ?? []).map((p) => ({
+    id: p.id,
+    name: withStoreTag(p.name, p.store_id),
+  }));
 
   // 상대방 계정 기준으로 묶어서, 가장 최근 메시지를 미리보기로 보여준다.
   const byOther = new Map<string, Conversation>();
@@ -83,17 +99,19 @@ export default async function MessagesPage() {
   const otherIds = conversations.map((c) => c.otherId);
   const [{ data: otherProfiles }, avatarById] = await Promise.all([
     otherIds.length > 0
-      ? supabase.from("profiles").select("id, name").in("id", otherIds)
-      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+      ? supabase.from("profiles").select("id, name, store_id").in("id", otherIds)
+      : Promise.resolve({ data: [] as { id: string; name: string; store_id: string | null }[] }),
     fetchAvatarUrlById(supabase, otherIds),
   ]);
-  const nameById = new Map((otherProfiles ?? []).map((p) => [p.id, p.name]));
+  const nameById = new Map(
+    (otherProfiles ?? []).map((p) => [p.id, withStoreTag(p.name, p.store_id)])
+  );
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold">메시지</h1>
-        <NewMessageButton profiles={allProfiles ?? []} />
+        <NewMessageButton profiles={profilesWithTag} />
       </div>
 
       <MessagesTopTabs active="dm" />
