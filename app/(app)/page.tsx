@@ -47,7 +47,6 @@ export default async function DashboardPage() {
   const isTeamAccount = !!profile?.department;
   const isMaster = stores.length > 1 && !isTeamAccount;
   const isHq = isMaster || isTeamAccount;
-  const isEmployee = !isTeamAccount && !isMaster && profile?.role === "staff";
 
   const { count: unreadMessageCount } = user
     ? await supabase
@@ -308,29 +307,6 @@ if (isHq) {
           <h2 className="mb-3 text-sm font-semibold text-foreground">최근 7일 매출</h2>
           <MultiStoreChart data={multiChartData} series={multiChartSeries} />
         </section>
-      </div>
-    );
-  }
-
-  if (isEmployee) {
-    return (
-      <div className="flex flex-col gap-5">
-        <PushSubscribeButton storeId={storeId} />
-        <section className="rounded-2xl border border-border bg-card p-4">
-          <h1 className="text-base font-bold">{storeName}</h1>
-          <p className="mt-1 text-sm text-muted">
-            공지사항, 재고관리, 입금요청은 하단 메뉴에서 이용하실 수 있어요.
-          </p>
-        </section>
-        <Link
-          href="/schedule"
-          className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm font-semibold text-foreground"
-        >
-          스케줄 확인하기
-          <span aria-hidden className="text-muted">
-            →
-          </span>
-        </Link>
       </div>
     );
   }

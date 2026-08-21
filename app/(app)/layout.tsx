@@ -21,10 +21,25 @@ import { fetchAvatarUrlById } from "@/lib/avatar";
 // 홈으로 돌려보내는 UX용 가드다.
 const TEAM_ALLOWED_PREFIXES = ["/", "/board", "/weekly-report", "/expense", "/review-report", "/payment", "/profile", "/messages"];
 
-// 직원(staff) 계정에게 허용하는 화면 — 나머지는 URL을 직접 입력해도
+// 직원(staff) 계정도 월말정산·채팅(추후 지점별 채팅 예정)만 빼면
+// 지점 계정과 같은 화면을 그대로 쓴다 — 나머지는 URL을 직접 입력해도
 // 홈으로 돌려보낸다. 실제 데이터 차단은 RLS(user_is_store_manager 등)가
 // 하고, 이건 어색한 빈 화면 대신 깔끔하게 홈으로 돌려보내는 UX용 가드다.
-const EMPLOYEE_ALLOWED_PREFIXES = ["/", "/board", "/inventory", "/payment", "/schedule", "/profile"];
+const EMPLOYEE_ALLOWED_PREFIXES = [
+  "/",
+  "/board",
+  "/inventory",
+  "/payment",
+  "/schedule",
+  "/profile",
+  "/closing",
+  "/receipts",
+  "/expense",
+  "/analysis",
+  "/monthly-analysis",
+  "/cost",
+  "/review-report",
+];
 
 export default async function AppLayout({
   children,
