@@ -150,8 +150,8 @@ export default function ChatMessageList({
           <li key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
             <div className={`flex max-w-[80%] flex-col gap-0.5 ${mine ? "items-end" : "items-start"}`}>
               {!mine && (
-                <span className="flex items-center gap-1 px-1 text-[11px] font-semibold text-muted">
-                  <Avatar name={nameById[m.sender_id] ?? "?"} avatarUrl={avatarById[m.sender_id]} size={16} />
+                <span className="flex items-center gap-1.5 px-1 text-[16.5px] font-semibold text-muted">
+                  <Avatar name={nameById[m.sender_id] ?? "?"} avatarUrl={avatarById[m.sender_id]} size={24} />
                   {nameById[m.sender_id] ?? "알 수 없음"}
                 </span>
               )}
