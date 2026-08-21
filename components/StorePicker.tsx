@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { claimStore } from "@/app/actions/auth";
+import { storeColor } from "@/lib/storeColors";
 import type { Store } from "@/lib/types";
 
 export default function StorePicker({ stores }: { stores: Store[] }) {
@@ -31,17 +32,21 @@ export default function StorePicker({ stores }: { stores: Store[] }) {
       </div>
 
       <div className="flex flex-col gap-2">
-        {stores.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            disabled={pending}
-            onClick={() => handlePick(s.id)}
-            className="rounded-xl border border-border bg-card py-3 text-sm font-semibold text-foreground transition-colors hover:border-brand hover:text-brand disabled:opacity-60"
-          >
-            {s.name}
-          </button>
-        ))}
+        {stores.map((s) => {
+          const color = storeColor(s.name);
+          return (
+            <button
+              key={s.id}
+              type="button"
+              disabled={pending}
+              onClick={() => handlePick(s.id)}
+              style={{ borderLeftColor: color, backgroundColor: `${color}0d` }}
+              className="rounded-xl border border-l-4 border-border py-3 text-sm font-semibold text-foreground transition-opacity hover:opacity-80 disabled:opacity-60"
+            >
+              {s.name}
+            </button>
+          );
+        })}
       </div>
 
       {error && (
