@@ -17,6 +17,13 @@ export default async function ScheduleDayPage({
 
   const supabase = await createClient();
   const { storeId } = await getStoreContext(supabase);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("role").eq("id", user.id).single()
+    : { data: null };
+  const isEmployee = profile?.role === "staff";
 
   // 새로 등록되는 근무자가 항상 아래쪽에 쌓이도록 근무 시간이 아닌
   // 등록된 순서(created_at) 기준으로 정렬한다.
@@ -42,9 +49,9 @@ export default async function ScheduleDayPage({
 
       <ScheduleDayTimeline shifts={rows} />
 
-      <ScheduleShiftList shifts={rows} date={date} />
+      <ScheduleShiftList shifts={rows} date={date} readOnly={isEmployee} />
 
-      <ScheduleShiftForm date={date} />
+      {!isEmployee && <ScheduleShiftForm date={date} />}
     </div>
   );
 }

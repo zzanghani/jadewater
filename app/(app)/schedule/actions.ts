@@ -4,11 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
 import { SCHEDULE_ROLES } from "@/lib/scheduleColors";
-import { APP_ADMIN_PASSWORD } from "@/lib/appPassword";
 import type { ScheduleRole } from "@/lib/types";
 
 export type ScheduleFormState = { error?: string; success?: boolean } | undefined;
-export type UnlockFormState = { error?: string; success?: boolean } | undefined;
 
 function parseDatesField(formData: FormData, fallbackDate: string): string[] {
   let dates: string[] = [];
@@ -66,19 +64,6 @@ async function findBatchRows(
     .eq("break_minutes", original.break_minutes)
     .is("batch_id", null);
   return data ?? [];
-}
-
-export async function unlockScheduleAdmin(
-  _prevState: UnlockFormState,
-  formData: FormData
-): Promise<UnlockFormState> {
-  const password = String(formData.get("password") ?? "");
-
-  if (password !== APP_ADMIN_PASSWORD) {
-    return { error: "비밀번호가 올바르지 않습니다." };
-  }
-
-  return { success: true };
 }
 
 export async function addShift(

@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { kstDateString } from "@/lib/date";
 import { getStoreContext } from "@/lib/store";
 import SettlementForm from "@/components/SettlementForm";
-import SettlementPasswordGate from "@/components/SettlementPasswordGate";
 
 function monthInfo(monthParam?: string) {
   const base =
@@ -37,11 +36,7 @@ export default async function SettlementPage({
   const { start, end, label, prev, next } = monthInfo(monthParam);
 
   const supabase = await createClient();
-  const { storeId, storeName, stores } = await getStoreContext(supabase);
-
-  // store_id가 NULL(마스터 계정)이면 stores에 전 지점이 담겨 2개 이상 보인다.
-  // 지점 계정(store_id 있음)은 자기 매장 1개만 보이므로, 그 경우에만 비밀번호를 요구한다.
-  const isMaster = stores.length > 1;
+  const { storeId, storeName } = await getStoreContext(supabase);
 
   const [{ data: closingRows }, { data: receiptRows }, { data: existing }] =
     await Promise.all([
@@ -91,7 +86,7 @@ export default async function SettlementPage({
     .sort((a, b) => b.amount - a.amount);
   const purchaseTotal = sum(supplierList.map((s) => s.amount));
 
-  const content = (
+  return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold">월말정산</h1>
@@ -126,10 +121,4 @@ export default async function SettlementPage({
       />
     </div>
   );
-
-  if (isMaster) {
-    return content;
-  }
-
-  return <SettlementPasswordGate>{content}</SettlementPasswordGate>;
 }
