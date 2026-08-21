@@ -115,19 +115,23 @@ export default async function ChatRoomsPage({
       <MessagesTopTabs active="rooms" />
 
       {showScopeTabs && (
-        <div className="grid grid-cols-2 gap-2 rounded-2xl bg-card p-1.5">
+        <div className="flex items-center gap-1.5">
           <Link
             href="/messages/rooms?scope=company"
-            className={`rounded-xl py-2.5 text-center text-sm font-semibold transition-colors ${
-              scope === "company" ? "bg-brand text-white shadow-sm" : "text-muted"
+            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              scope === "company"
+                ? "border-brand bg-brand/10 text-brand"
+                : "border-border text-muted"
             }`}
           >
             회사
           </Link>
           <Link
             href="/messages/rooms?scope=store"
-            className={`rounded-xl py-2.5 text-center text-sm font-semibold transition-colors ${
-              scope === "store" ? "bg-brand text-white shadow-sm" : "text-muted"
+            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              scope === "store"
+                ? "border-brand bg-brand/10 text-brand"
+                : "border-border text-muted"
             }`}
           >
             매장
