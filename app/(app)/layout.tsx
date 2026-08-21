@@ -195,7 +195,7 @@ function PendingScreen() {
           type="submit"
           className="mt-2 rounded-xl border border-border bg-card px-6 py-2.5 text-sm font-semibold text-muted"
         >
-          로그아웃
+          로그인 화면으로
         </button>
       </form>
     </div>
@@ -212,7 +212,7 @@ function RejectedScreen() {
           type="submit"
           className="mt-2 rounded-xl border border-border bg-card px-6 py-2.5 text-sm font-semibold text-muted"
         >
-          로그아웃
+          로그인 화면으로
         </button>
       </form>
     </div>
