@@ -83,6 +83,12 @@ export type ClaimStoreResult = { error?: string } | undefined;
 // DB의 prevent_profile_privilege_escalation 트리거가 "store_id가 비어
 // 있던 승인된 staff 계정"의 최초 1회 store_id 변경만 허용하므로, 그
 // 조건을 벗어난 시도는 트리거가 조용히 무시한다.
+//
+// redirect()를 여기서 호출하지 않는다 — 폼 제출이 아니라 버튼
+// onClick(startTransition) 안에서 직접 호출하는 서버 액션이라, 그
+// 안에서 redirect()가 던지는 특수 예외가 프레임워크에 제대로 전달되지
+// 않아 리다이렉트가 조용히 씹히는 문제가 있었다. 대신 성공 여부만
+// 돌려주고, 화면 이동은 호출한 클라이언트 쪽에서 router로 한다.
 export async function claimStore(storeId: string): Promise<ClaimStoreResult> {
   const supabase = await createClient();
   const {
@@ -100,7 +106,7 @@ export async function claimStore(storeId: string): Promise<ClaimStoreResult> {
     return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
-  redirect("/");
+  return undefined;
 }
 
 export async function logout() {

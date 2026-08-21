@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { claimStore } from "@/app/actions/auth";
 import type { Store } from "@/lib/types";
 
 export default function StorePicker({ stores }: { stores: Store[] }) {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -12,7 +14,12 @@ export default function StorePicker({ stores }: { stores: Store[] }) {
     setError(null);
     startTransition(async () => {
       const result = await claimStore(storeId);
-      if (result?.error) setError(result.error);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      router.replace("/");
+      router.refresh();
     });
   }
 
