@@ -99,6 +99,37 @@ export async function renameSupplier(
   return undefined;
 }
 
+export type HideSuppliersResult = { error?: string } | undefined;
+
+// 중복/오기입된 거래처명을 "최근 거래처" 추천 목록에서만 숨긴다.
+// 과거 입고 내역이나 집계에는 영향을 주지 않는다.
+export async function hideSuppliers(
+  storeId: string,
+  names: string[]
+): Promise<HideSuppliersResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "로그인이 필요합니다." };
+  if (names.length === 0) return undefined;
+
+  const { error } = await supabase
+    .from("hidden_suppliers")
+    .upsert(
+      names.map((supplier) => ({ store_id: storeId, supplier, hidden_by: user.id })),
+      { onConflict: "store_id,supplier", ignoreDuplicates: true }
+    );
+
+  if (error) {
+    return { error: "삭제 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+  }
+
+  revalidatePath("/receipts");
+  return undefined;
+}
+
 export async function deleteReceipt(formData: FormData) {
   const supabase = await createClient();
   const {

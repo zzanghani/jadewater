@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { renameSupplier } from "@/app/(app)/receipts/actions";
+import { hideSuppliers, renameSupplier } from "@/app/(app)/receipts/actions";
 import type { RecentSupplier } from "@/lib/frequentSuppliers";
 
 export default function RecentSuppliersButton({
@@ -19,6 +19,8 @@ export default function RecentSuppliersButton({
   const [items, setItems] = useState(suppliers);
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [editMode, setEditMode] = useState(false);
+  const [checked, setChecked] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -65,6 +67,37 @@ export default function RecentSuppliersButton({
     });
   }
 
+  function toggleChecked(supplier: string) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(supplier)) next.delete(supplier);
+      else next.add(supplier);
+      return next;
+    });
+  }
+
+  function toggleEditMode() {
+    setEditMode((v) => !v);
+    setChecked(new Set());
+    setEditing(null);
+    setError(null);
+  }
+
+  function deleteChecked() {
+    if (checked.size === 0) return;
+    const names = [...checked];
+    startTransition(async () => {
+      const result = await hideSuppliers(storeId, names);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      setItems((prev) => prev.filter((s) => !checked.has(s.supplier)));
+      setChecked(new Set());
+      router.refresh();
+    });
+  }
+
   return (
     <>
       <button
@@ -86,13 +119,26 @@ export default function RecentSuppliersButton({
           >
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold">최근 입고 거래처</h3>
-              <button type="button" onClick={() => setOpen(false)} className="text-lg text-muted">
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                {items.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={toggleEditMode}
+                    className="text-xs font-semibold text-brand"
+                  >
+                    {editMode ? "완료" : "편집"}
+                  </button>
+                )}
+                <button type="button" onClick={() => setOpen(false)} className="text-lg text-muted">
+                  ✕
+                </button>
+              </div>
             </div>
 
             <p className="text-xs text-muted">
-              이름이 잘못 등록된 거래처는 ✏️로 고치면 과거 입고 내역까지 한번에 합쳐집니다.
+              {editMode
+                ? "중복되거나 잘못 등록된 거래처를 체크하고 삭제하면 목록에서만 빠집니다(과거 입고 내역은 그대로 남아요)."
+                : "이름이 잘못 등록된 거래처는 ✏️로 고치면 과거 입고 내역까지 한번에 합쳐집니다."}
             </p>
 
             {items.length === 0 ? (
@@ -133,24 +179,38 @@ export default function RecentSuppliersButton({
                       key={s.supplier}
                       className="flex items-center justify-between gap-2 rounded-xl border border-border p-3"
                     >
-                      <p className="min-w-0 truncate text-sm font-semibold">{s.supplier}</p>
-                      <div className="flex shrink-0 items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => startEdit(s.supplier)}
-                          aria-label="이름 수정"
-                          className="rounded-full px-2 py-1.5 text-sm text-muted"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSelect(s.supplier)}
-                          className="rounded-full border border-brand bg-brand/10 px-3 py-1.5 text-xs font-semibold text-brand"
-                        >
-                          확인
-                        </button>
-                      </div>
+                      {editMode ? (
+                        <label className="flex min-w-0 flex-1 items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={checked.has(s.supplier)}
+                            onChange={() => toggleChecked(s.supplier)}
+                            className="h-4 w-4 shrink-0 accent-brand"
+                          />
+                          <span className="min-w-0 truncate text-sm font-semibold">{s.supplier}</span>
+                        </label>
+                      ) : (
+                        <>
+                          <p className="min-w-0 truncate text-sm font-semibold">{s.supplier}</p>
+                          <div className="flex shrink-0 items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => startEdit(s.supplier)}
+                              aria-label="이름 수정"
+                              className="rounded-full px-2 py-1.5 text-sm text-muted"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSelect(s.supplier)}
+                              className="rounded-full border border-brand bg-brand/10 px-3 py-1.5 text-xs font-semibold text-brand"
+                            >
+                              확인
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </li>
                   )
                 )}
@@ -159,6 +219,17 @@ export default function RecentSuppliersButton({
 
             {error && (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>
+            )}
+
+            {editMode && checked.size > 0 && (
+              <button
+                type="button"
+                disabled={pending}
+                onClick={deleteChecked}
+                className="rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {pending ? "삭제 중..." : `선택 삭제 (${checked.size})`}
+              </button>
             )}
           </div>
         </div>

@@ -103,6 +103,14 @@ export type Receipt = {
   created_at: string
 }
 
+export type HiddenSupplier = {
+  id: string
+  store_id: string
+  supplier: string
+  hidden_by: string
+  hidden_at: string
+}
+
 export type LineItem = {
   name: string
   amount: number
@@ -467,6 +475,16 @@ export type Database = {
           created_by: string
         }
         Update: Partial<Receipt>
+        Relationships: []
+      }
+      hidden_suppliers: {
+        Row: HiddenSupplier
+        Insert: Partial<HiddenSupplier> & {
+          store_id: string
+          supplier: string
+          hidden_by: string
+        }
+        Update: Partial<HiddenSupplier>
         Relationships: []
       }
       monthly_settlements: {

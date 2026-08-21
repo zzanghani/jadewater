@@ -11,16 +11,20 @@ export async function getRecentSuppliers(
   storeId: string,
   limit = 20
 ): Promise<RecentSupplier[]> {
-  const { data } = await supabase
-    .from("receipts")
-    .select("supplier, date")
-    .eq("store_id", storeId)
-    .order("date", { ascending: false })
-    .limit(500);
+  const [{ data }, { data: hidden }] = await Promise.all([
+    supabase
+      .from("receipts")
+      .select("supplier, date")
+      .eq("store_id", storeId)
+      .order("date", { ascending: false })
+      .limit(500),
+    supabase.from("hidden_suppliers").select("supplier").eq("store_id", storeId),
+  ]);
+  const hiddenNames = new Set((hidden ?? []).map((h) => h.supplier));
 
   const map = new Map<string, RecentSupplier>();
   for (const r of data ?? []) {
-    if (!r.supplier) continue;
+    if (!r.supplier || hiddenNames.has(r.supplier)) continue;
     const existing = map.get(r.supplier);
     if (existing) {
       existing.count += 1;
