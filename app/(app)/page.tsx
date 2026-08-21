@@ -15,6 +15,7 @@ import MonthlyPlanCalendar from "@/components/MonthlyPlanCalendar";
 import MonthlyPlanAlerts from "@/components/MonthlyPlanAlerts";
 import type { PlanComment, PlanFollower } from "@/components/MonthlyPlanDetail";
 import PushSubscribeButton from "@/components/PushSubscribeButton";
+import ScheduleDayTimeline from "@/components/ScheduleDayTimeline";
 import { getStoreContext, isHanamStore } from "@/lib/store";
 import { storeColor } from "@/lib/storeColors";
 import { avatarPublicUrl } from "@/lib/avatar";
@@ -47,6 +48,7 @@ export default async function DashboardPage() {
   const isTeamAccount = !!profile?.department;
   const isMaster = stores.length > 1 && !isTeamAccount;
   const isHq = isMaster || isTeamAccount;
+  const isEmployee = !isTeamAccount && !isMaster && profile?.role === "staff";
 
   const { count: unreadMessageCount } = user
     ? await supabase
@@ -86,6 +88,17 @@ export default async function DashboardPage() {
   const todaySales = todayClosing?.grand_total ?? 0;
   const todayGuests = todayClosing?.total_guests ?? 0;
   const todayVisitTeams = todayClosing?.visit_teams ?? 0;
+
+  // 직원 계정은 스케줄러가 빠른 메뉴에 없는 대신, 오늘 매출 카드 바로
+  // 아래에 오늘 스케줄을 미리보기로 보여주고 눌러서 전체 화면으로 간다.
+  const { data: todayShifts } = isEmployee
+    ? await supabase
+        .from("schedule_shifts")
+        .select("*")
+        .eq("store_id", storeId)
+        .eq("date", today)
+        .order("created_at", { ascending: true })
+    : { data: [] };
 
   const chartData: ChartPoint[] = days.map((date) => ({
     label: kstDateLabel(date),
@@ -371,8 +384,22 @@ if (isHq) {
         </Link>
       )}
 
+      {isEmployee && (
+        <Link href="/schedule" className="block">
+          {(todayShifts ?? []).length > 0 ? (
+            <ScheduleDayTimeline shifts={todayShifts ?? []} />
+          ) : (
+            <div className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted">
+              오늘 등록된 스케줄이 없어요
+              <span aria-hidden>→</span>
+            </div>
+          )}
+        </Link>
+      )}
+
       <QuickMenu
         isMaster={isMaster}
+        employeeOnly={isEmployee}
         hasUnreadMessages={hasUnreadMessages}
         pendingAccountCount={pendingAccountCount ?? 0}
       />

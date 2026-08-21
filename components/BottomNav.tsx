@@ -21,11 +21,12 @@ const MASTER_TABS = [
   { href: "/messages", label: "메시지", icon: MessageIcon },
 ] as const;
 
-// 직원(staff) 계정 — 공지사항만 볼 수 있는 게시판, 재고관리, 입금요청까지만.
+// 직원(staff) 계정 — 재고관리, 입고입력, 마감보고(마감입력)까지만.
+// 공지사항은 빠른 메뉴로, 입금요청은 뺐다.
 const EMPLOYEE_TABS = [
-  { href: "/board?category=공지사항", label: "공지사항", icon: BoardIcon },
   { href: "/inventory", label: "재고관리", icon: InventoryIcon },
-  { href: "/payment", label: "입금요청", icon: SendIcon },
+  { href: "/receipts", label: "입고입력", icon: ReceiveIcon },
+  { href: "/closing", label: "마감보고", icon: ReportIcon },
 ] as const;
 
 export default function BottomNav({
@@ -119,6 +120,16 @@ function MessageIcon({ active }: { active: boolean }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 1.8} strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 11.5a8.38 8.38 0 0 1-4.7 7.6 8.5 8.5 0 0 1-8.9-.8L3 20l1.7-4.4A8.5 8.5 0 1 1 21 11.5Z" />
+    </svg>
+  );
+}
+
+function ReceiveIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v10" />
+      <path d="m7 9 5 5 5-5" />
+      <path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" />
     </svg>
   );
 }
