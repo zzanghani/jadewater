@@ -1,18 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { signup } from "@/app/actions/auth";
 
 export default function SignupPage() {
   const [state, formAction, pending] = useActionState(signup, undefined);
-  const [role, setRole] = useState<"owner" | "staff">("staff");
 
   return (
     <div className="flex min-h-dvh w-full flex-col justify-center px-6 py-10">
       <div className="mb-8 text-center">
-        <h1 className="text-xl font-bold">회원가입</h1>
-        <p className="mt-1 text-sm text-muted">매장 정산 앱을 시작해 보세요</p>
+        <h1 className="text-xl font-bold">직원 회원가입</h1>
+        <p className="mt-1 text-sm text-muted">
+          가입 후 관리자 승인이 완료되면 이용할 수 있어요
+        </p>
       </div>
 
       <form action={formAction} className="flex flex-col gap-3">
@@ -52,32 +53,6 @@ export default function SignupPage() {
             className="rounded-xl border border-border bg-card px-4 py-3 outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
           />
         </label>
-
-        <div className="flex flex-col gap-1.5 text-sm font-medium">
-          역할
-          <div className="grid grid-cols-2 gap-2">
-            <input type="hidden" name="role" value={role} />
-            {(
-              [
-                { value: "owner", label: "사장" },
-                { value: "staff", label: "직원" },
-              ] as const
-            ).map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setRole(opt.value)}
-                className={`rounded-xl border py-3 text-sm font-semibold transition-colors ${
-                  role === opt.value
-                    ? "border-brand bg-brand-light text-brand"
-                    : "border-border bg-card text-muted"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
 
         {state?.error && (
           <p className="rounded-lg bg-brand-light px-3 py-2 text-sm text-brand-dark">

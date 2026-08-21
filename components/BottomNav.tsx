@@ -21,22 +21,32 @@ const MASTER_TABS = [
   { href: "/messages", label: "메시지", icon: MessageIcon },
 ] as const;
 
+// 직원(staff) 계정 — 공지사항만 볼 수 있는 게시판, 재고관리, 입금요청까지만.
+const EMPLOYEE_TABS = [
+  { href: "/board?category=공지사항", label: "공지사항", icon: BoardIcon },
+  { href: "/inventory", label: "재고관리", icon: InventoryIcon },
+  { href: "/payment", label: "입금요청", icon: SendIcon },
+] as const;
+
 export default function BottomNav({
   isMaster = false,
+  isEmployee = false,
   hasUnreadMessages = false,
 }: {
   isMaster?: boolean;
+  isEmployee?: boolean;
   hasUnreadMessages?: boolean;
 }) {
   const pathname = usePathname();
-  const tabs = isMaster ? MASTER_TABS : STORE_TABS;
+  const tabs = isEmployee ? EMPLOYEE_TABS : isMaster ? MASTER_TABS : STORE_TABS;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 pb-[env(safe-area-inset-bottom)]">
       <div className="mx-auto flex h-20 max-w-md items-center justify-around px-2">
         {tabs.map(({ href, label, icon: Icon }) => {
+          const path = href.split("?")[0];
           const active =
-            pathname.startsWith(href) || (href === "/board" && pathname.startsWith("/weekly-report"));
+            pathname.startsWith(path) || (path === "/board" && pathname.startsWith("/weekly-report"));
           return (
             <Link
               key={href}

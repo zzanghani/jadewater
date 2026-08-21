@@ -20,11 +20,13 @@ export default function ScheduleWeekGrid({
   weekDates,
   rows,
   todayDate,
+  readOnly = false,
 }: {
   weekStart: string;
   weekDates: string[];
   rows: WeekGridRow[];
   todayDate: string;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [unlockState, unlockAction, unlockPending] = useActionState(
@@ -106,19 +108,21 @@ export default function ScheduleWeekGrid({
         </Link>
       </div>
 
-      <div className="flex justify-end">
-        {unlocked ? (
-          <span className="text-[11px] font-medium text-muted">🔓 기존 근무 수정·삭제 가능</span>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowUnlockForm((v) => !v)}
-            className="text-[11px] font-medium text-muted underline-offset-2 hover:underline"
-          >
-            🔒 기존 근무 수정·삭제 잠금 해제
-          </button>
-        )}
-      </div>
+      {!readOnly && (
+        <div className="flex justify-end">
+          {unlocked ? (
+            <span className="text-[11px] font-medium text-muted">🔓 기존 근무 수정·삭제 가능</span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowUnlockForm((v) => !v)}
+              className="text-[11px] font-medium text-muted underline-offset-2 hover:underline"
+            >
+              🔒 기존 근무 수정·삭제 잠금 해제
+            </button>
+          )}
+        </div>
+      )}
       {showUnlockForm && !unlocked && (
         <form
           action={unlockAction}
@@ -189,7 +193,7 @@ export default function ScheduleWeekGrid({
             ) : (
               displayRows.map((row) => {
                 const isPending = !existingNames.has(row.employeeName);
-                const canDeleteRow = unlocked || isPending;
+                const canDeleteRow = !readOnly && (unlocked || isPending);
                 return (
                 <tr key={row.employeeName} className="border-t border-border">
                   <td className="sticky left-0 z-10 bg-card px-2 py-2 text-left font-semibold text-foreground">
@@ -215,7 +219,7 @@ export default function ScheduleWeekGrid({
                     const cellShift = row.cells[i];
                     // 빈 칸(새 근무 추가)은 잠금과 무관하게 항상 열 수 있고,
                     // 이미 등록된 근무를 고치거나 지울 때만 잠금 해제가 필요하다.
-                    const canOpen = unlocked || !cellShift;
+                    const canOpen = !readOnly && (unlocked || !cellShift);
                     return (
                       <td key={d} className="px-1 py-1 text-center">
                         <button
@@ -249,30 +253,32 @@ export default function ScheduleWeekGrid({
         </table>
       </div>
 
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              addRow();
-            }
-          }}
-          placeholder="새 직원 이름 추가"
-          className="flex-1 rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
-        />
-        <button
-          type="button"
-          onClick={addRow}
-          className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted transition-colors hover:border-brand hover:text-brand"
-        >
-          + 추가
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addRow();
+              }
+            }}
+            placeholder="새 직원 이름 추가"
+            className="flex-1 rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
+          />
+          <button
+            type="button"
+            onClick={addRow}
+            className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted transition-colors hover:border-brand hover:text-brand"
+          >
+            + 추가
+          </button>
+        </div>
+      )}
 
-      {selected && (
+      {!readOnly && selected && (
         <ScheduleCellForm
           date={selected.date}
           employeeName={selected.employeeName}

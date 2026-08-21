@@ -42,11 +42,12 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
   const { data: profile } = user
-    ? await supabase.from("profiles").select("department").eq("id", user.id).single()
+    ? await supabase.from("profiles").select("department, role").eq("id", user.id).single()
     : { data: null };
   const isTeamAccount = !!profile?.department;
   const isMaster = stores.length > 1 && !isTeamAccount;
   const isHq = isMaster || isTeamAccount;
+  const isEmployee = !isTeamAccount && !isMaster && profile?.role === "staff";
 
   const { count: unreadMessageCount } = user
     ? await supabase
@@ -56,6 +57,13 @@ export default async function DashboardPage() {
         .is("read_at", null)
     : { count: 0 };
   const hasUnreadMessages = (unreadMessageCount ?? 0) > 0;
+
+  const { count: pendingAccountCount } = isMaster
+    ? await supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending")
+    : { count: 0 };
 
   const days = last7DaysKST();
   const today = kstDateString(0);
@@ -304,6 +312,29 @@ if (isHq) {
     );
   }
 
+  if (isEmployee) {
+    return (
+      <div className="flex flex-col gap-5">
+        <PushSubscribeButton storeId={storeId} />
+        <section className="rounded-2xl border border-border bg-card p-4">
+          <h1 className="text-base font-bold">{storeName}</h1>
+          <p className="mt-1 text-sm text-muted">
+            공지사항, 재고관리, 입금요청은 하단 메뉴에서 이용하실 수 있어요.
+          </p>
+        </section>
+        <Link
+          href="/schedule"
+          className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 text-sm font-semibold text-foreground"
+        >
+          스케줄 확인하기
+          <span aria-hidden className="text-muted">
+            →
+          </span>
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <PushSubscribeButton storeId={isMaster ? null : storeId} />
@@ -364,7 +395,11 @@ if (isHq) {
         </Link>
       )}
 
-      <QuickMenu isMaster={isMaster} hasUnreadMessages={hasUnreadMessages} />
+      <QuickMenu
+        isMaster={isMaster}
+        hasUnreadMessages={hasUnreadMessages}
+        pendingAccountCount={pendingAccountCount ?? 0}
+      />
 
       {!isMaster && !todayClosing && (
         <Link

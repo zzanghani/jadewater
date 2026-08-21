@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Suspense, useActionState, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { login } from "@/app/actions/auth";
@@ -42,6 +43,13 @@ export default function LoginPage() {
       <Suspense>
         <LoginForm />
       </Suspense>
+
+      <p className="mt-6 text-center text-sm text-muted">
+        직원이신가요?{" "}
+        <Link href="/signup" className="font-semibold text-brand">
+          가입하기
+        </Link>
+      </p>
     </div>
   );
 }

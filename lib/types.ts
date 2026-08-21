@@ -1,5 +1,7 @@
 export type Role = 'owner' | 'staff'
 
+export type ProfileStatus = 'pending' | 'approved' | 'rejected'
+
 export type Department = 'design' | 'marketing' | 'ops' | 'rnd'
 
 export const DEPARTMENT_LABELS: Record<Department, string> = {
@@ -14,6 +16,7 @@ export type Profile = {
   email: string
   name: string
   role: Role
+  status: ProfileStatus
   store_id: string | null
   department: Department | null
   avatar_path: string | null

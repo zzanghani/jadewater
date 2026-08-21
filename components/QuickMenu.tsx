@@ -20,6 +20,7 @@ const TEAM_ITEMS = [
 ] as const;
 
 const HR_ITEM = { href: "/hr", label: "HR", icon: HrIcon } as const;
+const ACCOUNTS_ITEM = { href: "/accounts", label: "가입승인", icon: HrIcon } as const;
 const INVENTORY_ITEM = { href: "/inventory", label: "재고관리", icon: BoxIcon } as const;
 const MESSAGES_ITEM = { href: "/messages", label: "메시지", icon: MessageIcon } as const;
 // 지점장(매장) 계정은 리뷰리포트가 하단 메뉴 대신 여기로 옮겨왔다.
@@ -31,12 +32,14 @@ export default function QuickMenu({
   showHr = false,
   showInventory = false,
   hasUnreadMessages = false,
+  pendingAccountCount = 0,
 }: {
   isMaster?: boolean;
   teamOnly?: boolean;
   showHr?: boolean;
   showInventory?: boolean;
   hasUnreadMessages?: boolean;
+  pendingAccountCount?: number;
 }) {
   // 매장/마스터 계정은 하단 메뉴에 메시지가 있어서 여기엔 안 넣는다.
   // 하단 메뉴가 없는 본사 팀 계정만 여기서 메시지로 들어간다.
@@ -48,7 +51,7 @@ export default function QuickMenu({
         MESSAGES_ITEM,
       ]
     : isMaster
-      ? [...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), HR_ITEM]
+      ? [...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), HR_ITEM, ACCOUNTS_ITEM]
       : [...ALL_ITEMS, REVIEW_REPORT_ITEM];
 
   return (
@@ -64,6 +67,9 @@ export default function QuickMenu({
             <span className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-brand-light text-brand">
               <Icon />
               {href === "/messages" && hasUnreadMessages && (
+                <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500" />
+              )}
+              {href === "/accounts" && pendingAccountCount > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500" />
               )}
             </span>

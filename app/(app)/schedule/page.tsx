@@ -25,6 +25,13 @@ export default async function SchedulePage({
 
   const supabase = await createClient();
   const { storeId } = await getStoreContext(supabase);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("role").eq("id", user.id).single()
+    : { data: null };
+  const isEmployee = profile?.role === "staff";
 
   const [{ data: todayShifts }, { data: weekShifts }, { data: rosterShifts }] =
     await Promise.all([
@@ -89,6 +96,7 @@ export default async function SchedulePage({
           weekDates={weekDates}
           rows={weekGridRows}
           todayDate={today}
+          readOnly={isEmployee}
         />
       </div>
 

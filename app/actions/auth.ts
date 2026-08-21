@@ -2,7 +2,6 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { Role } from "@/lib/types";
 
 export type AuthFormState = { error: string } | undefined;
 
@@ -43,7 +42,6 @@ export async function signup(
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const role = String(formData.get("role") ?? "staff") as Role;
 
   if (!name || !email || !password) {
     return { error: "이름, 이메일, 비밀번호를 모두 입력해 주세요." };
@@ -51,15 +49,15 @@ export async function signup(
   if (password.length < 6) {
     return { error: "비밀번호는 6자 이상이어야 합니다." };
   }
-  if (role !== "owner" && role !== "staff") {
-    return { error: "역할을 다시 선택해 주세요." };
-  }
 
   const supabase = await createClient();
+  // role/status는 여기서 정하지 않는다 — DB의 handle_new_user() 트리거가
+  // 항상 role='staff', status='pending'으로 만든다(자기 가입 폼에서
+  // 마스터 권한을 스스로 고를 수 없게 하기 위함).
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name, role } },
+    options: { data: { name } },
   });
 
   if (error) {
@@ -73,7 +71,33 @@ export async function signup(
   }
 
   if (!data.session) {
-    return { error: "가입이 완료되었습니다. 이메일의 인증 링크를 확인한 뒤 로그인해 주세요." };
+    return { error: "가입이 완료되었습니다. 이메일의 인증 링크를 확인한 뒤 로그인해 주세요. 로그인 후 관리자 승인을 기다리시면 됩니다." };
+  }
+
+  redirect("/");
+}
+
+export type ClaimStoreResult = { error?: string } | undefined;
+
+// 승인된 직원 계정이 처음 로그인할 때 자기 소속 매장을 스스로 고른다.
+// DB의 prevent_profile_privilege_escalation 트리거가 "store_id가 비어
+// 있던 승인된 staff 계정"의 최초 1회 store_id 변경만 허용하므로, 그
+// 조건을 벗어난 시도는 트리거가 조용히 무시한다.
+export async function claimStore(storeId: string): Promise<ClaimStoreResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "로그인이 필요합니다." };
+  if (!storeId) return { error: "매장을 선택해 주세요." };
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ store_id: storeId })
+    .eq("id", user.id);
+
+  if (error) {
+    return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
   redirect("/");

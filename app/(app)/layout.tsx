@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { logout } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
 import { LAYOUT_MODE_COOKIE, isDesktopMode } from "@/lib/layoutMode";
@@ -10,6 +11,7 @@ import LogoutButton from "@/components/LogoutButton";
 import StoreSwitcher from "@/components/StoreSwitcher";
 import LayoutModeToggle from "@/components/LayoutModeToggle";
 import PullToRefresh from "@/components/PullToRefresh";
+import StorePicker from "@/components/StorePicker";
 import Avatar from "@/components/Avatar";
 import { fetchAvatarUrlById } from "@/lib/avatar";
 
@@ -18,6 +20,11 @@ import { fetchAvatarUrlById } from "@/lib/avatar";
 // (user_can_access_store_ops)가 하고, 이건 어색한 빈 화면 대신 깔끔하게
 // 홈으로 돌려보내는 UX용 가드다.
 const TEAM_ALLOWED_PREFIXES = ["/", "/board", "/weekly-report", "/expense", "/review-report", "/payment", "/profile", "/messages"];
+
+// 직원(staff) 계정에게 허용하는 화면 — 나머지는 URL을 직접 입력해도
+// 홈으로 돌려보낸다. 실제 데이터 차단은 RLS(user_is_store_manager 등)가
+// 하고, 이건 어색한 빈 화면 대신 깔끔하게 홈으로 돌려보내는 UX용 가드다.
+const EMPLOYEE_ALLOWED_PREFIXES = ["/", "/board", "/inventory", "/payment", "/schedule", "/profile"];
 
 export default async function AppLayout({
   children,
@@ -38,8 +45,30 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  const [{ data: profile }, storeContext, myAvatarById, { count: unreadMessageCount }] = await Promise.all([
-    supabase.from("profiles").select("name, department").eq("id", user.id).single(),
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("name, department, role, status, store_id")
+    .eq("id", user.id)
+    .single();
+
+  // 가입 승인 대기/거절된 계정은 앱 화면 자체를 보여주지 않는다.
+  if (profile?.status === "pending") {
+    return <PendingScreen />;
+  }
+  if (profile?.status === "rejected") {
+    return <RejectedScreen />;
+  }
+
+  // 승인된 직원(role='staff') 계정이 아직 소속 매장을 고르지 않았으면
+  // (store_id가 비어 있으면) 그 전에는 이 값만으로 "마스터"와 구분이 안
+  // 되므로(둘 다 store_id가 null), 여기서 먼저 매장 선택 화면으로
+  // 보내고 이후 로직에 들어가지 않게 한다.
+  if (profile?.role === "staff" && !profile.department && !profile.store_id) {
+    const { data: allStores } = await supabase.from("stores").select("*").order("sort_order");
+    return <StorePicker stores={allStores ?? []} />;
+  }
+
+  const [storeContext, myAvatarById, { count: unreadMessageCount }] = await Promise.all([
     getStoreContext(supabase),
     fetchAvatarUrlById(supabase, [user.id]),
     supabase
@@ -51,6 +80,9 @@ export default async function AppLayout({
   const { storeId, stores } = storeContext;
   const isTeamAccount = !!profile?.department;
   const isMaster = stores.length > 1 && !isTeamAccount;
+  // 직원(staff) role로 매장이 배정된 계정 — 지점장(owner)보다 제한된
+  // 화면만 이용한다. 지점장/마스터 계정은 role이 'owner'다.
+  const isEmployee = !isTeamAccount && !isMaster && profile?.role === "staff";
   // 베스트메이트컴퍼니(본사) 계정 — 마스터 + 팀 계정. 매장 지점장/직원은 그대로
   // 제이드앤워터 톤을 본다. 실제 색상 값은 globals.css의 .theme-jadewater /
   // .theme-bestmate 참고.
@@ -64,6 +96,16 @@ export default async function AppLayout({
       TEAM_ALLOWED_PREFIXES.some((p) => (p === "/" ? pathname === "/" : pathname.startsWith(p))) ||
       (isHrTeam && pathname.startsWith("/hr")) ||
       (isRnd && pathname.startsWith("/inventory"));
+    if (!allowed) {
+      redirect("/");
+    }
+  }
+
+  if (isEmployee) {
+    const pathname = (await headers()).get("x-pathname") ?? "";
+    const allowed = EMPLOYEE_ALLOWED_PREFIXES.some((p) =>
+      p === "/" ? pathname === "/" : pathname.startsWith(p)
+    );
     if (!allowed) {
       redirect("/");
     }
@@ -131,8 +173,48 @@ export default async function AppLayout({
       </main>
 
       {!isTeamAccount && (
-        <BottomNav isMaster={isMaster} hasUnreadMessages={(unreadMessageCount ?? 0) > 0} />
+        <BottomNav
+          isMaster={isMaster}
+          isEmployee={isEmployee}
+          hasUnreadMessages={(unreadMessageCount ?? 0) > 0}
+        />
       )}
+    </div>
+  );
+}
+
+function PendingScreen() {
+  return (
+    <div className="flex min-h-dvh w-full flex-col items-center justify-center gap-4 px-6 py-10 text-center">
+      <h1 className="text-xl font-bold">가입 승인 대기 중이에요</h1>
+      <p className="text-sm text-muted">
+        관리자가 가입을 승인하면 바로 이용할 수 있어요. 잠시만 기다려 주세요.
+      </p>
+      <form action={logout}>
+        <button
+          type="submit"
+          className="mt-2 rounded-xl border border-border bg-card px-6 py-2.5 text-sm font-semibold text-muted"
+        >
+          로그아웃
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function RejectedScreen() {
+  return (
+    <div className="flex min-h-dvh w-full flex-col items-center justify-center gap-4 px-6 py-10 text-center">
+      <h1 className="text-xl font-bold">가입이 승인되지 않았어요</h1>
+      <p className="text-sm text-muted">문의사항이 있으면 관리자에게 연락해 주세요.</p>
+      <form action={logout}>
+        <button
+          type="submit"
+          className="mt-2 rounded-xl border border-border bg-card px-6 py-2.5 text-sm font-semibold text-muted"
+        >
+          로그아웃
+        </button>
+      </form>
     </div>
   );
 }

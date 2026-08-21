@@ -28,15 +28,25 @@ export default async function BoardPage({
   searchParams: Promise<{ category?: string; status?: string }>;
 }) {
   const { category: categoryParam, status: statusParam } = await searchParams;
-  const category: BoardCategory = ALL_CATEGORIES.includes(categoryParam as BoardCategory)
-    ? (categoryParam as BoardCategory)
-    : NOTICE;
-  const isWorkSection = category !== NOTICE;
   const showDone = statusParam === "done";
 
   const supabase = await createClient();
   const { stores } = await getStoreContext(supabase);
-  const isMaster = stores.length > 1;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("department, role").eq("id", user.id).single()
+    : { data: null };
+  const isMaster = stores.length > 1 && !profile?.department;
+  // 직원(staff) 계정은 공지사항만 볼 수 있다 — 다른 카테고리를 주소로
+  // 직접 넣어도 공지사항으로 되돌린다(실제 차단은 RLS가 한다).
+  const isEmployee = !profile?.department && !isMaster && profile?.role === "staff";
+  const category: BoardCategory =
+    !isEmployee && ALL_CATEGORIES.includes(categoryParam as BoardCategory)
+      ? (categoryParam as BoardCategory)
+      : NOTICE;
+  const isWorkSection = category !== NOTICE;
 
   let query = supabase.from("board_posts").select("*").eq("category", category);
   query = showDone
@@ -87,16 +97,20 @@ export default async function BoardPage({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold">게시판</h1>
-        <Link
-          href={`/board/new?category=${encodeURIComponent(category)}`}
-          className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-md shadow-brand/30"
-        >
-          글쓰기
-        </Link>
+        <h1 className="text-lg font-bold">{isEmployee ? "공지사항" : "게시판"}</h1>
+        {!isEmployee && (
+          <Link
+            href={`/board/new?category=${encodeURIComponent(category)}`}
+            className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-md shadow-brand/30"
+          >
+            글쓰기
+          </Link>
+        )}
       </div>
 
-      <BoardTopTabs active={isWorkSection ? "work" : "notice"} statusSuffix={statusSuffix} />
+      {!isEmployee && (
+        <BoardTopTabs active={isWorkSection ? "work" : "notice"} statusSuffix={statusSuffix} />
+      )}
 
       {isWorkSection && (
         <div className="grid grid-cols-4 gap-2 rounded-2xl bg-card p-1.5">
