@@ -174,7 +174,7 @@ export default async function BoardPostPage({
                   {nameById.get(c.created_by) ?? "알 수 없음"}
                   <span className="ml-1 font-normal text-muted">{dateTimeLabel(c.created_at)}</span>
                 </p>
-                <p className="whitespace-pre-wrap text-sm text-foreground">{c.body}</p>
+                <p className="whitespace-pre-wrap break-words text-sm text-foreground">{c.body}</p>
                 <BoardAttachmentList attachments={commentAttachmentsByCommentId.get(c.id) ?? []} />
               </li>
             ))}

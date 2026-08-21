@@ -82,7 +82,7 @@ function InlineContent({
       {nodes.map((node, i) => {
         if (node.kind === "text") {
           return (
-            <p key={i} className="whitespace-pre-wrap text-sm text-foreground">
+            <p key={i} className="whitespace-pre-wrap break-words text-sm text-foreground">
               {linkifyText(node.text)}
             </p>
           );

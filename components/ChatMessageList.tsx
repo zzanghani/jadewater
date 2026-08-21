@@ -195,7 +195,7 @@ export default function ChatMessageList({
                   const text =
                     node.kind === "table" ? node.rows.map((r) => r.join(" ")).join("\n") : node.text;
                   return (
-                    <p key={i} className="whitespace-pre-wrap text-sm">
+                    <p key={i} className="whitespace-pre-wrap break-words text-sm">
                       {text}
                     </p>
                   );

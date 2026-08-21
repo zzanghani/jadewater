@@ -139,15 +139,15 @@ export default async function BoardPage({
             <li key={post.id} className="relative flex items-stretch gap-2">
               <Link
                 href={`/board/${post.id}`}
-                className="flex flex-1 flex-col gap-1 rounded-2xl border border-border bg-card p-4"
+                className="flex min-w-0 flex-1 flex-col gap-1 rounded-2xl border border-border bg-card p-4"
               >
                 {isUrgent && (
                   <span className="absolute right-3 top-3 rounded-full bg-red-50 px-2 py-1 text-[10px] font-bold text-red-600">
                     🚨 긴급
                   </span>
                 )}
-                <p className="truncate text-sm font-semibold">{post.title}</p>
-                <p className="line-clamp-2 text-xs text-muted">
+                <p className="truncate break-all text-sm font-semibold">{post.title}</p>
+                <p className="line-clamp-2 break-all text-xs text-muted">
                   {flattenBoardBodyForPreview(post.body)}
                 </p>
                 <div className="mt-1 flex items-center gap-2 text-[11px] text-muted">
