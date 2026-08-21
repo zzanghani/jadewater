@@ -66,7 +66,7 @@ export default function ReceiptForm({
       <div className="flex flex-col gap-1.5 text-sm font-medium">
         <div className="flex items-center justify-between gap-2">
           거래처명
-          <RecentSuppliersButton suppliers={recentSuppliers} onSelect={setSupplier} />
+          <RecentSuppliersButton storeId={storeId} suppliers={recentSuppliers} onSelect={setSupplier} />
         </div>
         <input
           type="text"

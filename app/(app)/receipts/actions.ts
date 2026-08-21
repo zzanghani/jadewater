@@ -61,6 +61,44 @@ export async function saveReceipt(
   return { success: true };
 }
 
+export type RenameSupplierResult = { error?: string } | undefined;
+
+// "하눌식자재"처럼 오타로 따로 등록된 거래처명을 과거 입고 내역까지
+// 한번에 올바른 이름으로 합친다 — 안 그러면 거래처별 매입 집계에서
+// 같은 거래처가 이름 차이로 계속 따로 잡힌다.
+export async function renameSupplier(
+  storeId: string,
+  oldName: string,
+  newName: string
+): Promise<RenameSupplierResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "로그인이 필요합니다." };
+
+  const trimmed = newName.trim();
+  if (!trimmed) return { error: "새 거래처명을 입력해 주세요." };
+  if (trimmed === oldName) return undefined;
+
+  const { error } = await supabase
+    .from("receipts")
+    .update({ supplier: trimmed })
+    .eq("store_id", storeId)
+    .eq("supplier", oldName);
+
+  if (error) {
+    return { error: "수정 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+  }
+
+  revalidatePath("/receipts");
+  revalidatePath("/analysis");
+  revalidatePath("/cost");
+  revalidatePath("/settlement");
+  return undefined;
+}
+
 export async function deleteReceipt(formData: FormData) {
   const supabase = await createClient();
   const {
