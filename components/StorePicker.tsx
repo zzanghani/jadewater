@@ -33,30 +33,31 @@ export default function StorePicker({ stores }: { stores: Store[] }) {
           const color = storeColor(s.name);
           const isSelected = selectedId === s.id;
           return (
-            <div key={s.id} className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedId((prev) => (prev === s.id ? null : s.id))}
-                style={{ borderLeftColor: color, backgroundColor: `${color}0d` }}
-                className={`rounded-xl border border-l-4 border-border py-3 text-sm font-semibold text-foreground transition-opacity hover:opacity-80 ${
-                  isSelected ? "ring-2 ring-brand" : ""
-                }`}
-              >
-                {s.name}
-              </button>
-
-              {isSelected && (
-                <button
-                  type="submit"
-                  disabled={pending || state?.success}
-                  className="rounded-xl bg-brand py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand/30 disabled:opacity-60"
-                >
-                  {pending || state?.success ? "이동 중..." : `${s.name} 선택`}
-                </button>
-              )}
-            </div>
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setSelectedId((prev) => (prev === s.id ? null : s.id))}
+              style={{ borderLeftColor: color, backgroundColor: `${color}0d` }}
+              className={`rounded-xl border border-l-4 border-border py-3 text-sm font-semibold text-foreground transition-opacity hover:opacity-80 ${
+                isSelected ? "ring-2 ring-brand" : ""
+              }`}
+            >
+              {s.name}
+            </button>
           );
         })}
+
+        {selectedId && (
+          <button
+            type="submit"
+            disabled={pending || state?.success}
+            className="mt-4 rounded-xl bg-brand py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand/30 disabled:opacity-60"
+          >
+            {pending || state?.success
+              ? "이동 중..."
+              : `${stores.find((s) => s.id === selectedId)?.name ?? ""} 선택`}
+          </button>
+        )}
       </form>
 
       {state?.error && (
