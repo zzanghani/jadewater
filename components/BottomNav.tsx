@@ -21,12 +21,13 @@ const MASTER_TABS = [
   { href: "/messages", label: "메시지", icon: MessageIcon },
 ] as const;
 
-// 직원(staff) 계정 — 재고관리, 입고입력, 마감보고(마감입력)까지만.
+// 직원(staff) 계정 — 입고입력, 마감보고(마감입력), 재고관리, 메시지까지.
 // 공지사항은 빠른 메뉴로, 입금요청은 뺐다.
 const EMPLOYEE_TABS = [
   { href: "/receipts", label: "입고입력", icon: ReceiveIcon },
   { href: "/closing", label: "마감보고", icon: ReportIcon },
   { href: "/inventory", label: "재고관리", icon: InventoryIcon },
+  { href: "/messages", label: "메시지", icon: MessageIcon },
 ] as const;
 
 export default function BottomNav({

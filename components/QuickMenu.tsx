@@ -26,13 +26,13 @@ const MESSAGES_ITEM = { href: "/messages", label: "메시지", icon: MessageIcon
 // 지점장(매장) 계정은 리뷰리포트가 하단 메뉴 대신 여기로 옮겨왔다.
 const REVIEW_REPORT_ITEM = { href: "/review-report", label: "리뷰리포트", icon: StarIcon } as const;
 
-// 직원(staff) 계정 — 입고입력·마감입력(마감보고)은 하단 메뉴로 옮기고,
-// 스케줄러는 홈 화면 미리보기로 대체, 리뷰리포트·주간/월간 분석은 뺐다.
+// 직원(staff) 계정 — 입고입력·마감입력(마감보고)·메시지는 하단 메뉴로
+// 옮기고, 스케줄러는 홈 화면 미리보기로 대체, 리뷰리포트·주간/월간
+// 분석은 뺐다.
 const EMPLOYEE_ITEMS = [
   { href: "/board?category=공지사항", label: "공지사항", icon: BoardIcon },
   { href: "/expense", label: "현장지출", icon: ReceiptIcon },
   { href: "/cost", label: "실시간 코스트", icon: GaugeIcon },
-  { href: "/messages", label: "메시지", icon: MessageIcon },
 ] as const;
 
 export default function QuickMenu({
