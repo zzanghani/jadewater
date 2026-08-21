@@ -118,7 +118,7 @@ export default async function ChatRoomsPage({
         <div className="flex items-center gap-1.5">
           <Link
             href="/messages/rooms?scope=company"
-            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+            className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition-colors ${
               scope === "company"
                 ? "border-brand bg-brand/10 text-brand"
                 : "border-border text-muted"
@@ -128,7 +128,7 @@ export default async function ChatRoomsPage({
           </Link>
           <Link
             href="/messages/rooms?scope=store"
-            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+            className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition-colors ${
               scope === "store"
                 ? "border-brand bg-brand/10 text-brand"
                 : "border-border text-muted"
