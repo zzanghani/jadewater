@@ -1,28 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useActionState, useState } from "react";
 import { claimStore } from "@/app/actions/auth";
 import { storeColor } from "@/lib/storeColors";
 import type { Store } from "@/lib/types";
 
 export default function StorePicker({ stores }: { stores: Store[] }) {
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  function handlePick(storeId: string) {
-    setError(null);
-    startTransition(async () => {
-      const result = await claimStore(storeId);
-      if (result?.error) {
-        setError(result.error);
-        return;
-      }
-      router.replace("/");
-      router.refresh();
-    });
-  }
+  const [state, formAction, pending] = useActionState(claimStore, undefined);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   return (
     <div className="flex min-h-dvh w-full flex-col justify-center px-6 py-10">
@@ -31,26 +16,41 @@ export default function StorePicker({ stores }: { stores: Store[] }) {
         <p className="mt-1 text-sm text-muted">처음 한 번만 선택하면 됩니다</p>
       </div>
 
-      <div className="flex flex-col gap-2">
+      <form action={formAction} className="flex flex-col gap-2">
+        <input type="hidden" name="store_id" value={selectedId ?? ""} />
+
         {stores.map((s) => {
           const color = storeColor(s.name);
+          const isSelected = selectedId === s.id;
           return (
-            <button
-              key={s.id}
-              type="button"
-              disabled={pending}
-              onClick={() => handlePick(s.id)}
-              style={{ borderLeftColor: color, backgroundColor: `${color}0d` }}
-              className="rounded-xl border border-l-4 border-border py-3 text-sm font-semibold text-foreground transition-opacity hover:opacity-80 disabled:opacity-60"
-            >
-              {s.name}
-            </button>
+            <div key={s.id} className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedId((prev) => (prev === s.id ? null : s.id))}
+                style={{ borderLeftColor: color, backgroundColor: `${color}0d` }}
+                className={`rounded-xl border border-l-4 border-border py-3 text-sm font-semibold text-foreground transition-opacity hover:opacity-80 ${
+                  isSelected ? "ring-2 ring-brand" : ""
+                }`}
+              >
+                {s.name}
+              </button>
+
+              {isSelected && (
+                <button
+                  type="submit"
+                  disabled={pending}
+                  className="rounded-xl bg-brand py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand/30 disabled:opacity-60"
+                >
+                  {pending ? "선택 중..." : `${s.name} 선택`}
+                </button>
+              )}
+            </div>
           );
         })}
-      </div>
+      </form>
 
-      {error && (
-        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+      {state?.error && (
+        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{state.error}</p>
       )}
     </div>
   );

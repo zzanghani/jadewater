@@ -77,25 +77,27 @@ export async function signup(
   redirect("/");
 }
 
-export type ClaimStoreResult = { error?: string } | undefined;
-
 // 승인된 직원 계정이 처음 로그인할 때 자기 소속 매장을 스스로 고른다.
 // DB의 prevent_profile_privilege_escalation 트리거가 "store_id가 비어
 // 있던 승인된 staff 계정"의 최초 1회 store_id 변경만 허용하므로, 그
 // 조건을 벗어난 시도는 트리거가 조용히 무시한다.
 //
-// redirect()를 여기서 호출하지 않는다 — 폼 제출이 아니라 버튼
-// onClick(startTransition) 안에서 직접 호출하는 서버 액션이라, 그
-// 안에서 redirect()가 던지는 특수 예외가 프레임워크에 제대로 전달되지
-// 않아 리다이렉트가 조용히 씹히는 문제가 있었다. 대신 성공 여부만
-// 돌려주고, 화면 이동은 호출한 클라이언트 쪽에서 router로 한다.
-export async function claimStore(storeId: string): Promise<ClaimStoreResult> {
+// 다른 redirect() 쓰는 액션들과 똑같이 실제 폼 제출(useActionState)로
+// 호출한다 — 버튼 onClick에서 직접 호출하는 방식은 redirect()의 특수
+// 신호가 프레임워크에 제대로 전달되지 않아 화면 이동이 씹히는 문제가
+// 있었다.
+export async function claimStore(
+  _prevState: AuthFormState,
+  formData: FormData
+): Promise<AuthFormState> {
+  const storeId = String(formData.get("store_id") ?? "");
+  if (!storeId) return { error: "매장을 선택해 주세요." };
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "로그인이 필요합니다." };
-  if (!storeId) return { error: "매장을 선택해 주세요." };
 
   const { error } = await supabase
     .from("profiles")
@@ -106,7 +108,7 @@ export async function claimStore(storeId: string): Promise<ClaimStoreResult> {
     return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
-  return undefined;
+  redirect("/");
 }
 
 export async function logout() {
