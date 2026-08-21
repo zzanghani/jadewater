@@ -4,10 +4,22 @@ import { useActionState, useState } from "react";
 import { createChatRoom, type RoomFormState } from "@/app/(app)/messages/rooms/actions";
 
 type Profile = { id: string; name: string };
+type Store = { id: string; name: string };
 
-export default function CreateChatRoomButton({ profiles }: { profiles: Profile[] }) {
+export default function CreateChatRoomButton({
+  profiles,
+  canCreate,
+  isMaster = false,
+  stores = [],
+}: {
+  profiles: Profile[];
+  canCreate: boolean;
+  isMaster?: boolean;
+  stores?: Store[];
+}) {
   const [open, setOpen] = useState(false);
   const [inviteeIds, setInviteeIds] = useState<string[]>([]);
+  const [storeId, setStoreId] = useState(""); // 마스터 전용 — 비어 있으면 회사(전사) 방
   const [state, formAction, pending] = useActionState<RoomFormState, FormData>(
     createChatRoom,
     undefined
@@ -16,6 +28,8 @@ export default function CreateChatRoomButton({ profiles }: { profiles: Profile[]
   function toggleInvitee(id: string) {
     setInviteeIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
   }
+
+  if (!canCreate) return null;
 
   return (
     <>
@@ -55,6 +69,25 @@ export default function CreateChatRoomButton({ profiles }: { profiles: Profile[]
               placeholder="채팅방 이름"
               className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none ring-brand/30 focus:ring-2"
             />
+
+            {isMaster && (
+              <label className="flex flex-col gap-1.5 text-sm font-medium">
+                방 종류
+                <select
+                  name="store_id"
+                  value={storeId}
+                  onChange={(e) => setStoreId(e.target.value)}
+                  className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none ring-brand/30 focus:ring-2"
+                >
+                  <option value="">회사 전체</option>
+                  {stores.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} (매장)
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
 
             <div className="flex flex-col gap-1.5 text-sm font-medium">
               초대할 사람 <span className="font-normal text-muted">(초대된 사람만 볼 수 있어요)</span>

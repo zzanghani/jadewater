@@ -107,12 +107,34 @@ export async function createChatRoom(
   } = await supabase.auth.getUser();
   if (!user) return { error: "로그인이 필요합니다." };
 
+  // 채팅방 개설은 지점장·마스터만 — 팀(본사) 계정과 직원(staff) 계정은
+  // 초대받아 참여만 할 수 있다. RLS(chat_rooms_insert_own)에서도 같은
+  // 조건으로 다시 막아준다.
+  const { data: creatorProfile } = await supabase
+    .from("profiles")
+    .select("name, department, store_id, role")
+    .eq("id", user.id)
+    .single();
+  const isMasterCreator = !creatorProfile?.department && !creatorProfile?.store_id;
+  const isManagerCreator =
+    !creatorProfile?.department && !!creatorProfile?.store_id && creatorProfile.role === "owner";
+  if (!isMasterCreator && !isManagerCreator) {
+    return { error: "채팅방은 지점장 또는 마스터 계정만 만들 수 있습니다." };
+  }
+
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "채팅방 이름을 입력해 주세요." };
 
   const inviteeIds = [...new Set(formData.getAll("invitee_ids").map(String))].filter(
     (id) => id !== user.id
   );
+
+  // 매장(지점장) 계정은 항상 자기 매장 전용 방만 만든다(폼 값을 신뢰하지
+  // 않고 서버에서 강제). 마스터는 폼에서 고른 store_id를 그대로 쓰고,
+  // 비어 있으면 회사(전사) 방이 된다.
+  const storeId = isManagerCreator
+    ? creatorProfile!.store_id
+    : String(formData.get("store_id") ?? "").trim() || null;
 
   // 방을 select까지 해서 돌려받으려 하면, 초대 전용으로 바뀐 select
   // 정책(chat_rooms_select_member) 때문에 "만든 사람 자신도 아직
@@ -121,7 +143,7 @@ export async function createChatRoom(
   const roomId = crypto.randomUUID();
   const { error } = await supabase
     .from("chat_rooms")
-    .insert({ id: roomId, name, created_by: user.id });
+    .insert({ id: roomId, name, created_by: user.id, store_id: storeId });
 
   if (error) {
     return { error: "채팅방을 만드는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
@@ -150,11 +172,6 @@ export async function createChatRoom(
   }
 
   try {
-    const { data: creatorProfile } = await supabase
-      .from("profiles")
-      .select("name")
-      .eq("id", user.id)
-      .single();
     const creatorName = creatorProfile?.name ?? "누군가";
     await Promise.all(
       inviteeIds.map((id) =>

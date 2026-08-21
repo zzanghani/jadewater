@@ -32,6 +32,7 @@ const EMPLOYEE_ITEMS = [
   { href: "/board?category=공지사항", label: "공지사항", icon: BoardIcon },
   { href: "/expense", label: "현장지출", icon: ReceiptIcon },
   { href: "/cost", label: "실시간 코스트", icon: GaugeIcon },
+  { href: "/messages", label: "메시지", icon: MessageIcon },
 ] as const;
 
 export default function QuickMenu({

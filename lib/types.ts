@@ -414,6 +414,7 @@ export type ChatRoom = {
   id: string
   name: string
   created_by: string
+  store_id: string | null
   created_at: string
 }
 

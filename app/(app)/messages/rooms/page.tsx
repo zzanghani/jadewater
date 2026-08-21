@@ -17,19 +17,55 @@ function timeAgoLabel(iso: string): string {
   return kstDateTimeLabel(iso).split(" ")[0];
 }
 
-export default async function ChatRoomsPage() {
+export default async function ChatRoomsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ scope?: string }>;
+}) {
+  const { scope: scopeParam } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const [{ data: rooms }, { data: allProfiles }] = await Promise.all([
+  const { data: myProfile } = await supabase
+    .from("profiles")
+    .select("department, store_id, role")
+    .eq("id", user.id)
+    .single();
+  const isMaster = !myProfile?.department && !myProfile?.store_id;
+  const isManager =
+    !myProfile?.department && !!myProfile?.store_id && myProfile.role === "owner";
+  // 채팅방 개설은 지점장·마스터만 — 팀 계정과 직원(staff)은 초대만 받는다.
+  const canCreate = isMaster || isManager;
+  // 회사(전사)/매장 채팅방 구분 탭은, 자기 매장이 있는 지점장·직원
+  // 계정에서만 보여준다(본사 팀 계정·마스터는 원래도 안 헷갈렸음).
+  const showScopeTabs = !myProfile?.department && !!myProfile?.store_id;
+  const scope = showScopeTabs && scopeParam === "store" ? "store" : "company";
+
+  const [{ data: rooms }, { data: allProfiles }, { data: stores }] = await Promise.all([
     supabase.from("chat_rooms").select("*").order("created_at", { ascending: false }).limit(100),
-    supabase.from("profiles").select("id, name").neq("id", user.id).order("name"),
+    isManager
+      ? supabase
+          .from("profiles")
+          .select("id, name")
+          .eq("store_id", myProfile!.store_id as string)
+          .neq("id", user.id)
+          .order("name")
+      : supabase.from("profiles").select("id, name").neq("id", user.id).order("name"),
+    isMaster
+      ? supabase.from("stores").select("id, name").order("sort_order")
+      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
   ]);
 
-  const roomIds = (rooms ?? []).map((r) => r.id);
+  const scopedRooms = showScopeTabs
+    ? (rooms ?? []).filter((r) =>
+        scope === "store" ? r.store_id === myProfile!.store_id : !r.store_id
+      )
+    : rooms ?? [];
+
+  const roomIds = scopedRooms.map((r) => r.id);
 
   const [{ data: lastMessages }, { data: myMembership }] = await Promise.all([
     roomIds.length > 0
@@ -54,7 +90,7 @@ export default async function ChatRoomsPage() {
   }
   const lastReadByRoom = new Map((myMembership ?? []).map((m) => [m.room_id, m.last_read_at]));
 
-  const sortedRooms = [...(rooms ?? [])].sort((a, b) => {
+  const sortedRooms = [...scopedRooms].sort((a, b) => {
     const aTime = lastMessageByRoom.get(a.id)?.created_at ?? a.created_at;
     const bTime = lastMessageByRoom.get(b.id)?.created_at ?? b.created_at;
     return new Date(bTime).getTime() - new Date(aTime).getTime();
@@ -64,13 +100,43 @@ export default async function ChatRoomsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold">채팅방</h1>
-        <CreateChatRoomButton profiles={allProfiles ?? []} />
+        <CreateChatRoomButton
+          profiles={allProfiles ?? []}
+          canCreate={canCreate}
+          isMaster={isMaster}
+          stores={stores ?? []}
+        />
       </div>
 
       <MessagesTopTabs active="rooms" />
 
+      {showScopeTabs && (
+        <div className="grid grid-cols-2 gap-2 rounded-2xl bg-card p-1.5">
+          <Link
+            href="/messages/rooms?scope=company"
+            className={`rounded-xl py-2.5 text-center text-sm font-semibold transition-colors ${
+              scope === "company" ? "bg-brand text-white shadow-sm" : "text-muted"
+            }`}
+          >
+            회사
+          </Link>
+          <Link
+            href="/messages/rooms?scope=store"
+            className={`rounded-xl py-2.5 text-center text-sm font-semibold transition-colors ${
+              scope === "store" ? "bg-brand text-white shadow-sm" : "text-muted"
+            }`}
+          >
+            매장
+          </Link>
+        </div>
+      )}
+
       {sortedRooms.length === 0 ? (
-        <p className="text-sm text-muted">아직 만들어진 채팅방이 없습니다. 새로 만들어보세요.</p>
+        <p className="text-sm text-muted">
+          {showScopeTabs && scope === "store"
+            ? "아직 만들어진 매장 채팅방이 없습니다."
+            : "아직 만들어진 채팅방이 없습니다. 새로 만들어보세요."}
+        </p>
       ) : (
         <ul className="flex flex-col gap-2">
           {sortedRooms.map((room) => {

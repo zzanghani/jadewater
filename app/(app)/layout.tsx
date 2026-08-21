@@ -39,6 +39,7 @@ const EMPLOYEE_ALLOWED_PREFIXES = [
   "/monthly-analysis",
   "/cost",
   "/review-report",
+  "/messages",
 ];
 
 export default async function AppLayout({
