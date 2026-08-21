@@ -404,14 +404,21 @@ if (isHq) {
         pendingAccountCount={pendingAccountCount ?? 0}
       />
 
-      {!isMaster && !todayClosing && (
-        <Link
-          href="/closing"
-          className="flex items-center justify-between rounded-2xl border border-brand-light bg-brand-light px-4 py-3 text-sm font-medium text-brand-dark"
-        >
-          아직 오늘 마감을 입력하지 않았어요
-          <span aria-hidden>→</span>
-        </Link>
+      {!isMaster && (
+        todayClosing ? (
+          <div className="flex items-center justify-between rounded-2xl border border-brand-light bg-brand-light px-4 py-3 text-sm font-medium text-brand-dark">
+            마감완료, 오늘도 수고하셨습니다!
+            <span aria-hidden>✅</span>
+          </div>
+        ) : (
+          <Link
+            href="/closing"
+            className="flex items-center justify-between rounded-2xl border border-brand-light bg-brand-light px-4 py-3 text-sm font-medium text-brand-dark"
+          >
+            아직 오늘 마감을 입력하지 않았어요
+            <span aria-hidden>→</span>
+          </Link>
+        )
       )}
 
       {isMaster ? (
