@@ -24,9 +24,9 @@ const MASTER_TABS = [
 // 직원(staff) 계정 — 재고관리, 입고입력, 마감보고(마감입력)까지만.
 // 공지사항은 빠른 메뉴로, 입금요청은 뺐다.
 const EMPLOYEE_TABS = [
-  { href: "/inventory", label: "재고관리", icon: InventoryIcon },
   { href: "/receipts", label: "입고입력", icon: ReceiveIcon },
   { href: "/closing", label: "마감보고", icon: ReportIcon },
+  { href: "/inventory", label: "재고관리", icon: InventoryIcon },
 ] as const;
 
 export default function BottomNav({
