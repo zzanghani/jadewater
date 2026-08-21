@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { saveReceipt } from "@/app/(app)/receipts/actions";
 import { kstDateString } from "@/lib/date";
 import SingleDatePicker from "@/components/SingleDatePicker";
+import RecentSuppliersButton from "@/components/RecentSuppliersButton";
+import type { RecentSupplier } from "@/lib/frequentSuppliers";
 import type { Receipt, ReceiptCategory } from "@/lib/types";
 
 const CATEGORIES: ReceiptCategory[] = ["식재료", "음료재료", "소모품", "기타"];
@@ -14,17 +16,20 @@ export default function ReceiptForm({
   existing,
   defaultDate,
   cancelHref = "/receipts",
+  recentSuppliers = [],
 }: {
   storeId: string;
   existing?: Receipt;
   defaultDate?: string;
   cancelHref?: string;
+  recentSuppliers?: RecentSupplier[];
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(saveReceipt, undefined);
   const [category, setCategory] = useState<ReceiptCategory>(
     existing?.category ?? "식재료"
   );
+  const [supplier, setSupplier] = useState(existing?.supplier ?? "");
   const [amountRaw, setAmountRaw] = useState(
     existing?.amount ? String(existing.amount) : ""
   );
@@ -45,6 +50,7 @@ export default function ReceiptForm({
     }
     setAmountRaw("");
     setCategory("식재료");
+    setSupplier("");
     setResetKey((k) => k + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
@@ -57,17 +63,21 @@ export default function ReceiptForm({
 
       <SingleDatePicker label="날짜" date={date} onChange={setDate} maxDate={kstDateString(0)} />
 
-      <label className="flex flex-col gap-1.5 text-sm font-medium">
-        거래처명
+      <div className="flex flex-col gap-1.5 text-sm font-medium">
+        <div className="flex items-center justify-between gap-2">
+          거래처명
+          <RecentSuppliersButton suppliers={recentSuppliers} onSelect={setSupplier} />
+        </div>
         <input
           type="text"
           name="supplier"
           required
-          defaultValue={existing?.supplier ?? ""}
+          value={supplier}
+          onChange={(e) => setSupplier(e.target.value)}
           placeholder="예) 다올식자재"
           className="rounded-xl border border-border bg-card px-4 py-3 outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
         />
-      </label>
+      </div>
 
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         품목 메모

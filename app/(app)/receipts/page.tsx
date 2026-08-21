@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatWon } from "@/lib/format";
 import { kstDateString, kstDateLabel, shiftDateString } from "@/lib/date";
 import { getStoreContext } from "@/lib/store";
+import { getRecentSuppliers } from "@/lib/frequentSuppliers";
 import ReceiptForm from "@/components/ReceiptForm";
 import DeleteReceiptButton from "@/components/DeleteReceiptButton";
 import ReceiptDateJump from "@/components/ReceiptDateJump";
@@ -24,12 +25,15 @@ export default async function ReceiptsPage({
   const prevDate = shiftDateString(selectedDate, -1);
   const nextDate = shiftDateString(selectedDate, 1);
 
-  const { data: dayReceipts } = await supabase
-    .from("receipts")
-    .select("*")
-    .eq("store_id", storeId)
-    .eq("date", selectedDate)
-    .order("created_at", { ascending: false });
+  const [{ data: dayReceipts }, recentSuppliers] = await Promise.all([
+    supabase
+      .from("receipts")
+      .select("*")
+      .eq("store_id", storeId)
+      .eq("date", selectedDate)
+      .order("created_at", { ascending: false }),
+    getRecentSuppliers(supabase, storeId),
+  ]);
 
   const editing = edit
     ? (dayReceipts ?? []).find((r) => r.id === edit)
@@ -50,6 +54,7 @@ export default async function ReceiptsPage({
           existing={editing}
           defaultDate={selectedDate}
           cancelHref={`/receipts${dateQuery}`}
+          recentSuppliers={recentSuppliers}
         />
       </section>
 
