@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { claimStore } from "@/app/actions/auth";
 import { storeColor } from "@/lib/storeColors";
 import type { Store } from "@/lib/types";
@@ -8,6 +8,16 @@ import type { Store } from "@/lib/types";
 export default function StorePicker({ stores }: { stores: Store[] }) {
   const [state, formAction, pending] = useActionState(claimStore, undefined);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Next.js 클라이언트 캐시 때문인지, 서버 액션에서 redirect()를 해도
+  // 레이아웃이 방금 바뀐 store_id를 못 읽고 같은 화면에 멈춰 있는
+  // 문제가 있었다. 저장 성공이 확인되면 브라우저 자체를 완전히
+  // 새로고침해서 확실하게 새 화면을 받아오게 한다.
+  useEffect(() => {
+    if (state?.success) {
+      window.location.href = "/";
+    }
+  }, [state]);
 
   return (
     <div className="flex min-h-dvh w-full flex-col justify-center px-6 py-10">
@@ -38,10 +48,10 @@ export default function StorePicker({ stores }: { stores: Store[] }) {
               {isSelected && (
                 <button
                   type="submit"
-                  disabled={pending}
+                  disabled={pending || state?.success}
                   className="rounded-xl bg-brand py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand/30 disabled:opacity-60"
                 >
-                  {pending ? "선택 중..." : `${s.name} 선택`}
+                  {pending || state?.success ? "이동 중..." : `${s.name} 선택`}
                 </button>
               )}
             </div>

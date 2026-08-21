@@ -77,19 +77,21 @@ export async function signup(
   redirect("/");
 }
 
+export type ClaimStoreState = { error?: string; success?: boolean } | undefined;
+
 // 승인된 직원 계정이 처음 로그인할 때 자기 소속 매장을 스스로 고른다.
 // DB의 prevent_profile_privilege_escalation 트리거가 "store_id가 비어
 // 있던 승인된 staff 계정"의 최초 1회 store_id 변경만 허용하므로, 그
 // 조건을 벗어난 시도는 트리거가 조용히 무시한다.
 //
-// 다른 redirect() 쓰는 액션들과 똑같이 실제 폼 제출(useActionState)로
-// 호출한다 — 버튼 onClick에서 직접 호출하는 방식은 redirect()의 특수
-// 신호가 프레임워크에 제대로 전달되지 않아 화면 이동이 씹히는 문제가
-// 있었다.
+// redirect()는 여기서 안 쓴다 — DB 반영은 확인됐는데도 그 다음
+// 화면(레이아웃)이 새 store_id를 못 읽고 같은 화면에 멈춰 있는 문제가
+// 있었다. 성공 여부만 돌려주고, 화면 전환은 클라이언트에서 브라우저
+// 전체 새로고침(window.location)으로 확실하게 한다.
 export async function claimStore(
-  _prevState: AuthFormState,
+  _prevState: ClaimStoreState,
   formData: FormData
-): Promise<AuthFormState> {
+): Promise<ClaimStoreState> {
   const storeId = String(formData.get("store_id") ?? "");
   if (!storeId) return { error: "매장을 선택해 주세요." };
 
@@ -108,7 +110,7 @@ export async function claimStore(
     return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
-  redirect("/");
+  return { success: true };
 }
 
 export async function logout() {
