@@ -37,11 +37,13 @@ export default async function ChatRoomsPage({
   const isMaster = !myProfile?.department && !myProfile?.store_id;
   const isManager =
     !myProfile?.department && !!myProfile?.store_id && myProfile.role === "owner";
+  const isStaff =
+    !myProfile?.department && !!myProfile?.store_id && myProfile?.role === "staff";
   // 채팅방 개설은 지점장·마스터만 — 팀 계정과 직원(staff)은 초대만 받는다.
   const canCreate = isMaster || isManager;
-  // 회사(전사)/매장 채팅방 구분 탭은, 자기 매장이 있는 지점장·직원
-  // 계정에서만 보여준다(본사 팀 계정·마스터는 원래도 안 헷갈렸음).
-  const showScopeTabs = !myProfile?.department && !!myProfile?.store_id;
+  // 회사(전사)/매장 채팅방 구분 탭은 지점장 계정에서만 보여준다 — 직원
+  // 계정은 회사 방을 볼 일이 없어서 탭 없이 매장 방만 바로 보여준다.
+  const showScopeTabs = isManager;
   const scope = showScopeTabs && scopeParam === "store" ? "store" : "company";
 
   const [{ data: rooms }, { data: allProfiles }, { data: stores }] = await Promise.all([
@@ -59,11 +61,13 @@ export default async function ChatRoomsPage({
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
   ]);
 
-  const scopedRooms = showScopeTabs
-    ? (rooms ?? []).filter((r) =>
-        scope === "store" ? r.store_id === myProfile!.store_id : !r.store_id
-      )
-    : rooms ?? [];
+  const scopedRooms = isStaff
+    ? (rooms ?? []).filter((r) => r.store_id === myProfile!.store_id)
+    : showScopeTabs
+      ? (rooms ?? []).filter((r) =>
+          scope === "store" ? r.store_id === myProfile!.store_id : !r.store_id
+        )
+      : rooms ?? [];
 
   const roomIds = scopedRooms.map((r) => r.id);
 
@@ -133,7 +137,7 @@ export default async function ChatRoomsPage({
 
       {sortedRooms.length === 0 ? (
         <p className="text-sm text-muted">
-          {showScopeTabs && scope === "store"
+          {isStaff || (showScopeTabs && scope === "store")
             ? "아직 만들어진 매장 채팅방이 없습니다."
             : "아직 만들어진 채팅방이 없습니다. 새로 만들어보세요."}
         </p>

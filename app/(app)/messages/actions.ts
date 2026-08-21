@@ -49,6 +49,30 @@ export async function sendDirectMessage(
   if (recipientId === user.id) return { error: "자기 자신에게는 보낼 수 없습니다." };
   if (!body) return { error: "메시지를 입력해 주세요." };
 
+  // 직원(staff) 계정은 같은 매장 사람(지점장 포함)에게만 메시지를 보낼
+  // 수 있다. RLS(direct_messages_insert_own)에서도 같은 조건으로 다시
+  // 막아주지만, 여기서 먼저 확인해 더 알아보기 쉬운 오류를 보여준다.
+  const { data: senderProfile } = await supabase
+    .from("profiles")
+    .select("department, store_id, role")
+    .eq("id", user.id)
+    .single();
+  const senderIsStaff =
+    !senderProfile?.department && !!senderProfile?.store_id && senderProfile.role === "staff";
+
+  if (senderIsStaff) {
+    const { data: recipientProfile } = await supabase
+      .from("profiles")
+      .select("department, store_id")
+      .eq("id", recipientId)
+      .single();
+    const sameStore =
+      !recipientProfile?.department && recipientProfile?.store_id === senderProfile.store_id;
+    if (!sameStore) {
+      return { error: "같은 매장 사람에게만 메시지를 보낼 수 있습니다." };
+    }
+  }
+
   const { error } = await supabase
     .from("direct_messages")
     .insert({ sender_id: user.id, recipient_id: recipientId, body });

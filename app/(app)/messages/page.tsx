@@ -32,6 +32,13 @@ export default async function MessagesPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  const { data: myProfile } = await supabase
+    .from("profiles")
+    .select("department, store_id, role")
+    .eq("id", user.id)
+    .single();
+  const isStaff = !myProfile?.department && !!myProfile?.store_id && myProfile.role === "staff";
+
   const [{ data: messages }, { data: allProfiles }] = await Promise.all([
     supabase
       .from("direct_messages")
@@ -39,7 +46,17 @@ export default async function MessagesPage() {
       .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
       .order("created_at", { ascending: false })
       .limit(300),
-    supabase.from("profiles").select("id, name").neq("id", user.id).order("name"),
+    // 직원(staff) 계정은 같은 매장 사람(지점장 포함)에게만 메시지를
+    // 보낼 수 있어서, 새 메시지 대상 목록도 그 범위로 좁힌다.
+    isStaff
+      ? supabase
+          .from("profiles")
+          .select("id, name")
+          .eq("store_id", myProfile!.store_id as string)
+          .is("department", null)
+          .neq("id", user.id)
+          .order("name")
+      : supabase.from("profiles").select("id, name").neq("id", user.id).order("name"),
   ]);
 
   // 상대방 계정 기준으로 묶어서, 가장 최근 메시지를 미리보기로 보여준다.
