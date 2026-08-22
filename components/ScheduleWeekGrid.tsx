@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { deleteEmployeeShifts } from "@/app/(app)/schedule/actions";
+import { deleteEmployeeShifts, unlockScheduleAdmin } from "@/app/(app)/schedule/actions";
 import { SCHEDULE_ROLES, roleColor } from "@/lib/scheduleColors";
 import { kstWeekdayShortLabel, mondayWeekRangeLabel, shiftDateString } from "@/lib/date";
 import ScheduleCellForm from "@/components/ScheduleCellForm";
@@ -29,6 +29,12 @@ export default function ScheduleWeekGrid({
   readOnly?: boolean;
 }) {
   const router = useRouter();
+  const [unlockState, unlockAction, unlockPending] = useActionState(
+    unlockScheduleAdmin,
+    undefined
+  );
+  const [unlocked, setUnlocked] = useState(false);
+  const [showUnlockForm, setShowUnlockForm] = useState(false);
   const [extraNames, setExtraNames] = useState<string[]>([]);
   const [newName, setNewName] = useState("");
   const [selected, setSelected] = useState<{
@@ -37,6 +43,13 @@ export default function ScheduleWeekGrid({
     date: string;
     shift: ScheduleShift | null;
   } | null>(null);
+
+  useEffect(() => {
+    if (unlockState?.success) {
+      setUnlocked(true);
+      setShowUnlockForm(false);
+    }
+  }, [unlockState]);
 
   const existingNames = new Set(rows.map((r) => r.employeeName));
   const pendingRows: WeekGridRow[] = extraNames
@@ -95,6 +108,49 @@ export default function ScheduleWeekGrid({
         </Link>
       </div>
 
+      {!readOnly && (
+        <div className="flex justify-end">
+          {unlocked ? (
+            <span className="text-[11px] font-medium text-muted">🔓 기존 근무 수정·삭제 가능</span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowUnlockForm((v) => !v)}
+              className="text-[11px] font-medium text-muted underline-offset-2 hover:underline"
+            >
+              🔒 기존 근무 수정·삭제 잠금 해제
+            </button>
+          )}
+        </div>
+      )}
+      {showUnlockForm && !unlocked && (
+        <form
+          action={unlockAction}
+          className="flex gap-2 rounded-xl border border-border bg-card p-2"
+        >
+          <input
+            type="password"
+            name="password"
+            required
+            autoFocus
+            placeholder="비밀번호"
+            className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none ring-brand/30 focus:ring-2"
+          />
+          <button
+            type="submit"
+            disabled={unlockPending}
+            className="rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+          >
+            확인
+          </button>
+        </form>
+      )}
+      {showUnlockForm && !unlocked && unlockState?.error && (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+          {unlockState.error}
+        </p>
+      )}
+
       <div className="overflow-x-auto rounded-2xl border border-border bg-card">
         <table className="w-full min-w-[520px] border-collapse text-xs">
           <thead>
@@ -136,7 +192,8 @@ export default function ScheduleWeekGrid({
               </tr>
             ) : (
               displayRows.map((row) => {
-                const canDeleteRow = !readOnly;
+                const isPending = !existingNames.has(row.employeeName);
+                const canDeleteRow = !readOnly && (unlocked || isPending);
                 return (
                 <tr key={row.employeeName} className="border-t border-border">
                   <td className="sticky left-0 z-10 bg-card px-2 py-2 text-left font-semibold text-foreground">
@@ -160,7 +217,9 @@ export default function ScheduleWeekGrid({
                   </td>
                   {weekDates.map((d, i) => {
                     const cellShift = row.cells[i];
-                    const canOpen = !readOnly;
+                    // 빈 칸(새 근무 추가)은 잠금과 무관하게 항상 열 수 있고,
+                    // 이미 등록된 근무를 고치거나 지울 때만 잠금 해제가 필요하다.
+                    const canOpen = !readOnly && (unlocked || !cellShift);
                     return (
                       <td key={d} className="px-1 py-1 text-center">
                         <button
