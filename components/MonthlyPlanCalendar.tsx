@@ -201,13 +201,16 @@ export default function MonthlyPlanCalendar({
             })
             .filter((s): s is { plan: MonthlyPlan; startCol: number; endCol: number; lane: number } => s !== null);
           const maxLane = segments.reduce((m, s) => Math.max(m, s.lane), -1);
-          const rowCount = maxLane + 2; // 날짜 숫자 1행 + 일정 레인 수
+          // 주마다 일정 개수가 달라 칸 높이가 들쭉날쭉해 보이지 않게,
+          // 레인 4칸을 기본으로 깔고 그보다 많을 때만 늘어나게 한다.
+          const laneCount = Math.max(maxLane + 1, 4);
+          const rowCount = laneCount + 1; // 날짜 숫자 1행 + 일정 레인 수
 
           return (
             <div
               key={wi}
               className="grid grid-cols-7"
-              style={{ gridTemplateRows: `1.75rem repeat(${maxLane + 1}, 1.3rem)` }}
+              style={{ gridTemplateRows: `1.75rem repeat(${laneCount}, 1.3rem)` }}
             >
               {week.map((d, di) => (
                 <div
