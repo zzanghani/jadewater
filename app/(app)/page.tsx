@@ -120,12 +120,12 @@ export default async function DashboardPage() {
 let monthlyPlans: import("@/lib/types").MonthlyPlan[] = [];
 let commentsByPlan: Record<string, PlanComment[]> = {};
 let followersByPlan: Record<string, PlanFollower[]> = {};
-let hqProfiles: { id: string; name: string }[] = [];
+let hqProfiles: { id: string; name: string; department: import("@/lib/types").Department | null }[] = [];
 
 if (isHq) {
   const [{ data: plans }, { data: hqProfileRows }] = await Promise.all([
     supabase.from("monthly_plans").select("*").order("start_date", { ascending: true }),
-    supabase.from("profiles").select("id, name").is("store_id", null),
+    supabase.from("profiles").select("id, name, department").is("store_id", null),
   ]);
   monthlyPlans = plans ?? [];
   hqProfiles = (hqProfileRows ?? []).sort((a, b) =>

@@ -11,9 +11,10 @@ import {
 import { deleteMonthlyPlan } from "@/app/(app)/plan/actions";
 import MonthlyPlanDetail, { type PlanComment, type PlanFollower } from "@/components/MonthlyPlanDetail";
 import MonthlyPlanForm from "@/components/MonthlyPlanForm";
-import type { MonthlyPlan } from "@/lib/types";
+import { departmentColor } from "@/lib/departmentColors";
+import type { Department, MonthlyPlan } from "@/lib/types";
 
-type HqProfile = { id: string; name: string };
+type HqProfile = { id: string; name: string; department?: Department | null };
 
 const WEEKDAY_HEADER = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -74,6 +75,14 @@ export default function MonthlyPlanCalendar({
 
   const range = monthRangeFromMonthString(month);
   const weeks = useMemo(() => buildWeeks(month), [month]);
+
+  // 일정 색은 만든 사람(부서)마다 고정 — 마스터/마케팅/운영/R&D/디자인 5색.
+  const colorByUserId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of hqProfiles) map.set(p.id, departmentColor(p.department));
+    return map;
+  }, [hqProfiles]);
+  const colorFor = (createdBy: string) => colorByUserId.get(createdBy) ?? departmentColor(null);
 
   const visiblePlans = useMemo(
     () => plans.filter((p) => p.start_date <= range.end && p.end_date >= range.start),
@@ -164,7 +173,7 @@ export default function MonthlyPlanCalendar({
                   style={{
                     gridColumn: `${startCol + 1} / ${endCol + 2}`,
                     gridRow: lane + 2,
-                    backgroundColor: plan.color,
+                    backgroundColor: colorFor(plan.created_by),
                   }}
                 >
                   <span className="truncate">{plan.title}</span>
@@ -214,7 +223,7 @@ export default function MonthlyPlanCalendar({
                     >
                       ▶
                     </span>
-                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: p.color }} />
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colorFor(p.created_by) }} />
                     <span className="flex-1 truncate text-foreground">{p.title}</span>
                     {p.plan_type === "vacation" && (
                       <span className="shrink-0 rounded-full bg-background px-1.5 py-0.5 text-[10px] font-semibold text-muted">

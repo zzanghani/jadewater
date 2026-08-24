@@ -2,7 +2,6 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { createMonthlyPlan, updateMonthlyPlan, type PlanFormState } from "@/app/(app)/plan/actions";
-import { PLAN_COLORS } from "@/lib/planColors";
 import AmPmTimeSelect, { parseTimeTo12h } from "@/components/AmPmTimeSelect";
 import type { MonthlyPlan, MonthlyPlanType } from "@/lib/types";
 
@@ -24,8 +23,6 @@ export default function MonthlyPlanForm({
 }) {
   const action = existing ? updateMonthlyPlan : createMonthlyPlan;
   const [state, formAction, pending] = useActionState<PlanFormState, FormData>(action, undefined);
-  const [color, setColor] = useState(existing?.color ?? PLAN_COLORS[0]);
-  const [showColorPicker, setShowColorPicker] = useState(false);
   const [planType, setPlanType] = useState<MonthlyPlanType>(existing?.plan_type ?? "task");
   const [followerIds, setFollowerIds] = useState<string[]>([]);
 
@@ -42,7 +39,6 @@ export default function MonthlyPlanForm({
   return (
     <form action={formAction} className="mb-4 flex flex-col gap-2 rounded-xl bg-background p-3">
       {existing && <input type="hidden" name="id" value={existing.id} />}
-      <input type="hidden" name="color" value={color} />
       <input type="hidden" name="plan_type" value={planType} />
 
       <div className="flex gap-1.5 rounded-lg border border-border bg-card p-1">
@@ -101,37 +97,6 @@ export default function MonthlyPlanForm({
           defaultMinute={timeDefault.minute}
           minutes={TIME_MINUTES}
         />
-      </div>
-
-      <div>
-        <button
-          type="button"
-          onClick={() => setShowColorPicker((v) => !v)}
-          className="flex w-full items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm"
-        >
-          <span className="h-5 w-5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
-          <span className="flex-1 text-left text-muted">색상 선택</span>
-          <span className="text-xs text-muted">{showColorPicker ? "닫기 ▲" : "펼치기 ▼"}</span>
-        </button>
-        {showColorPicker && (
-          <div className="mt-2 flex gap-2 overflow-x-auto rounded-lg border border-border bg-card p-2">
-            {PLAN_COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => {
-                  setColor(c);
-                  setShowColorPicker(false);
-                }}
-                aria-label="색상 선택"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-transform active:scale-95"
-                style={{ backgroundColor: c }}
-              >
-                {color === c && <span className="text-xs font-bold text-white drop-shadow">✓</span>}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {!existing && hqProfiles.length > 0 && (
