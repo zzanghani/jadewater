@@ -92,6 +92,15 @@ export function shiftDateString(dateStr: string, days: number): string {
   ).padStart(2, "0")}`;
 }
 
+// 보건증 발급일 기준 만료일과 D-day. healthCertStatus의 3단계 뱃지 옆에
+// 실제 만료일/남은 일수를 같이 보여줄 때 쓴다.
+export function healthCertExpiry(issuedAt: string | null): { dueDate: string; daysLeft: number } | null {
+  if (!issuedAt) return null;
+  const dueDate = shiftDateString(issuedAt, 365);
+  const elapsedDays = daysSinceKST(`${issuedAt}T00:00:00`);
+  return { dueDate, daysLeft: 365 - elapsedDays };
+}
+
 export function kstDateLabel(dateStr: string): string {
   return KST_LABEL_FORMAT.format(new Date(`${dateStr}T00:00:00+09:00`));
 }
