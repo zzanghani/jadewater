@@ -13,10 +13,10 @@ export default function PeerFeedbackSection({ feedback }: { feedback: PeerFeedba
     return (
       <div className="flex flex-col gap-2">
         <span className="px-0.5 text-xs font-bold">
-          동료 피드백 <span className="font-normal text-muted">(참고용, 점수에 반영 안 됨)</span>
+          동료 한마디 <span className="font-normal text-muted">(참고용, 점수에 반영 안 됨)</span>
         </span>
         <p className="rounded-2xl border border-dashed border-border bg-background px-4 py-3 text-xs text-muted">
-          아직 등록된 동료 피드백이 없습니다.
+          아직 등록된 동료 한마디가 없습니다.
         </p>
       </div>
     );
@@ -26,7 +26,7 @@ export default function PeerFeedbackSection({ feedback }: { feedback: PeerFeedba
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between px-0.5">
         <span className="text-xs font-bold">
-          동료 피드백 <span className="font-normal text-muted">(참고용, 점수에 반영 안 됨)</span>
+          동료 한마디 <span className="font-normal text-muted">(참고용, 점수에 반영 안 됨)</span>
         </span>
         <span className="flex items-center gap-1 text-xs font-bold text-muted">
           ★ {average} ({feedback.length})
