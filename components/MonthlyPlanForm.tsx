@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { createMonthlyPlan, updateMonthlyPlan, type PlanFormState } from "@/app/(app)/plan/actions";
 import AmPmTimeSelect, { parseTimeTo12h } from "@/components/AmPmTimeSelect";
+import DateRangePicker from "@/components/DateRangePicker";
 import type { MonthlyPlan, MonthlyPlanType } from "@/lib/types";
 
 const PLAN_TYPE_LABEL: Record<MonthlyPlanType, string> = { task: "업무계획", vacation: "휴가" };
@@ -25,6 +26,8 @@ export default function MonthlyPlanForm({
   const [state, formAction, pending] = useActionState<PlanFormState, FormData>(action, undefined);
   const [planType, setPlanType] = useState<MonthlyPlanType>(existing?.plan_type ?? "task");
   const [followerIds, setFollowerIds] = useState<string[]>([]);
+  const [startDate, setStartDate] = useState(existing?.start_date ?? today);
+  const [endDate, setEndDate] = useState(existing?.end_date ?? today);
 
   useEffect(() => {
     if (state?.success) onDone?.();
@@ -71,22 +74,16 @@ export default function MonthlyPlanForm({
         placeholder="일정 내용 (선택)"
         className="rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
       />
-      <div className="flex gap-2">
-        <input
-          type="date"
-          name="start_date"
-          required
-          defaultValue={existing?.start_date ?? today}
-          className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none ring-brand/30 focus:ring-2"
-        />
-        <input
-          type="date"
-          name="end_date"
-          required
-          defaultValue={existing?.end_date ?? today}
-          className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none ring-brand/30 focus:ring-2"
-        />
-      </div>
+      <input type="hidden" name="start_date" value={startDate} />
+      <input type="hidden" name="end_date" value={endDate} />
+      <DateRangePicker
+        startDate={startDate}
+        endDate={endDate}
+        onChange={(start, end) => {
+          setStartDate(start);
+          setEndDate(end);
+        }}
+      />
 
       <div className="flex flex-col gap-1.5 text-sm font-medium">
         시각
