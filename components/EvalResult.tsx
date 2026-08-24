@@ -1,17 +1,20 @@
 "use client";
 
 import { evalGrade, evalRubricFor, GRADE_COLOR } from "@/lib/evalRubric";
-import type { Employee, PerformanceReview } from "@/lib/types";
+import PeerFeedbackSection from "@/components/PeerFeedbackSection";
+import type { Employee, PeerFeedback, PerformanceReview } from "@/lib/types";
 
 export default function EvalResult({
   employee,
   review,
   history,
+  peerFeedback,
   onEdit,
 }: {
   employee: Employee;
   review: PerformanceReview;
   history: PerformanceReview[];
+  peerFeedback: PeerFeedback[];
   onEdit: () => void;
 }) {
   const rubric = evalRubricFor(employee.team!);
@@ -107,6 +110,8 @@ export default function EvalResult({
       {review.evaluator_note && (
         <p className="text-xs text-muted">평가자: {review.evaluator_note}</p>
       )}
+
+      <PeerFeedbackSection employeeId={employee.id} period={review.period} feedback={peerFeedback} />
 
       {pastReviews.length > 0 && (
         <div className="flex flex-col gap-2">
