@@ -32,7 +32,7 @@ export default function BoardCommentForm({
   const [mentionStart, setMentionStart] = useState<number | null>(null);
 
   useEffect(() => {
-    if (state) return;
+    if (!state?.success) return;
     formRef.current?.reset();
     setAttachments([]);
     setUploadError(null);

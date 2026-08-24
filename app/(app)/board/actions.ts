@@ -12,7 +12,7 @@ import type { BoardCategory } from "@/lib/types";
 
 const BOARD_CATEGORIES: BoardCategory[] = ["공지사항", "마케팅", "운영HR", "디자인", "R&D"];
 
-export type BoardFormState = { error?: string } | undefined;
+export type BoardFormState = { error?: string; success?: boolean } | undefined;
 
 // stores.length > 1만 보면 본사 팀 계정(department 있음)도 전 매장이 보여서
 // 마스터로 오판된다. department가 없어야 진짜 마스터.
@@ -394,6 +394,8 @@ export async function createBoardComment(
   } catch (err) {
     console.error("[createBoardComment] 알림 발송 중 오류", err);
   }
+
+  return { success: true };
 }
 
 async function sendPushToUser(
