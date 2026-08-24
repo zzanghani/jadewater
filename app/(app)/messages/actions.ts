@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendPush } from "@/lib/webpush";
 
-export type MessageFormState = { error?: string } | undefined;
+export type MessageFormState = { error?: string; success?: boolean } | undefined;
 
 async function sendPushToUser(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -100,7 +100,7 @@ export async function sendDirectMessage(
     console.error("[sendDirectMessage] 알림 발송 중 오류", err);
   }
 
-  return undefined;
+  return { success: true };
 }
 
 // 상대방과의 대화창을 열 때, 그 상대방이 나에게 보낸 안 읽은 메시지를

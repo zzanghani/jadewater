@@ -11,7 +11,7 @@ export default function MessageThreadForm({ recipientId }: { recipientId: string
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    if (state?.error) return;
+    if (!state?.success) return;
     formRef.current?.reset();
   }, [state]);
 

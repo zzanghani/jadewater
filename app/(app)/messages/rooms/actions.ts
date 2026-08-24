@@ -190,7 +190,7 @@ export async function createChatRoom(
   redirect(`/messages/rooms/${roomId}`);
 }
 
-export type SendRoomMessageState = { error?: string } | undefined;
+export type SendRoomMessageState = { error?: string; success?: boolean } | undefined;
 
 export async function sendRoomMessage(
   _prevState: SendRoomMessageState,
@@ -266,7 +266,7 @@ export async function sendRoomMessage(
     console.error("[sendRoomMessage] 알림 발송 중 오류", err);
   }
 
-  return undefined;
+  return { success: true };
 }
 
 // 방에 들어갈 때 읽음 시각을 갱신한다. 참여 기록이 아직 없으면 이

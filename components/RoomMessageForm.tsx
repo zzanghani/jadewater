@@ -18,7 +18,7 @@ export default function RoomMessageForm({ roomId, members }: { roomId: string; m
   const [mentionStart, setMentionStart] = useState<number | null>(null);
 
   useEffect(() => {
-    if (state?.error) return;
+    if (!state?.success) return;
     formRef.current?.reset();
     setBody("");
   }, [state]);
