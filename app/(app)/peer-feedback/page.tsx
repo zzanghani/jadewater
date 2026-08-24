@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
-import { kstDateString } from "@/lib/date";
+import { currentEvalPeriod } from "@/lib/evalRubric";
 import PeerFeedbackPageClient from "@/components/PeerFeedbackPageClient";
 import type { Employee } from "@/lib/types";
 
@@ -12,7 +12,7 @@ export default async function PeerFeedbackPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const period = kstDateString(0).slice(0, 7);
+  const period = currentEvalPeriod();
 
   const [{ data: employees }, { data: mySubmissions }] = await Promise.all([
     supabase

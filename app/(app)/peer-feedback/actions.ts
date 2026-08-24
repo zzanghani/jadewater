@@ -37,7 +37,7 @@ export async function submitPeerFeedback(
   });
 
   if (error) {
-    return { error: "이미 이번 달에 피드백을 남기셨거나, 저장 중 오류가 발생했습니다." };
+    return { error: "이미 이번 분기에 피드백을 남기셨거나, 저장 중 오류가 발생했습니다." };
   }
 
   revalidatePath("/peer-feedback");

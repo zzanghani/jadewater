@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { kstDateString } from "@/lib/date";
+import { currentEvalPeriod } from "@/lib/evalRubric";
 import EvalPageClient from "@/components/EvalPageClient";
 import type { Employee, PeerFeedback, PerformanceReview } from "@/lib/types";
 
@@ -23,7 +23,7 @@ export default async function EvalPage({
     notFound();
   }
 
-  const period = kstDateString(0).slice(0, 7);
+  const period = currentEvalPeriod();
 
   const { data: history } = await supabase
     .from("performance_reviews")

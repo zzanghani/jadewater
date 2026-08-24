@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { submitPeerFeedback, type PeerFeedbackFormState } from "@/app/(app)/peer-feedback/actions";
+import { evalPeriodLabel } from "@/lib/evalRubric";
 import { roleColor } from "@/lib/scheduleColors";
 import type { Employee } from "@/lib/types";
 
@@ -24,7 +25,7 @@ export default function PeerFeedbackPageClient({
       <div className="flex flex-col gap-1">
         <h1 className="text-lg font-bold">동료 한마디</h1>
         <p className="text-xs text-muted">
-          {storeName} · {period.replace("-", "년 ")}월 · 익명으로 전달돼요. 누가 썼는지는 아무도(관리자 포함) 알 수 없어요.
+          {storeName} · {evalPeriodLabel(period)} · 익명으로 전달돼요. 누가 썼는지는 아무도(관리자 포함) 알 수 없어요.
         </p>
       </div>
 

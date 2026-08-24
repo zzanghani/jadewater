@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
 import { storeColor } from "@/lib/storeColors";
-import { kstDateString } from "@/lib/date";
+import { currentEvalPeriod } from "@/lib/evalRubric";
 import HrClient from "@/components/HrClient";
 import type { Employee, PerformanceReview } from "@/lib/types";
 
@@ -41,7 +41,7 @@ export default async function HrPage() {
     .filter((e) => e.employment_type === "정직원" && e.team)
     .map((e) => e.id);
 
-  const period = kstDateString(0).slice(0, 7);
+  const period = currentEvalPeriod();
   const { data: currentReviews } = evalEligibleIds.length
     ? await supabase
         .from("performance_reviews")

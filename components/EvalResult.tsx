@@ -1,6 +1,6 @@
 "use client";
 
-import { evalGrade, evalRubricFor, GRADE_COLOR } from "@/lib/evalRubric";
+import { evalGrade, evalPeriodLabel, evalRubricFor, GRADE_COLOR } from "@/lib/evalRubric";
 import PeerFeedbackSection from "@/components/PeerFeedbackSection";
 import type { Employee, PeerFeedback, PerformanceReview } from "@/lib/types";
 
@@ -56,7 +56,7 @@ export default function EvalResult({
         </span>
         <span className="text-sm font-bold">{employee.name} · {label}</span>
         <span className="text-xs text-muted">
-          {employee.team}(정직원) · {review.period.replace("-", "년 ")}월 평가
+          {employee.team}(정직원) · {evalPeriodLabel(review.period)} 평가
         </span>
         <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-background">
           <div
@@ -129,7 +129,7 @@ export default function EvalResult({
                       className="h-2 w-2 rounded-full"
                       style={{ backgroundColor: GRADE_COLOR[g.grade] }}
                     />
-                    <span className="text-sm font-semibold">{r.period.replace("-", "년 ")}월</span>
+                    <span className="text-sm font-semibold">{evalPeriodLabel(r.period)}</span>
                   </div>
                   <span className="text-xs text-muted">
                     {g.grade} · {r.total_score}점
