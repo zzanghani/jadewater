@@ -273,8 +273,8 @@ export default function MonthlyPlanCalendar({
                     className="flex flex-1 items-center gap-2 text-left transition-colors hover:text-brand"
                   >
                     <span
-                      className="shrink-0 text-[10px] font-semibold"
-                      style={{ color: colorFor(p.created_by) }}
+                      className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                      style={{ backgroundColor: colorFor(p.created_by) }}
                     >
                       {nameFor(p.created_by)}
                     </span>
