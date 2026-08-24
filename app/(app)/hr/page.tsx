@@ -8,11 +8,18 @@ export default async function HrPage() {
   const supabase = await createClient();
   const { stores } = await getStoreContext(supabase);
 
-  const { data: employees } = await supabase
-    .from("employees")
-    .select("*")
-    .is("resigned_at", null)
-    .order("hire_date", { ascending: true });
+  const [{ data: employees }, { data: resignedEmployees }] = await Promise.all([
+    supabase
+      .from("employees")
+      .select("*")
+      .is("resigned_at", null)
+      .order("hire_date", { ascending: true }),
+    supabase
+      .from("employees")
+      .select("*")
+      .not("resigned_at", "is", null)
+      .order("resigned_at", { ascending: false }),
+  ]);
 
   const msoEmployees: Employee[] = [];
   const employeesByStore: Record<string, Employee[]> = {};
@@ -38,6 +45,7 @@ export default async function HrPage() {
       stores={clientStores}
       msoEmployees={msoEmployees}
       employeesByStore={employeesByStore}
+      resignedEmployees={resignedEmployees ?? []}
     />
   );
 }

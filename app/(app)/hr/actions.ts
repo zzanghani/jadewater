@@ -172,3 +172,15 @@ export async function resignEmployee(id: string): Promise<void> {
     .eq("id", id);
   revalidatePath("/hr");
 }
+
+// 퇴사 처리를 잘못 눌렀을 때 되돌리는 용도.
+export async function restoreEmployee(id: string): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase.from("employees").update({ resigned_at: null }).eq("id", id);
+  revalidatePath("/hr");
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { resignEmployee } from "@/app/(app)/hr/actions";
+import { resignEmployee, restoreEmployee } from "@/app/(app)/hr/actions";
 import { tenureLabel, healthCertStatus, healthCertExpiry } from "@/lib/date";
 import { roleColor } from "@/lib/scheduleColors";
 import HrEmployeeForm from "@/components/HrEmployeeForm";
@@ -34,14 +34,17 @@ export default function HrClient({
   stores,
   msoEmployees,
   employeesByStore,
+  resignedEmployees,
 }: {
   stores: StoreInfo[];
   msoEmployees: Employee[];
   employeesByStore: Record<string, Employee[]>;
+  resignedEmployees: Employee[];
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [showResigned, setShowResigned] = useState(false);
   const [activeTab, setActiveTab] = useState<"roster" | "review">("roster");
 
   const storesWithPeople = stores.filter((s) => (employeesByStore[s.id]?.length ?? 0) > 0);
@@ -53,7 +56,9 @@ export default function HrClient({
   const fullTimeCount = allEmployees.filter((e) => e.employment_type === "정직원").length;
   const ptCount = totalCount - fullTimeCount;
   const storeNameById = new Map(stores.map((s) => [s.id, s.name]));
-  const detailEmployee = allEmployees.find((e) => e.id === detailId) ?? null;
+  const detailEmployee =
+    [...allEmployees, ...resignedEmployees].find((e) => e.id === detailId) ?? null;
+  const isResignedDetail = !!detailEmployee?.resigned_at;
 
   function renderPersonRow(emp: Employee) {
     if (editingId === emp.id) {
@@ -253,6 +258,54 @@ export default function HrClient({
               })}
             </>
           )}
+
+          {resignedEmployees.length > 0 && (
+            <div className="flex flex-col gap-2 border-t border-border pt-3">
+              <button
+                type="button"
+                onClick={() => setShowResigned((v) => !v)}
+                className="self-start text-xs font-semibold text-muted"
+              >
+                퇴사자 목록 ({resignedEmployees.length}) {showResigned ? "▲" : "▼"}
+              </button>
+              {showResigned && (
+                <ul className="flex flex-col gap-2">
+                  {resignedEmployees.map((emp) => (
+                    <li
+                      key={emp.id}
+                      className="flex items-center justify-between gap-2 rounded-2xl border border-border bg-card p-4"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setDetailId(emp.id)}
+                        className="flex flex-1 flex-wrap items-center gap-2 text-left"
+                      >
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
+                          style={{ backgroundColor: roleColor(emp.position) }}
+                        >
+                          {emp.position}
+                        </span>
+                        <span className="text-sm font-semibold text-muted">{emp.name}</span>
+                        <span className="text-[11px] text-muted">퇴사일 {emp.resigned_at}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`${emp.name}님을 다시 재직 상태로 되돌릴까요?`)) {
+                            restoreEmployee(emp.id);
+                          }
+                        }}
+                        className="shrink-0 text-xs font-medium text-brand"
+                      >
+                        복귀 처리
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </>
       )}
 
@@ -320,6 +373,7 @@ export default function HrClient({
                 <span className="text-xs font-semibold text-muted">보건증 만료일</span>
                 <HealthCertDetail issuedAt={detailEmployee.health_cert_issued_at} />
               </div>
+              {isResignedDetail && <DetailRow label="퇴사일" value={detailEmployee.resigned_at} />}
             </div>
 
             <div className="mt-3 flex gap-2">
@@ -333,6 +387,20 @@ export default function HrClient({
               >
                 정보 수정
               </button>
+              {isResignedDetail ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm(`${detailEmployee.name}님을 다시 재직 상태로 되돌릴까요?`)) {
+                      restoreEmployee(detailEmployee.id);
+                      setDetailId(null);
+                    }
+                  }}
+                  className="flex-1 rounded-xl border border-brand/30 py-3 text-sm font-semibold text-brand"
+                >
+                  복귀 처리
+                </button>
+              ) : (
               <button
                 type="button"
                 onClick={() => {
@@ -345,6 +413,7 @@ export default function HrClient({
               >
                 퇴사 처리
               </button>
+              )}
             </div>
           </div>
         </div>
