@@ -177,13 +177,13 @@ export default function MonthlyPlanCalendar({
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-x-1 text-center text-[10px] font-semibold text-muted">
+      <div className="grid grid-cols-7 pb-1 text-center text-[10px] font-semibold text-muted">
         {WEEKDAY_HEADER.map((w) => (
           <span key={w}>{w}</span>
         ))}
       </div>
 
-      <div className="flex flex-col gap-0.5">
+      <div className="overflow-hidden rounded-lg border-l border-t border-border">
         {weeks.map((week, wi) => {
           const segments = visiblePlans
             .map((p) => {
@@ -201,13 +201,25 @@ export default function MonthlyPlanCalendar({
             })
             .filter((s): s is { plan: MonthlyPlan; startCol: number; endCol: number; lane: number } => s !== null);
           const maxLane = segments.reduce((m, s) => Math.max(m, s.lane), -1);
+          const rowCount = maxLane + 2; // 날짜 숫자 1행 + 일정 레인 수
 
           return (
-            <div key={wi} className="grid grid-cols-7 gap-x-1 gap-y-0.5" style={{ gridAutoRows: "min-content" }}>
+            <div
+              key={wi}
+              className="grid grid-cols-7"
+              style={{ gridTemplateRows: `1.75rem repeat(${maxLane + 1}, 1.3rem)` }}
+            >
+              {week.map((d, di) => (
+                <div
+                  key={`bg-${di}`}
+                  className="border-b border-r border-border"
+                  style={{ gridColumn: di + 1, gridRow: `1 / span ${rowCount}` }}
+                />
+              ))}
               {week.map((d, di) => (
                 <div
                   key={di}
-                  className="flex h-6 items-center justify-center text-[11px] font-semibold"
+                  className="flex items-start justify-center pt-1 text-[11px] font-semibold"
                   style={{ gridColumn: di + 1, gridRow: 1 }}
                 >
                   <span
@@ -225,7 +237,7 @@ export default function MonthlyPlanCalendar({
                   type="button"
                   title={plan.title}
                   onClick={() => setExpandedId(plan.id)}
-                  className="flex h-4 items-center overflow-hidden rounded-sm px-1 text-left text-[9px] font-semibold text-white"
+                  className="mx-0.5 my-0.5 flex items-center overflow-hidden rounded-md px-1.5 text-left text-[9px] font-semibold text-white"
                   style={{
                     gridColumn: `${startCol + 1} / ${endCol + 2}`,
                     gridRow: lane + 2,
@@ -235,10 +247,6 @@ export default function MonthlyPlanCalendar({
                   <span className="truncate">{plan.title}</span>
                 </button>
               ))}
-              {maxLane >= 0 &&
-                Array.from({ length: maxLane + 1 }, (_, l) => (
-                  <div key={`spacer-${l}`} style={{ gridColumn: "1 / 2", gridRow: l + 2 }} className="h-4" />
-                ))}
             </div>
           );
         })}
