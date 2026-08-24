@@ -157,12 +157,16 @@ export default function MonthlyPlanCalendar({
               {week.map((d, di) => (
                 <div
                   key={di}
-                  className={`flex h-6 items-center justify-center rounded-md text-[11px] font-semibold ${
-                    d === today ? "bg-brand text-white" : d ? "text-foreground" : ""
-                  }`}
+                  className="flex h-6 items-center justify-center text-[11px] font-semibold"
                   style={{ gridColumn: di + 1, gridRow: 1 }}
                 >
-                  {d ? Number(d.slice(-2)) : ""}
+                  <span
+                    className={`flex h-6 w-6 items-center justify-center rounded-full ${
+                      d === today ? "bg-brand text-white" : d ? "text-foreground" : ""
+                    }`}
+                  >
+                    {d ? Number(d.slice(-2)) : ""}
+                  </span>
                 </div>
               ))}
               {segments.map(({ plan, startCol, endCol, lane }) => (
