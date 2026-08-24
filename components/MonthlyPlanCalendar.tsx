@@ -214,10 +214,12 @@ export default function MonthlyPlanCalendar({
                 </div>
               ))}
               {segments.map(({ plan, startCol, endCol, lane }) => (
-                <div
+                <button
                   key={plan.id}
+                  type="button"
                   title={plan.title}
-                  className="flex h-4 items-center overflow-hidden rounded-sm px-1 text-[9px] font-semibold text-white"
+                  onClick={() => setExpandedId(plan.id)}
+                  className="flex h-4 items-center overflow-hidden rounded-sm px-1 text-left text-[9px] font-semibold text-white"
                   style={{
                     gridColumn: `${startCol + 1} / ${endCol + 2}`,
                     gridRow: lane + 2,
@@ -225,7 +227,7 @@ export default function MonthlyPlanCalendar({
                   }}
                 >
                   <span className="truncate">{plan.title}</span>
-                </div>
+                </button>
               ))}
               {maxLane >= 0 &&
                 Array.from({ length: maxLane + 1 }, (_, l) => (
