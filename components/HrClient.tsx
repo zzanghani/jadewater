@@ -5,13 +5,13 @@ import { deleteEmployee } from "@/app/(app)/hr/actions";
 import { tenureLabel, healthCertStatus } from "@/lib/date";
 import { roleColor } from "@/lib/scheduleColors";
 import HrEmployeeForm from "@/components/HrEmployeeForm";
-import type { Employee } from "@/lib/types";
+import type { Employee, EmployeeTeam } from "@/lib/types";
 
 type StoreInfo = { id: string; name: string; color: string };
 
 // 보건증 갱신 알람 3단계 — 만료 45일 전(제이드앤워터 브랜드 민트) → 30일 전(주황) →
 // 15일 전(빨강)으로 갈수록 위급하게. 색은 매장 브랜드 톤을 그대로 가져와
-// 이 페이지가 지금 어떤 테마(베메컴 네이비)를 쓰든 항상 같은 색으로 보인다.
+// 이 화면이 지금 어떤 테마(베메컴 네이비)를 쓰든 항상 같은 색으로 보인다.
 const JADEWATER_BRAND = "#86c1ae";
 
 const HEALTH_CERT_BADGE: Record<
@@ -28,59 +28,112 @@ const HEALTH_CERT_BADGE: Record<
   d15: { label: "보건증갱신", className: "bg-red-50 text-red-600" },
 };
 
+const TEAMS: EmployeeTeam[] = ["홀", "키친"];
+
 export default function HrClient({
   stores,
+  msoEmployees,
   employeesByStore,
 }: {
   stores: StoreInfo[];
+  msoEmployees: Employee[];
   employeesByStore: Record<string, Employee[]>;
 }) {
-  const [selectedStoreId, setSelectedStoreId] = useState(stores[0]?.id ?? "");
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"roster" | "review">("roster");
 
-  const employees = employeesByStore[selectedStoreId] ?? [];
+  const storesWithPeople = stores.filter((s) => (employeesByStore[s.id]?.length ?? 0) > 0);
+  const totalCount = msoEmployees.length + storesWithPeople.reduce(
+    (sum, s) => sum + (employeesByStore[s.id]?.length ?? 0),
+    0
+  );
+  const allEmployees = [...msoEmployees, ...Object.values(employeesByStore).flat()];
+  const fullTimeCount = allEmployees.filter((e) => e.employment_type === "정직원").length;
+  const ptCount = totalCount - fullTimeCount;
+
+  function renderPersonRow(emp: Employee) {
+    if (editingId === emp.id) {
+      return (
+        <HrEmployeeForm
+          key={emp.id}
+          stores={stores}
+          employee={emp}
+          onDone={() => setEditingId(null)}
+        />
+      );
+    }
+
+    const certStatus = healthCertStatus(emp.health_cert_issued_at);
+    const certBadge = HEALTH_CERT_BADGE[certStatus];
+
+    return (
+      <li
+        key={emp.id}
+        className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className="rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
+              style={{ backgroundColor: roleColor(emp.position) }}
+            >
+              {emp.position}
+            </span>
+            <span className="text-sm font-semibold">{emp.name}</span>
+            <span
+              className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                emp.employment_type === "정직원"
+                  ? "bg-brand-light text-brand-dark"
+                  : "bg-background text-muted"
+              }`}
+            >
+              {emp.employment_type === "정직원" ? "정직원" : "PT"}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 text-xs">
+            <button
+              type="button"
+              onClick={() => setEditingId(emp.id)}
+              className="font-medium text-brand"
+            >
+              수정
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm(`${emp.name}님을 삭제할까요?`)) deleteEmployee(emp.id);
+              }}
+              className="font-medium text-muted"
+            >
+              삭제
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+          {emp.phone && <span>{emp.phone}</span>}
+          <span>입사일 {emp.hire_date}</span>
+          <span>근속 {tenureLabel(emp.hire_date)}</span>
+          <span className="flex items-center gap-1">
+            보건증 발급 {emp.health_cert_issued_at ?? "-"}
+            {certBadge && (
+              <span
+                className={`rounded-full px-1.5 py-0.5 font-semibold ${certBadge.className ?? ""}`}
+                style={certBadge.style}
+              >
+                {certBadge.label}
+              </span>
+            )}
+          </span>
+        </div>
+      </li>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-lg font-bold">HR</h1>
-
-      {stores.length > 1 && (
-        <label className="relative flex items-center">
-          <span className="pointer-events-none absolute left-3 text-xs font-medium text-muted">
-            매장
-          </span>
-          <select
-            value={selectedStoreId}
-            onChange={(e) => {
-              setSelectedStoreId(e.target.value);
-              setShowAddForm(false);
-              setEditingId(null);
-            }}
-            className="w-full appearance-none rounded-xl border border-border bg-card py-2.5 pl-12 pr-8 text-sm font-semibold text-foreground outline-none ring-brand/30 focus:ring-2"
-          >
-            {stores.map((store) => (
-              <option key={store.id} value={store.id}>
-                {store.name}
-              </option>
-            ))}
-          </select>
-          <svg
-            className="pointer-events-none absolute right-3 text-muted"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="m6 9 6 6 6-6" />
-          </svg>
-        </label>
-      )}
 
       <div className="grid grid-cols-2 gap-2">
         <button
@@ -115,95 +168,86 @@ export default function HrClient({
         </p>
       )}
 
-      {activeTab === "roster" && !showAddForm && (
-        <button
-          type="button"
-          onClick={() => setShowAddForm(true)}
-          className="self-start rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-md shadow-brand/30"
-        >
-          + 직원 추가
-        </button>
-      )}
+      {activeTab === "roster" && (
+        <>
+          {!showAddForm && (
+            <button
+              type="button"
+              onClick={() => setShowAddForm(true)}
+              className="self-start rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-md shadow-brand/30"
+            >
+              + 직원 추가
+            </button>
+          )}
 
-      {activeTab === "roster" && showAddForm && (
-        <HrEmployeeForm storeId={selectedStoreId} onDone={() => setShowAddForm(false)} />
-      )}
+          {showAddForm && (
+            <HrEmployeeForm stores={stores} onDone={() => setShowAddForm(false)} />
+          )}
 
-      {activeTab === "roster" && (employees.length === 0 ? (
-        <p className="text-sm text-muted">등록된 직원이 없습니다.</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {employees.map((emp) => {
-            if (editingId === emp.id) {
-              return (
-                <li key={emp.id}>
-                  <HrEmployeeForm
-                    storeId={selectedStoreId}
-                    employee={emp}
-                    onDone={() => setEditingId(null)}
-                  />
-                </li>
-              );
-            }
-
-            const certStatus = healthCertStatus(emp.health_cert_issued_at);
-            const certBadge = HEALTH_CERT_BADGE[certStatus];
-
-            return (
-              <li
-                key={emp.id}
-                className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
-                      style={{ backgroundColor: roleColor(emp.position) }}
-                    >
-                      {emp.position}
-                    </span>
-                    <span className="text-sm font-semibold">{emp.name}</span>
+          {totalCount === 0 ? (
+            <p className="text-sm text-muted">등록된 직원이 없습니다.</p>
+          ) : (
+            <>
+              <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-bold">{totalCount}</span>
+                  <span className="text-xs font-semibold text-muted">명 · 전사 인력</span>
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex flex-1 flex-col gap-0.5 rounded-xl bg-background px-3 py-2">
+                    <span className="text-base font-bold">{fullTimeCount}</span>
+                    <span className="text-[11px] font-semibold text-muted">정직원</span>
                   </div>
-                  <div className="flex items-center gap-3 text-xs">
-                    <button
-                      type="button"
-                      onClick={() => setEditingId(emp.id)}
-                      className="font-medium text-brand"
-                    >
-                      수정
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (confirm(`${emp.name}님을 삭제할까요?`)) deleteEmployee(emp.id);
-                      }}
-                      className="font-medium text-muted"
-                    >
-                      삭제
-                    </button>
+                  <div className="flex flex-1 flex-col gap-0.5 rounded-xl bg-background px-3 py-2">
+                    <span className="text-base font-bold">{ptCount}</span>
+                    <span className="text-[11px] font-semibold text-muted">파트타이머</span>
                   </div>
                 </div>
+              </div>
 
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-                  <span>입사일 {emp.hire_date}</span>
-                  <span>근속 {tenureLabel(emp.hire_date)}</span>
-                  <span className="flex items-center gap-1">
-                    보건증 발급 {emp.health_cert_issued_at ?? "-"}
-                    {certBadge && (
-                      <span
-                        className={`rounded-full px-1.5 py-0.5 font-semibold ${certBadge.className ?? ""}`}
-                        style={certBadge.style}
-                      >
-                        {certBadge.label}
-                      </span>
-                    )}
-                  </span>
+              {msoEmployees.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between px-0.5">
+                    <span className="text-xs font-bold text-foreground">MSO운영회사</span>
+                    <span className="text-[11px] font-semibold text-muted">{msoEmployees.length}명</span>
+                  </div>
+                  <ul className="flex flex-col gap-2">{msoEmployees.map(renderPersonRow)}</ul>
                 </div>
-              </li>
-            );
-          })}
-        </ul>
-      ))}
+              )}
+
+              {storesWithPeople.map((store) => {
+                const people = employeesByStore[store.id] ?? [];
+                return (
+                  <div key={store.id} className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between px-0.5">
+                      <span className="text-xs font-bold text-foreground">{store.name}</span>
+                      <span className="text-[11px] font-semibold text-muted">{people.length}명</span>
+                    </div>
+                    {TEAMS.map((team) => {
+                      const teamPeople = people.filter((p) => p.team === team);
+                      if (teamPeople.length === 0) return null;
+                      const fullCount = teamPeople.filter((p) => p.employment_type === "정직원").length;
+                      const teamPtCount = teamPeople.length - fullCount;
+                      return (
+                        <div key={team} className="flex flex-col gap-2">
+                          <span className="px-0.5 text-[11px] font-semibold text-brand-dark">
+                            {team}
+                            <span className="ml-1 font-medium text-muted">
+                              · 정직원 {fullCount}
+                              {teamPtCount > 0 ? ` · PT ${teamPtCount}` : ""}
+                            </span>
+                          </span>
+                          <ul className="flex flex-col gap-2">{teamPeople.map(renderPersonRow)}</ul>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }

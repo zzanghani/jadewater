@@ -344,11 +344,32 @@ export type WeeklyReport = {
 
 export type ScheduleRole = '점장' | '부점장' | '팀장' | '사원' | '파트타이머'
 
+export type EmployeeDepartment = '경영진' | '관리팀' | '마케팅팀' | '슈퍼바이저' | '디자인팀'
+export type EmployeeTeam = '홀' | '키친'
+export type EmploymentType = '정직원' | 'PT'
+
+export const EMPLOYEE_DEPARTMENTS: EmployeeDepartment[] = [
+  '경영진',
+  '관리팀',
+  '마케팅팀',
+  '슈퍼바이저',
+  '디자인팀',
+]
+
+// store_id가 있으면 매장 소속, department가 있으면 MSO운영회사 소속 —
+// 반드시 둘 중 하나만 채워진다(DB 체크 제약과 동일).
 export type Employee = {
   id: string
-  store_id: string
+  store_id: string | null
+  department: EmployeeDepartment | null
+  team: EmployeeTeam | null
+  employment_type: EmploymentType
   name: string
   position: ScheduleRole
+  phone: string | null
+  email: string | null
+  address: string | null
+  birthday: string | null
   hire_date: string
   health_cert_issued_at: string | null
   created_by: string
@@ -572,7 +593,6 @@ export type Database = {
       employees: {
         Row: Employee
         Insert: Partial<Employee> & {
-          store_id: string
           name: string
           position: ScheduleRole
           hire_date: string
