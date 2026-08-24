@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { kstDateString } from "@/lib/date";
 import { EMPLOYEE_DEPARTMENTS } from "@/lib/types";
 import type { EmployeeDepartment, EmployeeTeam, EmploymentType, ScheduleRole } from "@/lib/types";
 
@@ -156,13 +157,18 @@ export async function updateEmployee(
   return { success: true };
 }
 
-export async function deleteEmployee(id: string): Promise<void> {
+// 완전 삭제 대신 퇴사 처리 — 입사일/근속 등 기록은 남기고 재직 목록에서만
+// 빠지게 한다(나중에 이력 조회가 필요할 수 있어서).
+export async function resignEmployee(id: string): Promise<void> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return;
 
-  await supabase.from("employees").delete().eq("id", id);
+  await supabase
+    .from("employees")
+    .update({ resigned_at: kstDateString(0) })
+    .eq("id", id);
   revalidatePath("/hr");
 }

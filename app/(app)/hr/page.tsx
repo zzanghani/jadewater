@@ -11,6 +11,7 @@ export default async function HrPage() {
   const { data: employees } = await supabase
     .from("employees")
     .select("*")
+    .is("resigned_at", null)
     .order("hire_date", { ascending: true });
 
   const msoEmployees: Employee[] = [];

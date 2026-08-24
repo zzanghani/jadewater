@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { deleteEmployee } from "@/app/(app)/hr/actions";
+import { resignEmployee } from "@/app/(app)/hr/actions";
 import { tenureLabel, healthCertStatus, healthCertExpiry } from "@/lib/date";
 import { roleColor } from "@/lib/scheduleColors";
 import HrEmployeeForm from "@/components/HrEmployeeForm";
@@ -109,11 +109,11 @@ export default function HrClient({
             <button
               type="button"
               onClick={() => {
-                if (confirm(`${emp.name}님을 삭제할까요?`)) deleteEmployee(emp.id);
+                if (confirm(`${emp.name}님을 퇴사 처리할까요?`)) resignEmployee(emp.id);
               }}
               className="font-medium text-muted"
             >
-              삭제
+              퇴사 처리
             </button>
           </div>
         </div>
@@ -336,14 +336,14 @@ export default function HrClient({
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm(`${detailEmployee.name}님을 삭제할까요?`)) {
-                    deleteEmployee(detailEmployee.id);
+                  if (confirm(`${detailEmployee.name}님을 퇴사 처리할까요?`)) {
+                    resignEmployee(detailEmployee.id);
                     setDetailId(null);
                   }
                 }}
                 className="flex-1 rounded-xl border border-red-200 py-3 text-sm font-semibold text-red-600"
               >
-                삭제
+                퇴사 처리
               </button>
             </div>
           </div>

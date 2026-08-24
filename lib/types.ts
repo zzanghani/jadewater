@@ -372,6 +372,7 @@ export type Employee = {
   birthday: string | null
   hire_date: string
   health_cert_issued_at: string | null
+  resigned_at: string | null
   created_by: string
   updated_by: string | null
   created_at: string
