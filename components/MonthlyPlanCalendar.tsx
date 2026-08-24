@@ -96,6 +96,7 @@ export default function MonthlyPlanCalendar({
     [plans, range.start, range.end, filterUserId]
   );
   const laneOf = useMemo(() => assignLanes(visiblePlans), [visiblePlans]);
+  const expandedPlan = plans.find((p) => p.id === expandedId) ?? null;
 
   return (
     <section className="rounded-2xl border border-border bg-card p-4">
@@ -238,7 +239,6 @@ export default function MonthlyPlanCalendar({
       {visiblePlans.length > 0 && (
         <div className="mt-3 flex flex-col gap-1.5 border-t border-border pt-3">
           {visiblePlans.map((p) => {
-            const isExpanded = expandedId === p.id;
             const isEditing = editingId === p.id;
             const isAuthor = !!currentUserId && currentUserId === p.created_by;
             const commentCount = commentsByPlan[p.id]?.length ?? 0;
@@ -261,13 +261,10 @@ export default function MonthlyPlanCalendar({
                 <div className="flex w-full items-center gap-2 rounded-lg py-1 text-xs">
                   <button
                     type="button"
-                    onClick={() => setExpandedId(isExpanded ? null : p.id)}
+                    onClick={() => setExpandedId(p.id)}
                     className="flex flex-1 items-center gap-2 text-left transition-colors hover:text-brand"
                   >
-                    <span
-                      className={`shrink-0 text-muted transition-transform ${isExpanded ? "rotate-90" : ""}`}
-                      aria-hidden
-                    >
+                    <span className="shrink-0 text-muted" aria-hidden>
                       ▶
                     </span>
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colorFor(p.created_by) }} />
@@ -313,19 +310,54 @@ export default function MonthlyPlanCalendar({
                     ✕
                   </button>
                 </div>
-                {isExpanded && (
-                  <MonthlyPlanDetail
-                    planId={p.id}
-                    description={p.description}
-                    followers={followers}
-                    comments={commentsByPlan[p.id] ?? []}
-                    currentUserId={currentUserId}
-                    hqProfiles={hqProfiles}
-                  />
-                )}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {expandedPlan && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
+          onClick={() => setExpandedId(null)}
+        >
+          <div
+            className="flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-2 border-b border-border p-4">
+              <span
+                className="mt-1 h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: colorFor(expandedPlan.created_by) }}
+              />
+              <div className="flex-1">
+                <h3 className="text-sm font-bold text-foreground">{expandedPlan.title}</h3>
+                <p className="text-xs text-muted">
+                  {expandedPlan.start_date.slice(5).replace("-", ".")} ~{" "}
+                  {expandedPlan.end_date.slice(5).replace("-", ".")}
+                  {expandedPlan.start_time && ` · ${expandedPlan.start_time}`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExpandedId(null)}
+                className="shrink-0 text-lg text-muted"
+                aria-label="닫기"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="overflow-y-auto p-4">
+              <MonthlyPlanDetail
+                planId={expandedPlan.id}
+                description={expandedPlan.description}
+                followers={followersByPlan[expandedPlan.id] ?? []}
+                comments={commentsByPlan[expandedPlan.id] ?? []}
+                currentUserId={currentUserId}
+                hqProfiles={hqProfiles}
+              />
+            </div>
+          </div>
         </div>
       )}
     </section>
