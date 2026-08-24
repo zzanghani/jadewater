@@ -394,11 +394,12 @@ export type PerformanceReview = {
 }
 
 // 근무평가 점수/등급 계산에는 반영되지 않는, 참고용 동료 피드백.
+// 익명이라 누가 썼는지는 저장은 되지만(created_by, 중복 제출 방지용)
+// 화면에는 절대 보여주지 않는다.
 export type PeerFeedback = {
   id: string
   employee_id: string
   period: string // 'YYYY-MM'
-  reviewer_name: string
   rating: number
   comment: string | null
   created_by: string
@@ -646,7 +647,6 @@ export type Database = {
         Insert: Partial<PeerFeedback> & {
           employee_id: string
           period: string
-          reviewer_name: string
           rating: number
           created_by: string
         }

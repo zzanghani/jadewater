@@ -8,9 +8,10 @@ const ALL_ITEMS = [
   { href: "/analysis", label: "주간 분석", icon: TrendIcon },
   { href: "/monthly-analysis", label: "월간 분석", icon: CalendarIcon },
   { href: "/cost", label: "실시간 코스트", icon: GaugeIcon },
+  { href: "/peer-feedback", label: "동료피드백", icon: ThumbsUpIcon },
 ] as const;
 
-const MASTER_EXCLUDED_HREFS: string[] = ["/closing", "/schedule", "/receipts", "/expense"];
+const MASTER_EXCLUDED_HREFS: string[] = ["/closing", "/schedule", "/receipts", "/expense", "/peer-feedback"];
 
 const TEAM_ITEMS = [
   { href: "/board", label: "게시판", icon: BoardIcon },
@@ -33,6 +34,7 @@ const EMPLOYEE_ITEMS = [
   { href: "/board?category=공지사항", label: "공지사항", icon: BoardIcon },
   { href: "/expense", label: "현장지출", icon: ReceiptIcon },
   { href: "/cost", label: "실시간 코스트", icon: GaugeIcon },
+  { href: "/peer-feedback", label: "동료피드백", icon: ThumbsUpIcon },
 ] as const;
 
 export default function QuickMenu({
@@ -195,6 +197,15 @@ function GaugeIcon() {
       <path d="M4 14a8 8 0 1 1 16 0" />
       <path d="M12 14 16 9" />
       <path d="M12 17.5h.01" />
+    </svg>
+  );
+}
+
+function ThumbsUpIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 10v11" />
+      <path d="M7 10 11 3a2 2 0 0 1 2 2v4h5.3a2 2 0 0 1 2 2.4l-1.4 7a2 2 0 0 1-2 1.6H7" />
     </svg>
   );
 }
