@@ -84,6 +84,12 @@ export default function MonthlyPlanCalendar({
     return map;
   }, [hqProfiles]);
   const colorFor = (createdBy: string) => colorByUserId.get(createdBy) ?? departmentColor(null);
+  const nameByUserId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of hqProfiles) map.set(p.id, p.name);
+    return map;
+  }, [hqProfiles]);
+  const nameFor = (createdBy: string) => nameByUserId.get(createdBy) ?? "";
 
   const visiblePlans = useMemo(
     () =>
@@ -266,10 +272,12 @@ export default function MonthlyPlanCalendar({
                     onClick={() => setExpandedId(p.id)}
                     className="flex flex-1 items-center gap-2 text-left transition-colors hover:text-brand"
                   >
-                    <span className="shrink-0 text-muted" aria-hidden>
-                      ▶
+                    <span
+                      className="shrink-0 text-[10px] font-semibold"
+                      style={{ color: colorFor(p.created_by) }}
+                    >
+                      {nameFor(p.created_by)}
                     </span>
-                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colorFor(p.created_by) }} />
                     <span className="flex-1 truncate text-foreground">{p.title}</span>
                     {p.plan_type === "vacation" && (
                       <span className="shrink-0 rounded-full bg-background px-1.5 py-0.5 text-[10px] font-semibold text-muted">
