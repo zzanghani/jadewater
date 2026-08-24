@@ -71,6 +71,7 @@ export default function MonthlyPlanCalendar({
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [filterUserId, setFilterUserId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   const range = monthRangeFromMonthString(month);
@@ -85,8 +86,14 @@ export default function MonthlyPlanCalendar({
   const colorFor = (createdBy: string) => colorByUserId.get(createdBy) ?? departmentColor(null);
 
   const visiblePlans = useMemo(
-    () => plans.filter((p) => p.start_date <= range.end && p.end_date >= range.start),
-    [plans, range.start, range.end]
+    () =>
+      plans.filter(
+        (p) =>
+          p.start_date <= range.end &&
+          p.end_date >= range.start &&
+          (!filterUserId || p.created_by === filterUserId)
+      ),
+    [plans, range.start, range.end, filterUserId]
   );
   const laneOf = useMemo(() => assignLanes(visiblePlans), [visiblePlans]);
 
@@ -105,6 +112,42 @@ export default function MonthlyPlanCalendar({
 
       {showForm && (
         <MonthlyPlanForm today={today} hqProfiles={hqProfiles} onDone={() => setShowForm(false)} />
+      )}
+
+      {hqProfiles.length > 0 && (
+        <div className="mb-2 flex gap-1.5 overflow-x-auto pb-1">
+          <button
+            type="button"
+            onClick={() => setFilterUserId(null)}
+            className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+              filterUserId === null
+                ? "border-foreground bg-foreground text-background"
+                : "border-border text-muted"
+            }`}
+          >
+            전체
+          </button>
+          {hqProfiles.map((p) => {
+            const active = filterUserId === p.id;
+            const color = departmentColor(p.department);
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setFilterUserId(active ? null : p.id)}
+                className="flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors"
+                style={
+                  active
+                    ? { backgroundColor: color, borderColor: color, color: "#fff" }
+                    : { borderColor: color, color }
+                }
+              >
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: active ? "#fff" : color }} />
+                {p.name}
+              </button>
+            );
+          })}
+        </div>
       )}
 
       <div className="mb-2 flex items-center justify-between">
