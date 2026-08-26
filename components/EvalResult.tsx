@@ -111,7 +111,7 @@ export default function EvalResult({
         <p className="text-xs text-muted">평가자: {review.evaluator_note}</p>
       )}
 
-      <PeerFeedbackSection feedback={peerFeedback} />
+      <PeerFeedbackSection employeeId={employee.id} period={review.period} feedback={peerFeedback} />
 
       {pastReviews.length > 0 && (
         <div className="flex flex-col gap-2">

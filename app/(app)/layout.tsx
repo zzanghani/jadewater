@@ -40,7 +40,6 @@ const EMPLOYEE_ALLOWED_PREFIXES = [
   "/cost",
   "/review-report",
   "/messages",
-  "/peer-feedback",
 ];
 
 export default async function AppLayout({
