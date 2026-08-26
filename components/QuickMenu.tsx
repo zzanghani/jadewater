@@ -65,7 +65,7 @@ export default function QuickMenu({
       ? EMPLOYEE_ITEMS
       : isMaster
         ? [...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), HR_ITEM, ACCOUNTS_ITEM]
-        : [...ALL_ITEMS, REVIEW_REPORT_ITEM];
+        : [...ALL_ITEMS, REVIEW_REPORT_ITEM, HR_ITEM];
 
   return (
     <section>

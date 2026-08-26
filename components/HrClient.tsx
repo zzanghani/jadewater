@@ -35,11 +35,13 @@ export default function HrClient({
   msoEmployees,
   employeesByStore,
   resignedEmployees,
+  canManageMso,
 }: {
   stores: StoreInfo[];
   msoEmployees: Employee[];
   employeesByStore: Record<string, Employee[]>;
   resignedEmployees: Employee[];
+  canManageMso: boolean;
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -67,6 +69,7 @@ export default function HrClient({
           key={emp.id}
           stores={stores}
           employee={emp}
+          canManageMso={canManageMso}
           onDone={() => setEditingId(null)}
         />
       );
@@ -193,7 +196,11 @@ export default function HrClient({
           )}
 
           {showAddForm && (
-            <HrEmployeeForm stores={stores} onDone={() => setShowAddForm(false)} />
+            <HrEmployeeForm
+              stores={stores}
+              canManageMso={canManageMso}
+              onDone={() => setShowAddForm(false)}
+            />
           )}
 
           {totalCount === 0 ? (

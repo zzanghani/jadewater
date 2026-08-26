@@ -16,17 +16,19 @@ const EMPLOYMENT_TYPES: EmploymentType[] = ["정직원", "PT"];
 export default function HrEmployeeForm({
   stores,
   employee,
+  canManageMso,
   onDone,
 }: {
   stores: StoreInfo[];
   employee?: Employee;
+  canManageMso: boolean;
   onDone?: () => void;
 }) {
   const action = employee ? updateEmployee : createEmployee;
   const [state, formAction, pending] = useActionState<HrFormState, FormData>(action, undefined);
 
   const [affiliation, setAffiliation] = useState<Affiliation>(
-    employee?.department ? "mso" : "store"
+    canManageMso && employee?.department ? "mso" : "store"
   );
   const [storeId, setStoreId] = useState(employee?.store_id ?? stores[0]?.id ?? "");
   const [team, setTeam] = useState<EmployeeTeam>(employee?.team ?? TEAMS[0]);
@@ -61,23 +63,25 @@ export default function HrEmployeeForm({
       <input type="hidden" name="health_cert_issued_at" value={healthCertDate} />
       <input type="hidden" name="birthday" value={birthday} />
 
-      <div className="flex flex-col gap-1.5 text-sm font-medium">
-        소속 구분
-        <div className="flex gap-1.5 rounded-lg border border-border bg-background p-1">
-          {(["mso", "store"] as Affiliation[]).map((a) => (
-            <button
-              key={a}
-              type="button"
-              onClick={() => setAffiliation(a)}
-              className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition-colors ${
-                affiliation === a ? "bg-brand text-white" : "text-muted"
-              }`}
-            >
-              {a === "mso" ? "MSO운영회사" : "매장"}
-            </button>
-          ))}
+      {canManageMso && (
+        <div className="flex flex-col gap-1.5 text-sm font-medium">
+          소속 구분
+          <div className="flex gap-1.5 rounded-lg border border-border bg-background p-1">
+            {(["mso", "store"] as Affiliation[]).map((a) => (
+              <button
+                key={a}
+                type="button"
+                onClick={() => setAffiliation(a)}
+                className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition-colors ${
+                  affiliation === a ? "bg-brand text-white" : "text-muted"
+                }`}
+              >
+                {a === "mso" ? "MSO운영회사" : "매장"}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {affiliation === "store" ? (
         <>
