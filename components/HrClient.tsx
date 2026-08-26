@@ -7,7 +7,8 @@ import { roleColor } from "@/lib/scheduleColors";
 import HrEmployeeForm from "@/components/HrEmployeeForm";
 import EmployeeRecords from "@/components/EmployeeRecords";
 import AccountLinkPanel from "@/components/AccountLinkPanel";
-import type { Employee, EmployeeRecord, EmployeeTeam } from "@/lib/types";
+import EvalPanel from "@/components/EvalPanel";
+import type { Employee, EmployeeRecord, EmployeeTeam, PerformanceReview } from "@/lib/types";
 
 export type UnlinkedAccount = { id: string; name: string; email: string; storeId: string | null };
 
@@ -44,6 +45,8 @@ export default function HrClient({
   quarterLabel,
   unlinkedAccounts,
   myUserId,
+  period,
+  reviews,
 }: {
   stores: StoreInfo[];
   msoEmployees: Employee[];
@@ -54,12 +57,17 @@ export default function HrClient({
   quarterLabel: string;
   unlinkedAccounts: UnlinkedAccount[];
   myUserId: string | null;
+  period: string;
+  reviews: PerformanceReview[];
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [showResigned, setShowResigned] = useState(false);
   const [activeTab, setActiveTab] = useState<"roster" | "review">("roster");
+  // 인사평가 탭 안에서 "평가 채점"과 "사건 기록"을 나눈다 — 기록은 매일,
+  // 채점은 분기 말에만 쓰는 화면이라 섞어 놓으면 둘 다 찾기 힘들다.
+  const [reviewTab, setReviewTab] = useState<"eval" | "records">("eval");
 
   const storesWithPeople = stores.filter((s) => (employeesByStore[s.id]?.length ?? 0) > 0);
   const totalCount = msoEmployees.length + storesWithPeople.reduce(
@@ -196,12 +204,43 @@ export default function HrClient({
             accounts={unlinkedAccounts}
             storeNameById={storeNameById}
           />
-          <EmployeeRecords
-            employees={allEmployees}
-            records={records}
-            quarterLabel={quarterLabel}
-            myUserId={myUserId}
-          />
+
+          <div className="flex gap-2">
+            {([
+              ["eval", "평가 채점"],
+              ["records", `사건 기록 ${records.length}`],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setReviewTab(key)}
+                className={`flex-1 rounded-xl border py-2.5 text-sm font-semibold transition-colors ${
+                  reviewTab === key
+                    ? "border-brand bg-brand/10 text-foreground"
+                    : "border-border bg-card text-muted"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {reviewTab === "eval" ? (
+            <EvalPanel
+              employees={allEmployees}
+              reviews={reviews}
+              records={records}
+              period={period}
+              periodLabel={quarterLabel}
+            />
+          ) : (
+            <EmployeeRecords
+              employees={allEmployees}
+              records={records}
+              quarterLabel={quarterLabel}
+              myUserId={myUserId}
+            />
+          )}
         </>
       )}
 

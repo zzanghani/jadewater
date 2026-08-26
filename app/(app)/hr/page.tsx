@@ -3,7 +3,7 @@ import { getStoreContext } from "@/lib/store";
 import { storeColor } from "@/lib/storeColors";
 import HrClient from "@/components/HrClient";
 import { currentQuarterRange } from "@/lib/employeeRecords";
-import type { Employee, EmployeeRecord } from "@/lib/types";
+import type { Employee, EmployeeRecord, PerformanceReview } from "@/lib/types";
 
 export default async function HrPage() {
   const supabase = await createClient();
@@ -77,6 +77,12 @@ export default async function HrPage() {
       storeId: p.store_id,
     }));
 
+  // 이번 분기 근무평가 — 채점 진행 상황과 확정 등급을 목록에 붙인다.
+  const { data: reviews } = await supabase
+    .from("performance_reviews")
+    .select("*")
+    .eq("period", quarter.period);
+
   const clientStores = stores.map((s) => ({
     id: s.id,
     name: s.name,
@@ -92,6 +98,8 @@ export default async function HrPage() {
       canManageMso={!!canManageMso}
       records={(records ?? []) as EmployeeRecord[]}
       quarterLabel={quarter.label}
+      period={quarter.period}
+      reviews={(reviews ?? []) as PerformanceReview[]}
       unlinkedAccounts={unlinkedAccounts}
       myUserId={user?.id ?? null}
     />

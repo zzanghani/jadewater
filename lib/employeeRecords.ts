@@ -62,7 +62,7 @@ export function normalizeEvalItem(
 
 // 사건 기록은 분기 단위로 모아 본다 — 근무평가 주기와 같아야 채점 화면에
 // 그대로 붙는다.
-export function currentQuarterRange(): { label: string; start: string; end: string } {
+export function currentQuarterRange(): { period: string; label: string; start: string; end: string } {
   const today = kstDateString(0);
   const year = Number(today.slice(0, 4));
   const month = Number(today.slice(5, 7));
@@ -72,6 +72,7 @@ export function currentQuarterRange(): { label: string; start: string; end: stri
   const endDay = new Date(Date.UTC(year, endMonth, 0)).getUTCDate();
   const pad = (n: number) => String(n).padStart(2, "0");
   return {
+    period: `${year}-Q${quarter}`,
     label: `${year}년 ${quarter}분기`,
     start: `${year}-${pad(startMonth)}-01`,
     end: `${year}-${pad(endMonth)}-${pad(endDay)}`,

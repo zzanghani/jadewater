@@ -403,6 +403,29 @@ export type EmployeeRecord = {
   edit_count: number
 }
 
+// 근무평가 — 1차(점장)/2차(부점장·팀장·SV) 점수를 각각 담고,
+// 확정 시점의 총점·등급을 굳혀 둔다.
+export type PerformanceReview = {
+  id: string
+  employee_id: string
+  store_id: string | null
+  period: string
+  rubric_key: string
+  first_scores: Record<string, number>
+  first_comment: string | null
+  first_by: string | null
+  first_submitted_at: string | null
+  second_scores: Record<string, number>
+  second_comment: string | null
+  second_by: string | null
+  second_submitted_at: string | null
+  total_score: number | null
+  grade: 'S' | 'A' | 'B' | 'C' | 'D' | null
+  finalized_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type ScheduleShift = {
   id: string
   store_id: string
@@ -635,6 +658,16 @@ export type Database = {
           created_by: string
         }
         Update: Partial<EmployeeRecord>
+        Relationships: []
+      }
+      performance_reviews: {
+        Row: PerformanceReview
+        Insert: Partial<PerformanceReview> & {
+          employee_id: string
+          period: string
+          rubric_key: string
+        }
+        Update: Partial<PerformanceReview>
         Relationships: []
       }
       inventory_items: {
