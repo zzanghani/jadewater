@@ -2,7 +2,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { submitPerformanceReview, type EvalFormState } from "@/app/(app)/hr/eval/actions";
-import { evalPeriodLabel, evalRubricFor } from "@/lib/evalRubric";
+import { evalRubricFor } from "@/lib/evalRubric";
 import type { Employee } from "@/lib/types";
 
 const SCALE_LABELS = ["불량", "미흡", "보통", "우수", "탁월"];
@@ -62,7 +62,7 @@ export default function EvalForm({
         <div className="flex flex-col">
           <span className="text-sm font-bold">{employee.name} · 근무평가</span>
           <span className="text-xs text-muted">
-            {employee.team}(정직원) · {evalPeriodLabel(period)}
+            {employee.team}(정직원) · {period.replace("-", "년 ")}월
           </span>
         </div>
         <div className="flex items-baseline gap-1 rounded-full border border-border bg-background px-3 py-1">

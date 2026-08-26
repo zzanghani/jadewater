@@ -201,7 +201,7 @@ export default function HrClient({
               <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-2xl font-bold">{evalTotalCount}</span>
-                  <span className="text-xs font-semibold text-muted">명 · 이번 분기 평가 대상</span>
+                  <span className="text-xs font-semibold text-muted">명 · 이번 달 평가 대상</span>
                 </div>
                 <div className="flex gap-2">
                   <div className="flex flex-1 flex-col gap-0.5 rounded-xl bg-background px-3 py-2">

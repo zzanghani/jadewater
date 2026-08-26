@@ -1,10 +1,6 @@
 // 정직원 근무평가 배점표 — 실제 사용 중인 "근무평가표" 엑셀의 정직원(홀)/
 // 정직원(주방) 시트 내용을 그대로 옮긴 것. 항목/문항은 사람이 아니라
-// 코드에 고정해 두고, 사람별/분기별 채점 결과만 DB에 저장한다.
-// (매달 하기엔 부담스럽다는 피드백으로 분기 단위로 바꿨다 — period 값의
-// 형식만 'YYYY-MM'에서 'YYYY-Q1'로 바뀌는 거라 DB 스키마 변경은 없다.)
-
-import { kstDateString } from "./date";
+// 코드에 고정해 두고, 사람별/월별 채점 결과만 DB에 저장한다.
 
 export type EvalItem = {
   id: string;
@@ -162,18 +158,4 @@ export function evalGrade(total: number): { grade: EvalGrade; label: string; com
   if (total >= 30) return { grade: "B", label: "표준적 성과 수행", comp: "+2%" };
   if (total >= 10) return { grade: "C", label: "일부개선 필요", comp: "동결" };
   return { grade: "D", label: "재계약 재검토 필요", comp: "재검토" };
-}
-
-// 근무평가/동료 한마디 모두 분기 단위('YYYY-Q1'~'YYYY-Q4')로 돈다.
-export function currentEvalPeriod(): string {
-  const today = kstDateString(0);
-  const year = today.slice(0, 4);
-  const month = Number(today.slice(5, 7));
-  const quarter = Math.ceil(month / 3);
-  return `${year}-Q${quarter}`;
-}
-
-export function evalPeriodLabel(period: string): string {
-  const [year, q] = period.split("-Q");
-  return `${year}년 ${q}분기`;
 }
