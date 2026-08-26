@@ -30,9 +30,11 @@ export type EvalRubric = {
   items: EvalItem[];
 };
 
-const ATTENDANCE: EvalItem = {
+// 근태 문항은 직급마다 속한 카테고리 이름이 다르다(태도/기본소양/관리).
+// 카테고리 이름이 안 맞으면 총점 환산에서 통째로 빠지므로 인자로 받는다.
+const attendanceItem = (category: string): EvalItem => ({
   id: "attendance",
-  category: "태도",
+  category,
   name: "근태",
   desc: "근무표 기록에서 자동 산출합니다.",
   auto: true,
@@ -43,7 +45,7 @@ const ATTENDANCE: EvalItem = {
     "지각 4회 이상 또는 사전 통보 결근 1회",
     "무단결근 발생",
   ],
-};
+});
 
 const DILIGENCE: EvalItem = {
   id: "diligence",
@@ -99,7 +101,7 @@ const REGULAR_HALL: EvalRubric = {
     { name: "협업", weight: 30 },
   ],
   items: [
-    ATTENDANCE,
+    attendanceItem("태도"),
     {
       id: "grooming",
       category: "태도",
@@ -222,7 +224,7 @@ const REGULAR_KITCHEN: EvalRubric = {
     { name: "협업", weight: 30 },
   ],
   items: [
-    ATTENDANCE,
+    attendanceItem("태도"),
     {
       id: "grooming",
       category: "태도",
@@ -324,7 +326,7 @@ const REGULAR_KITCHEN: EvalRubric = {
 // 수습 (3개월) — 전환 판정용
 // ────────────────────────────────────────────────────────────
 const PROBATION_BASE: EvalItem[] = [
-  ATTENDANCE,
+  attendanceItem("기본소양"),
   {
     id: "grooming",
     category: "기본소양",
@@ -547,7 +549,7 @@ const LEADER: EvalRubric = {
     { name: "홀", weight: 20 },
   ],
   items: [
-    ATTENDANCE,
+    attendanceItem("관리"),
     {
       id: "training",
       category: "관리",
@@ -758,7 +760,7 @@ const DEPUTY: EvalRubric = {
     { name: "홀", weight: 20 },
   ],
   items: [
-    ATTENDANCE,
+    attendanceItem("관리"),
     {
       id: "profit",
       category: "관리",
