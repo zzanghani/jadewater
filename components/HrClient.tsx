@@ -8,7 +8,16 @@ import HrEmployeeForm from "@/components/HrEmployeeForm";
 import EmployeeRecords from "@/components/EmployeeRecords";
 import AccountLinkPanel from "@/components/AccountLinkPanel";
 import EvalPanel from "@/components/EvalPanel";
-import type { Employee, EmployeeRecord, EmployeeTeam, PerformanceReview } from "@/lib/types";
+import AttendancePanel from "@/components/AttendancePanel";
+import DamagePanel from "@/components/DamagePanel";
+import type {
+  DamageRecord,
+  Employee,
+  EmployeeAttendance,
+  EmployeeRecord,
+  EmployeeTeam,
+  PerformanceReview,
+} from "@/lib/types";
 
 export type UnlinkedAccount = { id: string; name: string; email: string; storeId: string | null };
 
@@ -47,6 +56,8 @@ export default function HrClient({
   myUserId,
   period,
   reviews,
+  attendance,
+  damages,
 }: {
   stores: StoreInfo[];
   msoEmployees: Employee[];
@@ -59,6 +70,8 @@ export default function HrClient({
   myUserId: string | null;
   period: string;
   reviews: PerformanceReview[];
+  attendance: EmployeeAttendance[];
+  damages: DamageRecord[];
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -67,7 +80,7 @@ export default function HrClient({
   const [activeTab, setActiveTab] = useState<"roster" | "review">("roster");
   // 인사평가 탭 안에서 "평가 채점"과 "사건 기록"을 나눈다 — 기록은 매일,
   // 채점은 분기 말에만 쓰는 화면이라 섞어 놓으면 둘 다 찾기 힘들다.
-  const [reviewTab, setReviewTab] = useState<"eval" | "records">("eval");
+  const [reviewTab, setReviewTab] = useState<"eval" | "records" | "attendance" | "damage">("eval");
 
   const storesWithPeople = stores.filter((s) => (employeesByStore[s.id]?.length ?? 0) > 0);
   const totalCount = msoEmployees.length + storesWithPeople.reduce(
@@ -209,12 +222,14 @@ export default function HrClient({
             {([
               ["eval", "평가 채점"],
               ["records", `사건 기록 ${records.length}`],
+              ["attendance", "근태"],
+              ["damage", `damage ${damages.length}`],
             ] as const).map(([key, label]) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => setReviewTab(key)}
-                className={`flex-1 rounded-xl border py-2.5 text-sm font-semibold transition-colors ${
+                className={`flex-1 rounded-xl border px-1 py-2.5 text-xs font-semibold transition-colors ${
                   reviewTab === key
                     ? "border-brand bg-brand/10 text-foreground"
                     : "border-border bg-card text-muted"
@@ -225,20 +240,39 @@ export default function HrClient({
             ))}
           </div>
 
-          {reviewTab === "eval" ? (
+          {reviewTab === "eval" && (
             <EvalPanel
               employees={allEmployees}
               reviews={reviews}
               records={records}
+              attendance={attendance}
+              damages={damages}
               period={period}
               periodLabel={quarterLabel}
             />
-          ) : (
+          )}
+          {reviewTab === "records" && (
             <EmployeeRecords
               employees={allEmployees}
               records={records}
               quarterLabel={quarterLabel}
               myUserId={myUserId}
+            />
+          )}
+          {reviewTab === "attendance" && (
+            <AttendancePanel
+              employees={allEmployees}
+              attendance={attendance}
+              period={period}
+              periodLabel={quarterLabel}
+            />
+          )}
+          {reviewTab === "damage" && (
+            <DamagePanel
+              employees={allEmployees}
+              records={damages}
+              stores={stores}
+              periodLabel={quarterLabel}
             />
           )}
         </>

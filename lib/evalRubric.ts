@@ -1048,3 +1048,49 @@ export function gradeAction(grade: EvalGrade, probation: boolean, position: Sche
   if (grade === "C") return position === "부점장" ? "동결 + 90일 개선계획" : "동결 + 개선 면담";
   return position === "부점장" ? "보직 재검토" : "재계약 재검토";
 }
+
+// ────────────────────────────────────────────────────────────
+// 자동 채점 · 강등
+// ────────────────────────────────────────────────────────────
+
+export type AttendanceTotals = {
+  late: number;
+  absent: number;
+  unauthorized: number;
+  months: number;
+};
+
+// 분기 3개월치 지문인식 근태를 합산해 근태 문항 점수를 낸다.
+// 앵커 문장(lib/evalRubric.ts의 attendanceItem)과 같은 기준을 쓴다.
+export function attendanceScore(t: AttendanceTotals): number | null {
+  // 한 달치도 안 들어와 있으면 채점하지 않는다 — 0회로 오해하면 안 된다.
+  if (t.months === 0) return null;
+  if (t.unauthorized > 0) return 1;
+  if (t.late >= 4 || t.absent >= 1) return 2;
+  if (t.late >= 2) return 3;
+  if (t.late === 1) return 4;
+  return 5;
+}
+
+export function attendanceSummary(t: AttendanceTotals): string {
+  if (t.months === 0) return "근태 데이터 없음 — 월말에 지문인식 기록을 넣어 주세요";
+  const parts = [`지각 ${t.late}회`, `결근 ${t.absent}회`];
+  if (t.unauthorized > 0) parts.push(`무단결근 ${t.unauthorized}회`);
+  return `${t.months}개월 집계 · ${parts.join(" · ")}`;
+}
+
+// damage list 한 달 3건 이상이면 등급을 한 단계 내린다.
+// 분기 중 어느 한 달이라도 3건을 넘으면 걸린다.
+export function damageDemotion(
+  monthlyCounts: number[]
+): { demote: boolean; worstMonth: number } {
+  const worst = monthlyCounts.length ? Math.max(...monthlyCounts) : 0;
+  return { demote: worst >= 3, worstMonth: worst };
+}
+
+const GRADE_ORDER: EvalGrade[] = ["S", "A", "B", "C", "D"];
+
+export function demoteGrade(grade: EvalGrade, steps = 1): EvalGrade {
+  const idx = GRADE_ORDER.indexOf(grade);
+  return GRADE_ORDER[Math.min(idx + steps, GRADE_ORDER.length - 1)];
+}

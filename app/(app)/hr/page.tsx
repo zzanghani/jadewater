@@ -3,7 +3,13 @@ import { getStoreContext } from "@/lib/store";
 import { storeColor } from "@/lib/storeColors";
 import HrClient from "@/components/HrClient";
 import { currentQuarterRange } from "@/lib/employeeRecords";
-import type { Employee, EmployeeRecord, PerformanceReview } from "@/lib/types";
+import type {
+  DamageRecord,
+  Employee,
+  EmployeeAttendance,
+  EmployeeRecord,
+  PerformanceReview,
+} from "@/lib/types";
 
 export default async function HrPage() {
   const supabase = await createClient();
@@ -83,6 +89,21 @@ export default async function HrPage() {
     .select("*")
     .eq("period", quarter.period);
 
+  // 근태(지문인식 월별 입력)와 damage list — 둘 다 이번 분기치만.
+  const quarterMonths = [0, 1, 2].map((i) => {
+    const startMonth = (Number(quarter.period.split("-Q")[1]) - 1) * 3 + 1 + i;
+    return `${quarter.period.slice(0, 4)}-${String(startMonth).padStart(2, "0")}`;
+  });
+  const [{ data: attendance }, { data: damages }] = await Promise.all([
+    supabase.from("employee_attendance").select("*").in("month", quarterMonths),
+    supabase
+      .from("damage_records")
+      .select("*")
+      .gte("occurred_on", quarter.start)
+      .lte("occurred_on", quarter.end)
+      .order("occurred_on", { ascending: false }),
+  ]);
+
   const clientStores = stores.map((s) => ({
     id: s.id,
     name: s.name,
@@ -100,6 +121,8 @@ export default async function HrPage() {
       quarterLabel={quarter.label}
       period={quarter.period}
       reviews={(reviews ?? []) as PerformanceReview[]}
+      attendance={(attendance ?? []) as EmployeeAttendance[]}
+      damages={(damages ?? []) as DamageRecord[]}
       unlinkedAccounts={unlinkedAccounts}
       myUserId={user?.id ?? null}
     />

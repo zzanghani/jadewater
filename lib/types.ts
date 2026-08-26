@@ -419,9 +419,54 @@ export type PerformanceReview = {
   second_comment: string | null
   second_by: string | null
   second_submitted_at: string | null
+  // 자기평가 — 점수에 반영하지 않고 면담에서 갭을 보여주는 용도.
+  self_scores: Record<string, number>
+  self_submitted_at: string | null
+  next_goals: string | null
+  midterm_good: string | null
+  midterm_improve: string | null
+  midterm_at: string | null
+  demotion_reason: string | null
   total_score: number | null
   grade: 'S' | 'A' | 'B' | 'C' | 'D' | null
   finalized_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+// 매장 지문인식 근태를 월말에 옮겨 담는 표. 분기 3개월치를 합산해
+// 근무평가의 근태 문항을 자동 채점한다.
+export type EmployeeAttendance = {
+  id: string
+  employee_id: string
+  store_id: string | null
+  month: string
+  late_count: number
+  absent_count: number
+  unauthorized_count: number
+  note: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type DamageCategory = '기물' | '비품' | '시설' | '식자재' | '기타'
+export type DamageStatus = '확인중' | '처리완료' | '경고' | '변상'
+
+// 자산 분실·파손 기록. 한 달 3건 이상이면 근무평가 등급이 한 단계 내려간다.
+export type DamageRecord = {
+  id: string
+  store_id: string
+  employee_id: string | null
+  occurred_on: string
+  category: DamageCategory
+  item_name: string
+  quantity: number
+  reason: string | null
+  status: DamageStatus
+  action_note: string | null
+  amount: number | null
+  created_by: string
   created_at: string
   updated_at: string
 }
@@ -668,6 +713,22 @@ export type Database = {
           rubric_key: string
         }
         Update: Partial<PerformanceReview>
+        Relationships: []
+      }
+      employee_attendance: {
+        Row: EmployeeAttendance
+        Insert: Partial<EmployeeAttendance> & { employee_id: string; month: string }
+        Update: Partial<EmployeeAttendance>
+        Relationships: []
+      }
+      damage_records: {
+        Row: DamageRecord
+        Insert: Partial<DamageRecord> & {
+          store_id: string
+          item_name: string
+          created_by: string
+        }
+        Update: Partial<DamageRecord>
         Relationships: []
       }
       inventory_items: {

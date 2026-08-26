@@ -2,7 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { evalGrade, rubricFor, scoreRubric, isProbation } from "@/lib/evalRubric";
+import {
+  damageDemotion,
+  demoteGrade,
+  evalGrade,
+  isProbation,
+  rubricFor,
+  scoreRubric,
+} from "@/lib/evalRubric";
 import type { EmployeeTeam, ScheduleRole } from "@/lib/types";
 
 export type EvalFormState = { error?: string; success?: boolean } | undefined;
@@ -137,9 +144,36 @@ export async function finalizeEval(reviewId: string): Promise<{ error?: string }
   const { total } = scoreRubric(rubric, merged);
   const { grade } = evalGrade(total);
 
+  // damage list 한 달 3건 이상이면 등급을 한 단계 내린다.
+  // 화면에서만 보여주고 끝내면 확정된 등급과 어긋나므로 여기서 다시 계산한다.
+  const [yearStr, qStr] = review.period.split("-Q");
+  const startMonth = (Number(qStr) - 1) * 3 + 1;
+  const months = [0, 1, 2].map(
+    (i) => `${yearStr}-${String(startMonth + i).padStart(2, "0")}`
+  );
+  const { data: damages } = await supabase
+    .from("damage_records")
+    .select("occurred_on")
+    .eq("employee_id", review.employee_id);
+
+  const byMonth = new Map<string, number>();
+  for (const d of damages ?? []) {
+    const m = d.occurred_on.slice(0, 7);
+    if (months.includes(m)) byMonth.set(m, (byMonth.get(m) ?? 0) + 1);
+  }
+  const { demote, worstMonth } = damageDemotion([...byMonth.values()]);
+  const finalGrade = demote ? demoteGrade(grade) : grade;
+
   const { error } = await supabase
     .from("performance_reviews")
-    .update({ total_score: total, grade, finalized_at: new Date().toISOString() })
+    .update({
+      total_score: total,
+      grade: finalGrade,
+      demotion_reason: demote
+        ? `damage list 한 달 최다 ${worstMonth}건으로 ${grade} → ${finalGrade} 강등`
+        : null,
+      finalized_at: new Date().toISOString(),
+    })
     .eq("id", reviewId);
 
   if (error) return { error: "확정하지 못했습니다." };
