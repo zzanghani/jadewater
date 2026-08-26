@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { kstDateString } from "@/lib/date";
 import EvalPageClient from "@/components/EvalPageClient";
-import type { Employee, PeerFeedback, PerformanceReview } from "@/lib/types";
+import type { Employee, PerformanceReview } from "@/lib/types";
 
 export default async function EvalPage({
   params,
@@ -34,22 +34,12 @@ export default async function EvalPage({
   const currentReview =
     (history ?? []).find((r) => r.period === period) ?? null;
 
-  const { data: peerFeedback } = currentReview
-    ? await supabase
-        .from("peer_feedback")
-        .select("*")
-        .eq("employee_id", employeeId)
-        .eq("period", period)
-        .order("created_at", { ascending: false })
-    : { data: [] as PeerFeedback[] };
-
   return (
     <EvalPageClient
       employee={employee as Employee}
       period={period}
       currentReview={currentReview as PerformanceReview | null}
       history={(history ?? []) as PerformanceReview[]}
-      peerFeedback={(peerFeedback ?? []) as PeerFeedback[]}
     />
   );
 }

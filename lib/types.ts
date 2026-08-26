@@ -393,18 +393,6 @@ export type PerformanceReview = {
   updated_at: string
 }
 
-// 근무평가 점수/등급 계산에는 반영되지 않는, 참고용 동료 피드백.
-export type PeerFeedback = {
-  id: string
-  employee_id: string
-  period: string // 'YYYY-MM'
-  reviewer_name: string
-  rating: number
-  comment: string | null
-  created_by: string
-  created_at: string
-}
-
 export type ScheduleShift = {
   id: string
   store_id: string
@@ -639,18 +627,6 @@ export type Database = {
           created_by: string
         }
         Update: Partial<PerformanceReview>
-        Relationships: []
-      }
-      peer_feedback: {
-        Row: PeerFeedback
-        Insert: Partial<PeerFeedback> & {
-          employee_id: string
-          period: string
-          reviewer_name: string
-          rating: number
-          created_by: string
-        }
-        Update: Partial<PeerFeedback>
         Relationships: []
       }
       inventory_items: {

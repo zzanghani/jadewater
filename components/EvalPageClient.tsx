@@ -4,20 +4,18 @@ import { useState } from "react";
 import Link from "next/link";
 import EvalForm from "@/components/EvalForm";
 import EvalResult from "@/components/EvalResult";
-import type { Employee, PeerFeedback, PerformanceReview } from "@/lib/types";
+import type { Employee, PerformanceReview } from "@/lib/types";
 
 export default function EvalPageClient({
   employee,
   period,
   currentReview,
   history,
-  peerFeedback,
 }: {
   employee: Employee;
   period: string;
   currentReview: PerformanceReview | null;
   history: PerformanceReview[];
-  peerFeedback: PeerFeedback[];
 }) {
   const [editing, setEditing] = useState(!currentReview);
 
@@ -43,7 +41,6 @@ export default function EvalPageClient({
           employee={employee}
           review={currentReview}
           history={history}
-          peerFeedback={peerFeedback}
           onEdit={() => setEditing(true)}
         />
       ) : null}
