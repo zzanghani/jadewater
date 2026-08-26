@@ -22,7 +22,7 @@ export default function PeerFeedbackPageClient({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h1 className="text-lg font-bold">동료 한마디</h1>
+        <h1 className="text-lg font-bold">동료 피드백</h1>
         <p className="text-xs text-muted">
           {storeName} · {period.replace("-", "년 ")}월 · 익명으로 전달돼요. 누가 썼는지는 아무도(관리자 포함) 알 수 없어요.
         </p>

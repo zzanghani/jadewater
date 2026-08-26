@@ -8,7 +8,7 @@ const ALL_ITEMS = [
   { href: "/analysis", label: "주간 분석", icon: TrendIcon },
   { href: "/monthly-analysis", label: "월간 분석", icon: CalendarIcon },
   { href: "/cost", label: "실시간 코스트", icon: GaugeIcon },
-  { href: "/peer-feedback", label: "동료 한마디", icon: ThumbsUpIcon },
+  { href: "/peer-feedback", label: "동료피드백", icon: ThumbsUpIcon },
 ] as const;
 
 const MASTER_EXCLUDED_HREFS: string[] = ["/closing", "/schedule", "/receipts", "/expense", "/peer-feedback"];
@@ -34,7 +34,7 @@ const EMPLOYEE_ITEMS = [
   { href: "/board?category=공지사항", label: "공지사항", icon: BoardIcon },
   { href: "/expense", label: "현장지출", icon: ReceiptIcon },
   { href: "/cost", label: "실시간 코스트", icon: GaugeIcon },
-  { href: "/peer-feedback", label: "동료 한마디", icon: ThumbsUpIcon },
+  { href: "/peer-feedback", label: "동료피드백", icon: ThumbsUpIcon },
 ] as const;
 
 export default function QuickMenu({
