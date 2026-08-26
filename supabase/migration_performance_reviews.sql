@@ -10,6 +10,33 @@
 -- 먼저 실행한 뒤에 실행해야 합니다.
 -- ============================================================================
 
+-- --------------------------------------------------------------------------
+-- 0. 예전에 만들었다가 되돌린 근무평가 기능의 테이블이 남아 있으면 옆으로
+--    치운다. 코드는 revert됐지만 DB 테이블은 그대로 남아 있어서, 그냥
+--    create table if not exists로 넘어가면 새 컬럼을 못 찾고 실패한다.
+--
+--    지우지 않고 이름만 바꿔 두므로 옛 데이터는 그대로 남는다.
+--    확인 후 필요 없으면 나중에 직접 drop 하면 된다.
+-- --------------------------------------------------------------------------
+do $$
+declare
+  legacy_name text;
+begin
+  if exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public' and table_name = 'performance_reviews'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'performance_reviews'
+      and column_name = 'store_id'
+  ) then
+    legacy_name := 'performance_reviews_legacy_' || to_char(now(), 'YYYYMMDDHH24MI');
+    execute format('alter table public.performance_reviews rename to %I', legacy_name);
+    raise notice '기존 performance_reviews 테이블을 %로 옮겼습니다.', legacy_name;
+  end if;
+end $$;
+
 create table if not exists public.performance_reviews (
   id uuid primary key default gen_random_uuid(),
   employee_id uuid not null references public.employees(id) on delete cascade,
