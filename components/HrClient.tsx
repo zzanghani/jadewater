@@ -5,7 +5,11 @@ import { resignEmployee, restoreEmployee } from "@/app/(app)/hr/actions";
 import { tenureLabel, healthCertStatus, healthCertExpiry } from "@/lib/date";
 import { roleColor } from "@/lib/scheduleColors";
 import HrEmployeeForm from "@/components/HrEmployeeForm";
-import type { Employee, EmployeeTeam } from "@/lib/types";
+import EmployeeRecords from "@/components/EmployeeRecords";
+import AccountLinkPanel from "@/components/AccountLinkPanel";
+import type { Employee, EmployeeRecord, EmployeeTeam } from "@/lib/types";
+
+export type UnlinkedAccount = { id: string; name: string; email: string; storeId: string | null };
 
 type StoreInfo = { id: string; name: string; color: string };
 
@@ -36,12 +40,20 @@ export default function HrClient({
   employeesByStore,
   resignedEmployees,
   canManageMso,
+  records,
+  quarterLabel,
+  unlinkedAccounts,
+  myUserId,
 }: {
   stores: StoreInfo[];
   msoEmployees: Employee[];
   employeesByStore: Record<string, Employee[]>;
   resignedEmployees: Employee[];
   canManageMso: boolean;
+  records: EmployeeRecord[];
+  quarterLabel: string;
+  unlinkedAccounts: UnlinkedAccount[];
+  myUserId: string | null;
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -178,9 +190,19 @@ export default function HrClient({
       </div>
 
       {activeTab === "review" && (
-        <p className="rounded-2xl border border-border bg-card p-4 text-sm text-muted">
-          준비 중인 기능입니다. 자료 정리되는 대로 반영될 예정이에요.
-        </p>
+        <>
+          <AccountLinkPanel
+            employees={allEmployees}
+            accounts={unlinkedAccounts}
+            storeNameById={storeNameById}
+          />
+          <EmployeeRecords
+            employees={allEmployees}
+            records={records}
+            quarterLabel={quarterLabel}
+            myUserId={myUserId}
+          />
+        </>
       )}
 
       {activeTab === "roster" && (

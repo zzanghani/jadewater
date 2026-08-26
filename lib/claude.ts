@@ -77,3 +77,48 @@ ${blogLines || "(없음)"}
 
   return data.content?.find((c) => c.type === "text")?.text?.trim() || null;
 }
+
+// 사건 기록 한 줄을 읽고 어느 평가 문항에 해당하는지 골라준다.
+// 점장이 분류를 직접 고르게 하면 입력이 느려져 아무도 안 쓰게 되므로,
+// 일단 자동으로 붙이고 틀리면 화면에서 고치게 한다.
+// 목록에 없는 값이 오면 호출한 쪽에서 걸러내므로 여기선 원문만 돌려준다.
+export async function classifyEmployeeRecord(
+  body: string,
+  items: readonly string[],
+  apiKey: string
+): Promise<string | null> {
+  const prompt = `아래는 식당 매장에서 관리자가 직원에 대해 남긴 기록 한 줄이야.
+
+기록: ${body}
+
+이 기록이 아래 근무평가 문항 중 어디에 가장 가까운지 하나만 골라줘.
+
+${items.map((i) => `- ${i}`).join("\n")}
+
+규칙:
+- 목록에 있는 문항 이름을 토씨 하나 틀리지 않고 그대로만 출력해.
+- 설명, 따옴표, 번호, 앞뒤 말 없이 문항 이름만 한 줄로 출력해.
+- 어디에도 뚜렷하게 해당하지 않으면 없음 이라고만 출력해.`;
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: 64,
+      thinking: { type: "disabled" },
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+
+  if (!res.ok) return null;
+
+  const data = (await res.json()) as { content?: { type: string; text?: string }[] };
+  const text = data.content?.find((c) => c.type === "text")?.text?.trim();
+  if (!text || text === "없음") return null;
+  return text;
+}

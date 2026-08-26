@@ -2,7 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
 import { storeColor } from "@/lib/storeColors";
 import HrClient from "@/components/HrClient";
-import type { Employee } from "@/lib/types";
+import { currentQuarterRange } from "@/lib/employeeRecords";
+import type { Employee, EmployeeRecord } from "@/lib/types";
 
 export default async function HrPage() {
   const supabase = await createClient();
@@ -49,6 +50,33 @@ export default async function HrPage() {
     employeesByStore[emp.store_id] = list;
   }
 
+  // 사건 기록은 이번 분기치만 가져온다 — 근무평가 주기와 같은 단위.
+  // RLS가 알아서 걸러주므로(권한자 전부 / 본인은 공개된 것만) 여기선 기간만 건다.
+  const quarter = currentQuarterRange();
+  const { data: records } = await supabase
+    .from("employee_records")
+    .select("*")
+    .gte("occurred_on", quarter.start)
+    .lte("occurred_on", quarter.end)
+    .order("occurred_on", { ascending: false });
+
+  // 아직 직원 명부에 연결되지 않은 승인 계정 — 연결돼야 기록을 남길 수 있다.
+  const linkedUserIds = new Set(
+    (employees ?? []).map((e) => e.user_id).filter((v): v is string => !!v)
+  );
+  const { data: approvedProfiles } = await supabase
+    .from("profiles")
+    .select("id, name, email, store_id, department, role")
+    .eq("status", "approved");
+  const unlinkedAccounts = (approvedProfiles ?? [])
+    .filter((p) => !linkedUserIds.has(p.id))
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      email: p.email,
+      storeId: p.store_id,
+    }));
+
   const clientStores = stores.map((s) => ({
     id: s.id,
     name: s.name,
@@ -62,6 +90,10 @@ export default async function HrPage() {
       employeesByStore={employeesByStore}
       resignedEmployees={resignedEmployees ?? []}
       canManageMso={!!canManageMso}
+      records={(records ?? []) as EmployeeRecord[]}
+      quarterLabel={quarter.label}
+      unlinkedAccounts={unlinkedAccounts}
+      myUserId={user?.id ?? null}
     />
   );
 }

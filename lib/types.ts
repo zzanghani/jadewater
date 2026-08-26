@@ -373,10 +373,34 @@ export type Employee = {
   hire_date: string
   health_cert_issued_at: string | null
   resigned_at: string | null
+  // 로그인 계정(auth.users) 연결. 지점장이 직원 리스트에서 붙여준다.
+  // 연결돼 있어야 부점장·팀장이 기록을 남기고, 본인이 칭찬을 볼 수 있다.
+  user_id: string | null
   created_by: string
   updated_by: string | null
   created_at: string
   updated_at: string
+}
+
+// 사건 기록 — 점장·부점장·팀장이 그날그날 남기는 짧은 칭찬/지적.
+// 분기 말 근무평가에서 문항별 근거 자료로 붙는다.
+export type EmployeeRecordKind = '칭찬' | '지적'
+
+export type EmployeeRecord = {
+  id: string
+  employee_id: string
+  store_id: string | null
+  kind: EmployeeRecordKind
+  body: string
+  occurred_on: string
+  eval_item: string | null
+  eval_item_source: 'ai' | 'manual'
+  // 칭찬은 저장 즉시 true, 지적은 면담 때 공개할 때까지 false.
+  shared_with_employee: boolean
+  created_by: string
+  created_at: string
+  edited_at: string | null
+  edit_count: number
 }
 
 export type ScheduleShift = {
@@ -600,6 +624,17 @@ export type Database = {
           created_by: string
         }
         Update: Partial<Employee>
+        Relationships: []
+      }
+      employee_records: {
+        Row: EmployeeRecord
+        Insert: Partial<EmployeeRecord> & {
+          employee_id: string
+          kind: EmployeeRecordKind
+          body: string
+          created_by: string
+        }
+        Update: Partial<EmployeeRecord>
         Relationships: []
       }
       inventory_items: {
