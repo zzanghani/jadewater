@@ -379,20 +379,6 @@ export type Employee = {
   updated_at: string
 }
 
-export type PerformanceReview = {
-  id: string
-  employee_id: string
-  period: string // 'YYYY-MM'
-  team: EmployeeTeam
-  scores: Record<string, number>
-  total_score: number
-  comment: string | null
-  evaluator_note: string | null
-  created_by: string
-  created_at: string
-  updated_at: string
-}
-
 export type ScheduleShift = {
   id: string
   store_id: string
@@ -614,19 +600,6 @@ export type Database = {
           created_by: string
         }
         Update: Partial<Employee>
-        Relationships: []
-      }
-      performance_reviews: {
-        Row: PerformanceReview
-        Insert: Partial<PerformanceReview> & {
-          employee_id: string
-          period: string
-          team: EmployeeTeam
-          scores: Record<string, number>
-          total_score: number
-          created_by: string
-        }
-        Update: Partial<PerformanceReview>
         Relationships: []
       }
       inventory_items: {

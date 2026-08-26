@@ -1,13 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { resignEmployee, restoreEmployee } from "@/app/(app)/hr/actions";
 import { tenureLabel, healthCertStatus, healthCertExpiry } from "@/lib/date";
 import { roleColor } from "@/lib/scheduleColors";
-import { evalGrade, GRADE_COLOR } from "@/lib/evalRubric";
 import HrEmployeeForm from "@/components/HrEmployeeForm";
-import type { Employee, EmployeeTeam, PerformanceReview } from "@/lib/types";
+import type { Employee, EmployeeTeam } from "@/lib/types";
 
 type StoreInfo = { id: string; name: string; color: string };
 
@@ -37,13 +35,11 @@ export default function HrClient({
   msoEmployees,
   employeesByStore,
   resignedEmployees,
-  currentPeriodReviews,
 }: {
   stores: StoreInfo[];
   msoEmployees: Employee[];
   employeesByStore: Record<string, Employee[]>;
   resignedEmployees: Employee[];
-  currentPeriodReviews: Record<string, PerformanceReview>;
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -62,18 +58,6 @@ export default function HrClient({
   const storeNameById = new Map(stores.map((s) => [s.id, s.name]));
   const detailEmployee =
     [...allEmployees, ...resignedEmployees].find((e) => e.id === detailId) ?? null;
-
-  // 근무평가는 일단 매장 정직원(팀 지정된 사람)만 대상.
-  const evalEmployeesByStore: Record<string, Employee[]> = {};
-  for (const [storeId, list] of Object.entries(employeesByStore)) {
-    const eligible = list.filter((e) => e.employment_type === "정직원" && e.team);
-    if (eligible.length > 0) evalEmployeesByStore[storeId] = eligible;
-  }
-  const evalStoresWithPeople = stores.filter((s) => evalEmployeesByStore[s.id]?.length);
-  const evalTotalCount = Object.values(evalEmployeesByStore).flat().length;
-  const evalDoneCount = Object.values(evalEmployeesByStore)
-    .flat()
-    .filter((e) => currentPeriodReviews[e.id]).length;
   const isResignedDetail = !!detailEmployee?.resigned_at;
 
   function renderPersonRow(emp: Employee) {
@@ -191,76 +175,9 @@ export default function HrClient({
       </div>
 
       {activeTab === "review" && (
-        <>
-          {evalStoresWithPeople.length === 0 ? (
-            <p className="rounded-2xl border border-border bg-card p-4 text-sm text-muted">
-              평가 대상(매장 정직원)이 없습니다.
-            </p>
-          ) : (
-            <>
-              <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-bold">{evalTotalCount}</span>
-                  <span className="text-xs font-semibold text-muted">명 · 이번 달 평가 대상</span>
-                </div>
-                <div className="flex gap-2">
-                  <div className="flex flex-1 flex-col gap-0.5 rounded-xl bg-background px-3 py-2">
-                    <span className="text-base font-bold">{evalDoneCount}</span>
-                    <span className="text-[11px] font-semibold text-muted">완료</span>
-                  </div>
-                  <div className="flex flex-1 flex-col gap-0.5 rounded-xl bg-background px-3 py-2">
-                    <span className="text-base font-bold">{evalTotalCount - evalDoneCount}</span>
-                    <span className="text-[11px] font-semibold text-muted">대기</span>
-                  </div>
-                </div>
-              </div>
-
-              {evalStoresWithPeople.map((store) => (
-                <div key={store.id} className="flex flex-col gap-2">
-                  <span className="px-0.5 text-xs font-bold text-foreground">{store.name}</span>
-                  <ul className="flex flex-col gap-2">
-                    {(evalEmployeesByStore[store.id] ?? []).map((emp) => {
-                      const review = currentPeriodReviews[emp.id];
-                      const g = review ? evalGrade(review.total_score) : null;
-                      return (
-                        <li key={emp.id}>
-                          <Link
-                            href={`/hr/eval/${emp.id}`}
-                            className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4"
-                          >
-                            <span
-                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                              style={{ backgroundColor: roleColor(emp.position) }}
-                            >
-                              {emp.name.slice(0, 1)}
-                            </span>
-                            <div className="flex flex-1 flex-col gap-0.5">
-                              <span className="text-sm font-semibold">{emp.name}</span>
-                              <span className="text-xs text-muted">{emp.team} · 정직원</span>
-                            </div>
-                            {g ? (
-                              <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs font-bold">
-                                <span
-                                  className="h-2 w-2 rounded-full"
-                                  style={{ backgroundColor: GRADE_COLOR[g.grade] }}
-                                />
-                                {g.grade}등급
-                              </span>
-                            ) : (
-                              <span className="shrink-0 rounded-full bg-brand px-3 py-1.5 text-xs font-bold text-white">
-                                평가하기
-                              </span>
-                            )}
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              ))}
-            </>
-          )}
-        </>
+        <p className="rounded-2xl border border-border bg-card p-4 text-sm text-muted">
+          준비 중인 기능입니다. 자료 정리되는 대로 반영될 예정이에요.
+        </p>
       )}
 
       {activeTab === "roster" && (
