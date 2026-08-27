@@ -471,6 +471,26 @@ export type DamageRecord = {
   updated_at: string
 }
 
+// 점장 분기 평가 — 직원 평가와 배점 구조가 달라 표를 따로 쓴다.
+export type ManagerReview = {
+  id: string
+  employee_id: string
+  store_id: string | null
+  period: string
+  scores: Record<string, number>
+  auto_snapshot: Record<string, unknown>
+  comment: string | null
+  gate_exempt: boolean
+  gate_applied: boolean
+  quarter_profit: number | null
+  total_score: number | null
+  grade: 'S' | 'A' | 'B' | 'C' | 'D' | null
+  finalized_at: string | null
+  finalized_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type ScheduleShift = {
   id: string
   store_id: string
@@ -729,6 +749,12 @@ export type Database = {
           created_by: string
         }
         Update: Partial<DamageRecord>
+        Relationships: []
+      }
+      manager_reviews: {
+        Row: ManagerReview
+        Insert: Partial<ManagerReview> & { employee_id: string; period: string }
+        Update: Partial<ManagerReview>
         Relationships: []
       }
       inventory_items: {

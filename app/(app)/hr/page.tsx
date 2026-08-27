@@ -8,6 +8,7 @@ import type {
   Employee,
   EmployeeAttendance,
   EmployeeRecord,
+  ManagerReview,
   PerformanceReview,
 } from "@/lib/types";
 
@@ -104,6 +105,12 @@ export default async function HrPage() {
       .order("occurred_on", { ascending: false }),
   ]);
 
+  // 점장 평가는 배점 구조가 달라 별도 표를 쓴다.
+  const { data: managerReviews } = await supabase
+    .from("manager_reviews")
+    .select("*")
+    .eq("period", quarter.period);
+
   const clientStores = stores.map((s) => ({
     id: s.id,
     name: s.name,
@@ -123,6 +130,7 @@ export default async function HrPage() {
       reviews={(reviews ?? []) as PerformanceReview[]}
       attendance={(attendance ?? []) as EmployeeAttendance[]}
       damages={(damages ?? []) as DamageRecord[]}
+      managerReviews={(managerReviews ?? []) as ManagerReview[]}
       unlinkedAccounts={unlinkedAccounts}
       myUserId={user?.id ?? null}
     />

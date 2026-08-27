@@ -10,12 +10,14 @@ import AccountLinkPanel from "@/components/AccountLinkPanel";
 import EvalPanel from "@/components/EvalPanel";
 import AttendancePanel from "@/components/AttendancePanel";
 import DamagePanel from "@/components/DamagePanel";
+import ManagerEvalPanel from "@/components/ManagerEvalPanel";
 import type {
   DamageRecord,
   Employee,
   EmployeeAttendance,
   EmployeeRecord,
   EmployeeTeam,
+  ManagerReview,
   PerformanceReview,
 } from "@/lib/types";
 
@@ -58,6 +60,7 @@ export default function HrClient({
   reviews,
   attendance,
   damages,
+  managerReviews,
 }: {
   stores: StoreInfo[];
   msoEmployees: Employee[];
@@ -72,6 +75,7 @@ export default function HrClient({
   reviews: PerformanceReview[];
   attendance: EmployeeAttendance[];
   damages: DamageRecord[];
+  managerReviews: ManagerReview[];
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -80,7 +84,7 @@ export default function HrClient({
   const [activeTab, setActiveTab] = useState<"roster" | "review">("roster");
   // 인사평가 탭 안에서 "평가 채점"과 "사건 기록"을 나눈다 — 기록은 매일,
   // 채점은 분기 말에만 쓰는 화면이라 섞어 놓으면 둘 다 찾기 힘들다.
-  const [reviewTab, setReviewTab] = useState<"eval" | "records" | "attendance" | "damage">("eval");
+  const [reviewTab, setReviewTab] = useState<"eval" | "manager" | "records" | "attendance" | "damage">("eval");
 
   const storesWithPeople = stores.filter((s) => (employeesByStore[s.id]?.length ?? 0) > 0);
   const totalCount = msoEmployees.length + storesWithPeople.reduce(
@@ -220,8 +224,9 @@ export default function HrClient({
 
           <div className="flex gap-2">
             {([
-              ["eval", "평가 채점"],
-              ["records", `사건 기록 ${records.length}`],
+              ["eval", "직원 평가"],
+              ["manager", "점장 평가"],
+              ["records", `기록 ${records.length}`],
               ["attendance", "근태"],
               ["damage", `damage ${damages.length}`],
             ] as const).map(([key, label]) => (
@@ -249,6 +254,17 @@ export default function HrClient({
               damages={damages}
               period={period}
               periodLabel={quarterLabel}
+            />
+          )}
+          {reviewTab === "manager" && (
+            <ManagerEvalPanel
+              managers={allEmployees.filter(
+                (e) => e.position === "점장" || e.position === "부점장"
+              )}
+              reviews={managerReviews}
+              period={period}
+              periodLabel={quarterLabel}
+              storeNameById={storeNameById}
             />
           )}
           {reviewTab === "records" && (
