@@ -60,7 +60,11 @@ export default async function ExpensePage() {
         <h2 className="mb-3 text-sm font-semibold text-foreground">
           최근 등록 내역
         </h2>
-        <FieldExpenseList rows={rowsWithPhoto} />
+        <FieldExpenseList
+          rows={rowsWithPhoto}
+          storeId={storeId}
+          stores={isTeamAccount ? stores : undefined}
+        />
       </section>
     </div>
   );

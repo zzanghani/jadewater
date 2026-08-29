@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { saveFieldExpense } from "@/app/(app)/payment/actions";
+import { saveFieldExpense, updateFieldExpense } from "@/app/(app)/payment/actions";
 import { kstDateString } from "@/lib/date";
-import type { FieldExpenseCategory, FieldExpensePaymentMethod, Store } from "@/lib/types";
+import type { FieldExpense, FieldExpenseCategory, FieldExpensePaymentMethod, Store } from "@/lib/types";
 
 const CATEGORIES: FieldExpenseCategory[] = [
   "식자재",
@@ -20,29 +20,42 @@ const PAYMENT_METHODS: FieldExpensePaymentMethod[] = ["법인카드", "현금"];
 export default function FieldExpenseForm({
   storeId,
   stores,
+  expense,
+  onDone,
 }: {
   storeId: string;
   /** 팀 계정처럼 고정 매장이 없는 경우에만 넘긴다 — 있으면 매장 선택 드롭다운을 보여준다. */
   stores?: Store[];
+  /** 있으면 수정 모드 — 기존 지출 내역을 고쳐 저장한다. */
+  expense?: FieldExpense & { photoUrl?: string };
+  onDone?: () => void;
 }) {
-  const [state, formAction, pending] = useActionState(
-    saveFieldExpense,
-    undefined
-  );
+  const action = expense ? updateFieldExpense : saveFieldExpense;
+  const [state, formAction, pending] = useActionState(action, undefined);
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [selectedStoreId, setSelectedStoreId] = useState(stores?.[0]?.id ?? storeId);
-  const [date, setDate] = useState(kstDateString(0));
-  const [category, setCategory] = useState<FieldExpenseCategory>("식자재");
-  const [description, setDescription] = useState("");
-  const [amountRaw, setAmountRaw] = useState("");
-  const [paymentMethod, setPaymentMethod] =
-    useState<FieldExpensePaymentMethod>("법인카드");
+  const [selectedStoreId, setSelectedStoreId] = useState(
+    expense?.store_id ?? stores?.[0]?.id ?? storeId
+  );
+  const [date, setDate] = useState(expense?.date ?? kstDateString(0));
+  const [category, setCategory] = useState<FieldExpenseCategory>(
+    expense?.category ?? "식자재"
+  );
+  const [description, setDescription] = useState(expense?.description ?? "");
+  const [amountRaw, setAmountRaw] = useState(expense ? String(expense.amount) : "");
+  const [paymentMethod, setPaymentMethod] = useState<FieldExpensePaymentMethod>(
+    expense?.payment_method ?? "법인카드"
+  );
+  // 새로 고른 사진의 미리보기(업로드 전 로컬 preview)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  // 수정 모드에서 기존에 등록돼 있던 사진 — 새로 안 고르면 그대로 유지된다.
+  const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(
+    expense?.photoUrl ?? null
+  );
 
   useEffect(() => {
-    if (!state?.success) return;
+    if (!state?.success || expense) return;
     formRef.current?.reset();
     setDate(kstDateString(0));
     setCategory("식자재");
@@ -50,7 +63,11 @@ export default function FieldExpenseForm({
     setAmountRaw("");
     setPaymentMethod("법인카드");
     setPhotoPreview(null);
-  }, [state?.success]);
+  }, [state?.success, expense]);
+
+  useEffect(() => {
+    if (state?.success && expense) onDone?.();
+  }, [state?.success, expense, onDone]);
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -66,10 +83,12 @@ export default function FieldExpenseForm({
   function clearPhoto() {
     if (fileInputRef.current) fileInputRef.current.value = "";
     setPhotoPreview(null);
+    setExistingPhotoUrl(null);
   }
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-3">
+      {expense && <input type="hidden" name="id" value={expense.id} />}
       {stores && stores.length > 0 ? (
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           매장
@@ -88,7 +107,7 @@ export default function FieldExpenseForm({
           </select>
         </label>
       ) : (
-        <input type="hidden" name="store_id" value={storeId} />
+        <input type="hidden" name="store_id" value={expense?.store_id ?? storeId} />
       )}
 
       <div className="flex flex-col gap-1.5 text-sm font-medium">
@@ -102,11 +121,11 @@ export default function FieldExpenseForm({
           onChange={handlePhotoChange}
           className="hidden"
         />
-        {photoPreview ? (
+        {photoPreview || existingPhotoUrl ? (
           <div className="relative w-fit">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={photoPreview}
+              src={photoPreview ?? existingPhotoUrl ?? undefined}
               alt="영수증 미리보기"
               className="h-40 w-40 rounded-xl border border-border object-cover"
             />
@@ -218,19 +237,30 @@ export default function FieldExpenseForm({
           {state.error}
         </p>
       )}
-      {state?.success && (
+      {!expense && state?.success && (
         <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
           지출이 저장되었습니다.
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="mt-1 rounded-xl bg-brand py-3 text-sm font-semibold text-white shadow-md shadow-brand/30 transition-opacity disabled:opacity-60"
-      >
-        {pending ? "저장 중..." : "지출저장"}
-      </button>
+      <div className="flex gap-2">
+        {expense && onDone && (
+          <button
+            type="button"
+            onClick={onDone}
+            className="flex-1 rounded-xl border border-border py-3 text-sm font-semibold text-muted"
+          >
+            취소
+          </button>
+        )}
+        <button
+          type="submit"
+          disabled={pending}
+          className="mt-1 flex-1 rounded-xl bg-brand py-3 text-sm font-semibold text-white shadow-md shadow-brand/30 transition-opacity disabled:opacity-60"
+        >
+          {pending ? "저장 중..." : expense ? "수정 저장" : "지출저장"}
+        </button>
+      </div>
     </form>
   );
 }
