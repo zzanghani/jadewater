@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useActionState, useRef, useState } from "react";
+import { forwardRef, useActionState, useEffect, useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import { saveDailyCounts } from "@/app/(app)/inventory/actions";
 import type { InventoryItem, InventorySection } from "@/lib/types";
@@ -31,6 +31,14 @@ export default function InventoryCountForm({
       items.map((item) => [item.id, String(countByItemId.get(item.id) ?? "")])
     )
   );
+
+  // 저장 성공하면 입력칸을 비워서(0으로) 바로 다음 카운트를 새로 입력할
+  // 수 있게 한다 — "확정" 배지가 방금 저장한 값을 계속 보여주므로
+  // 입력칸까지 값을 남겨둘 필요가 없다.
+  useEffect(() => {
+    if (!state?.success) return;
+    setQuantities(Object.fromEntries(items.map((item) => [item.id, ""])));
+  }, [state, items]);
 
   const reportRef = useRef<HTMLDivElement>(null);
   const [capturing, setCapturing] = useState(false);
