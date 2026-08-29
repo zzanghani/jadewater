@@ -136,7 +136,7 @@ export default function InventoryCountForm({
                       {previousCountByItemId.get(item.id) ?? "-"}
                     </span>
                   </div>
-                  <div className="flex w-24 shrink-0 flex-col items-center gap-0.5">
+                  <div className="flex w-24 shrink-0 flex-col items-center gap-0.5 rounded-lg bg-background px-2 py-1.5">
                     <span className="text-[9px] font-semibold text-muted">마감재고</span>
                     <input
                       type="number"
@@ -148,7 +148,7 @@ export default function InventoryCountForm({
                         setQuantities((q) => ({ ...q, [item.id]: e.target.value }))
                       }
                       placeholder="0"
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-center text-base font-semibold outline-none ring-brand/30 focus:ring-2"
+                      className="w-full rounded border-0 bg-transparent p-0 text-center text-sm font-bold text-foreground outline-none ring-brand/30 focus:ring-2"
                     />
                   </div>
                   <div
