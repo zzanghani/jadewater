@@ -229,28 +229,20 @@ if (isHq) {
       Math.min(dayOfMonth, lastMonthLastDay)
     ).padStart(2, "0")}`;
 
+    // daily_closings는 RLS상 팀 계정(department 있음)이 직접 못 읽어서,
+    // 팀 계정도 볼 수 있는 이 홈 화면 위젯은 날짜/매장/총매출만 돌려주는
+    // security definer 함수를 거친다(카드/현금 등 세부 매출은 여전히
+    // 매장 계정 전용).
     const [
       { data: todayRows },
       { data: last7Rows },
       { data: thisMonthRows },
       { data: lastMonthRows },
     ] = await Promise.all([
-      supabase.from("daily_closings").select("store_id, grand_total").eq("date", today),
-      supabase
-        .from("daily_closings")
-        .select("date, store_id, grand_total")
-        .gte("date", days[0])
-        .lte("date", today),
-      supabase
-        .from("daily_closings")
-        .select("store_id, grand_total")
-        .gte("date", thisMonth.start)
-        .lte("date", today),
-      supabase
-        .from("daily_closings")
-        .select("store_id, grand_total")
-        .gte("date", lastMonth.start)
-        .lte("date", lastMonthMtdEnd),
+      supabase.rpc("get_daily_closings_totals", { p_start: today, p_end: today }),
+      supabase.rpc("get_daily_closings_totals", { p_start: days[0], p_end: today }),
+      supabase.rpc("get_daily_closings_totals", { p_start: thisMonth.start, p_end: today }),
+      supabase.rpc("get_daily_closings_totals", { p_start: lastMonth.start, p_end: lastMonthMtdEnd }),
     ]);
 
     const todayMap = sumByStore(todayRows);
