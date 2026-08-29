@@ -13,6 +13,7 @@ export default function InventoryCountForm({
   dateLabel,
   items,
   countByItemId,
+  previousCountByItemId,
 }: {
   storeId: string;
   storeName: string;
@@ -21,7 +22,9 @@ export default function InventoryCountForm({
   dateLabel: string;
   items: InventoryItem[];
   countByItemId: Map<string, number>;
+  previousCountByItemId: Map<string, number>;
 }) {
+  const isEditingExisting = countByItemId.size > 0;
   const [state, formAction, pending] = useActionState(saveDailyCounts, undefined);
   const [quantities, setQuantities] = useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -67,6 +70,9 @@ export default function InventoryCountForm({
                 {item.unit ? ` (${item.unit})` : ""}
               </span>
               <div className="flex shrink-0 items-center gap-2">
+                <span className="w-14 shrink-0 truncate text-right text-xs text-muted">
+                  전일 {previousCountByItemId.get(item.id) ?? "-"}
+                </span>
                 <input
                   type="number"
                   name={`qty_${item.id}`}
@@ -101,7 +107,7 @@ export default function InventoryCountForm({
           disabled={pending}
           className="mt-1 rounded-xl bg-brand py-3 text-sm font-semibold text-white shadow-md shadow-brand/30 transition-opacity disabled:opacity-60"
         >
-          {pending ? "저장 중..." : "재고 저장"}
+          {pending ? "저장 중..." : isEditingExisting ? "재고 수정" : "재고 저장"}
         </button>
       </form>
 

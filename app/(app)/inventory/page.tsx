@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
-import { kstDateLabel, kstDateString } from "@/lib/date";
+import { kstDateLabel, kstDateString, shiftDateString } from "@/lib/date";
 import InventoryItemPopup from "@/components/InventoryItemPopup";
 import InventoryManagePopup from "@/components/InventoryManagePopup";
 import InventoryDatePicker from "@/components/InventoryDatePicker";
@@ -24,7 +24,9 @@ export default async function InventoryPage({
   const supabase = await createClient();
   const { storeId, storeName } = await getStoreContext(supabase);
 
-  const [{ data: items }, { data: counts }] = await Promise.all([
+  const previousDate = shiftDateString(date, -1);
+
+  const [{ data: items }, { data: counts }, { data: previousCounts }] = await Promise.all([
     supabase
       .from("inventory_items")
       .select("*")
@@ -36,11 +38,19 @@ export default async function InventoryPage({
       .select("item_id, quantity")
       .eq("store_id", storeId)
       .eq("date", date),
+    supabase
+      .from("inventory_counts")
+      .select("item_id, quantity")
+      .eq("store_id", storeId)
+      .eq("date", previousDate),
   ]);
 
   const rows = items ?? [];
   const editing = edit ? rows.find((i) => i.id === edit) : undefined;
   const countByItemId = new Map((counts ?? []).map((c) => [c.item_id, c.quantity]));
+  const previousCountByItemId = new Map(
+    (previousCounts ?? []).map((c) => [c.item_id, c.quantity])
+  );
   const dateLabel = kstDateLabel(date);
 
   return (
@@ -89,6 +99,7 @@ export default async function InventoryPage({
             dateLabel={dateLabel}
             items={rows}
             countByItemId={countByItemId}
+            previousCountByItemId={previousCountByItemId}
           />
         )}
       </section>
