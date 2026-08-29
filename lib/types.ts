@@ -751,6 +751,13 @@ export type Database = {
         }
         Returns: PushSubscriptionRow[]
       }
+      get_daily_closings_totals: {
+        Args: {
+          p_start: string
+          p_end: string
+        }
+        Returns: { date: string; store_id: string; grand_total: number }[]
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
