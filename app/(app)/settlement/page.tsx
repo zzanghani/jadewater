@@ -43,7 +43,7 @@ export default async function SettlementPage({
   // 지점 계정(store_id 있음)은 자기 매장 1개만 보이므로, 그 경우에만 비밀번호를 요구한다.
   const isMaster = stores.length > 1;
 
-  const [{ data: closingRows }, { data: receiptRows }, { data: existing }] =
+  const [{ data: closingRows }, { data: receiptRows }, { data: fieldExpenseRows }, { data: existing }] =
     await Promise.all([
       supabase
         .from("daily_closings")
@@ -56,6 +56,12 @@ export default async function SettlementPage({
       supabase
         .from("receipts")
         .select("amount, supplier")
+        .eq("store_id", storeId)
+        .gte("date", start)
+        .lte("date", end),
+      supabase
+        .from("field_expenses")
+        .select("amount, category")
         .eq("store_id", storeId)
         .gte("date", start)
         .lte("date", end),
@@ -91,6 +97,15 @@ export default async function SettlementPage({
     .sort((a, b) => b.amount - a.amount);
   const purchaseTotal = sum(supplierList.map((s) => s.amount));
 
+  const fieldExpenseTotals = new Map<string, number>();
+  for (const r of fieldExpenseRows ?? []) {
+    fieldExpenseTotals.set(r.category, (fieldExpenseTotals.get(r.category) ?? 0) + r.amount);
+  }
+  const fieldExpenseList = Array.from(fieldExpenseTotals.entries())
+    .map(([category, amount]) => ({ category, amount }))
+    .sort((a, b) => b.amount - a.amount);
+  const fieldExpenseTotal = sum(fieldExpenseList.map((f) => f.amount));
+
   const content = (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -121,6 +136,8 @@ export default async function SettlementPage({
         autoSales={autoSales}
         supplierList={supplierList}
         purchaseTotal={purchaseTotal}
+        fieldExpenseList={fieldExpenseList}
+        fieldExpenseTotal={fieldExpenseTotal}
         autoDiscountTotal={autoDiscountTotal}
         existing={existing ?? undefined}
       />

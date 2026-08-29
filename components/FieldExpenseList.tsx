@@ -1,16 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { deleteFieldExpense } from "@/app/(app)/payment/actions";
 import { formatWon } from "@/lib/format";
-import type { FieldExpense } from "@/lib/types";
+import FieldExpenseForm from "@/components/FieldExpenseForm";
+import type { FieldExpense, Store } from "@/lib/types";
 
 type Row = FieldExpense & { photoUrl?: string; storeName?: string };
 
-export default function FieldExpenseList({ rows }: { rows: Row[] }) {
+export default function FieldExpenseList({
+  rows,
+  storeId,
+  stores,
+}: {
+  rows: Row[];
+  storeId: string;
+  /** 팀 계정처럼 고정 매장이 없는 경우에만 넘긴다. */
+  stores?: Store[];
+}) {
   const [selected, setSelected] = useState<Row | null>(null);
+  const [editing, setEditing] = useState<Row | null>(null);
+  const [, startTransition] = useTransition();
 
   if (rows.length === 0) {
     return <p className="text-sm text-muted">아직 등록된 지출이 없습니다.</p>;
+  }
+
+  if (editing) {
+    return (
+      <FieldExpenseForm
+        storeId={storeId}
+        stores={stores}
+        expense={editing}
+        onDone={() => setEditing(null)}
+      />
+    );
   }
 
   return (
@@ -63,13 +87,37 @@ export default function FieldExpenseList({ rows }: { rows: Row[] }) {
           >
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold">지출 상세</h3>
-              <button
-                type="button"
-                onClick={() => setSelected(null)}
-                className="text-lg text-muted"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-3 text-sm">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditing(selected);
+                    setSelected(null);
+                  }}
+                  className="font-medium text-brand"
+                >
+                  수정
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm("이 지출 내역을 삭제할까요?")) {
+                      startTransition(() => deleteFieldExpense(selected.id));
+                      setSelected(null);
+                    }
+                  }}
+                  className="font-medium text-muted"
+                >
+                  삭제
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelected(null)}
+                  className="text-lg text-muted"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {selected.photoUrl ? (

@@ -26,6 +26,7 @@ type AutoSales = {
 };
 
 type SupplierRow = { supplier: string; amount: number };
+type FieldExpenseRow = { category: string; amount: number };
 
 const STAFF_TYPES = ["정직원", "파트타이머"];
 const UTILITY_CATEGORIES: UtilityCategory[] = [
@@ -55,6 +56,8 @@ export default function SettlementForm({
   autoSales,
   supplierList,
   purchaseTotal,
+  fieldExpenseList,
+  fieldExpenseTotal,
   autoDiscountTotal,
   existing,
 }: {
@@ -65,6 +68,8 @@ export default function SettlementForm({
   autoSales: AutoSales;
   supplierList: SupplierRow[];
   purchaseTotal: number;
+  fieldExpenseList: FieldExpenseRow[];
+  fieldExpenseTotal: number;
   autoDiscountTotal: number;
   existing?: MonthlySettlement;
 }) {
@@ -106,6 +111,7 @@ export default function SettlementForm({
   const taxReserveTotal = pensionReserve + vatReserve + corpTaxReserve;
   const totalExpense =
     purchaseTotal +
+    fieldExpenseTotal +
     laborTotal +
     utilityTotal +
     hqFeeTotal +
@@ -138,6 +144,8 @@ export default function SettlementForm({
         autoSales={autoSales}
         supplierList={supplierList}
         purchaseTotal={purchaseTotal}
+        fieldExpenseList={fieldExpenseList}
+        fieldExpenseTotal={fieldExpenseTotal}
         totalExpense={totalExpense}
         netProfit={netProfit}
         autoDiscountTotal={autoDiscountTotal}
@@ -325,6 +333,8 @@ export default function SettlementForm({
           autoSales={autoSales}
           supplierList={supplierList}
           purchaseTotal={purchaseTotal}
+          fieldExpenseList={fieldExpenseList}
+          fieldExpenseTotal={fieldExpenseTotal}
           laborItems={laborItems}
           laborTotal={laborTotal}
           utilityItems={utilityItems}
@@ -602,6 +612,8 @@ function AutoSummary({
   autoSales,
   supplierList,
   purchaseTotal,
+  fieldExpenseList,
+  fieldExpenseTotal,
   totalExpense,
   netProfit,
   autoDiscountTotal,
@@ -609,6 +621,8 @@ function AutoSummary({
   autoSales: AutoSales;
   supplierList: SupplierRow[];
   purchaseTotal: number;
+  fieldExpenseList: FieldExpenseRow[];
+  fieldExpenseTotal: number;
   totalExpense: number;
   netProfit: number;
   autoDiscountTotal: number;
@@ -698,6 +712,32 @@ function AutoSummary({
                   <span className="font-medium text-foreground">{formatWon(s.amount)}</span>
                   <span className="ml-1.5 text-muted">
                     {formatPercent(s.amount, purchaseTotal)}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground">
+            현장지출 (자동집계)
+          </h3>
+          <span className="text-sm font-bold text-brand">{formatWon(fieldExpenseTotal)}</span>
+        </div>
+        {fieldExpenseList.length === 0 ? (
+          <p className="text-xs text-muted">이번달 등록된 현장지출 내역이 없습니다.</p>
+        ) : (
+          <ul className="flex flex-col gap-1.5">
+            {fieldExpenseList.map((f) => (
+              <li key={f.category} className="flex items-center justify-between text-xs">
+                <span className="text-muted">{f.category}</span>
+                <span className="text-right">
+                  <span className="font-medium text-foreground">{formatWon(f.amount)}</span>
+                  <span className="ml-1.5 text-muted">
+                    {formatPercent(f.amount, fieldExpenseTotal)}
                   </span>
                 </span>
               </li>
@@ -845,6 +885,8 @@ type ReportProps = {
   autoSales: AutoSales;
   supplierList: SupplierRow[];
   purchaseTotal: number;
+  fieldExpenseList: FieldExpenseRow[];
+  fieldExpenseTotal: number;
   laborItems: (LaborItem & { key: number })[];
   laborTotal: number;
   utilityItems: (UtilityItem & { key: number })[];
@@ -868,6 +910,8 @@ const SettlementReport = forwardRef<HTMLDivElement, ReportProps>(function Settle
     autoSales,
     supplierList,
     purchaseTotal,
+    fieldExpenseList,
+    fieldExpenseTotal,
     laborItems,
     laborTotal,
     utilityItems,
@@ -980,6 +1024,25 @@ const SettlementReport = forwardRef<HTMLDivElement, ReportProps>(function Settle
               label={s.supplier}
               value={s.amount}
               percent={formatPercent(s.amount, purchaseTotal)}
+            />
+          ))
+        )}
+      </ReportSection>
+
+      <ReportSection
+        title="현장지출"
+        amount={fieldExpenseTotal}
+        percent={formatPercent(fieldExpenseTotal, totalExpense)}
+      >
+        {fieldExpenseList.length === 0 ? (
+          <p className="text-xs text-muted">내역 없음</p>
+        ) : (
+          fieldExpenseList.map((f) => (
+            <ReportRow
+              key={f.category}
+              label={f.category}
+              value={f.amount}
+              percent={formatPercent(f.amount, fieldExpenseTotal)}
             />
           ))
         )}

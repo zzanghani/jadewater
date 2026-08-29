@@ -8,7 +8,7 @@ import { sendPush } from "@/lib/webpush";
 import { archivePaymentRequestToDrive } from "@/lib/paymentArchive";
 import { archiveFieldExpenseToDrive } from "@/lib/fieldExpenseArchive";
 import { DEPARTMENT_LABELS } from "@/lib/types";
-import type { Department, FieldExpenseCategory, FieldExpensePaymentMethod } from "@/lib/types";
+import type { Department, FieldExpense, FieldExpenseCategory, FieldExpensePaymentMethod } from "@/lib/types";
 
 export type PaymentFormState = { error?: string; success?: boolean } | undefined;
 
@@ -435,6 +435,100 @@ export async function saveFieldExpense(
   }
 
   return { success: true };
+}
+
+export async function updateFieldExpense(
+  _prevState: PaymentFormState,
+  formData: FormData
+): Promise<PaymentFormState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "로그인이 필요합니다." };
+  }
+
+  const id = String(formData.get("id") ?? "");
+  const storeId = String(formData.get("store_id") ?? "");
+  const date = String(formData.get("date") ?? "");
+  const categoryRaw = String(formData.get("category") ?? "");
+  const description = String(formData.get("description") ?? "").trim();
+  const amount = Number(formData.get("amount") ?? 0);
+  const paymentMethodRaw = String(formData.get("payment_method") ?? "");
+  const photo = formData.get("receipt_photo");
+
+  if (!id) {
+    return { error: "잘못된 요청입니다." };
+  }
+  if (!storeId) {
+    return { error: "매장을 선택해 주세요." };
+  }
+  if (!date) {
+    return { error: "일자를 선택해 주세요." };
+  }
+  if (!description) {
+    return { error: "구매내역을 입력해 주세요." };
+  }
+  if (!amount || Number.isNaN(amount) || amount <= 0) {
+    return { error: "금액을 올바르게 입력해 주세요." };
+  }
+  if (!FIELD_EXPENSE_CATEGORIES.includes(categoryRaw as FieldExpenseCategory)) {
+    return { error: "대분류를 올바르게 선택해 주세요." };
+  }
+  if (
+    !FIELD_EXPENSE_PAYMENT_METHODS.includes(
+      paymentMethodRaw as FieldExpensePaymentMethod
+    )
+  ) {
+    return { error: "결제수단을 올바르게 선택해 주세요." };
+  }
+  const category = categoryRaw as FieldExpenseCategory;
+  const paymentMethod = paymentMethodRaw as FieldExpensePaymentMethod;
+
+  const update: Partial<FieldExpense> = {
+    store_id: storeId,
+    date,
+    category,
+    description,
+    amount,
+    payment_method: paymentMethod,
+  };
+
+  // 사진을 새로 골랐을 때만 교체한다 — 안 건드리면 기존 사진 그대로 둔다.
+  if (photo instanceof File && photo.size > 0) {
+    const ext = photo.name.split(".").pop() || "jpg";
+    const path = `${storeId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("receipts")
+      .upload(path, photo, { contentType: photo.type || "image/jpeg" });
+
+    if (uploadError) {
+      return { error: "영수증 사진 업로드 중 오류가 발생했습니다." };
+    }
+    update.receipt_photo_path = path;
+  }
+
+  const { error } = await supabase.from("field_expenses").update(update).eq("id", id);
+
+  if (error) {
+    return { error: "수정 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+  }
+
+  revalidatePath("/expense");
+  return { success: true };
+}
+
+export async function deleteFieldExpense(id: string): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase.from("field_expenses").delete().eq("id", id);
+  revalidatePath("/expense");
 }
 
 export type ArchivePaymentState = { error?: string; success?: boolean } | undefined;
