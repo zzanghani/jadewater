@@ -1,11 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const PULL_THRESHOLD = 70;
 const MAX_PULL = 110;
 const DAMPING = 0.5;
+
+// 채팅방은 Realtime 구독으로 이미 새 메시지가 자동 반영돼서 당겨서
+// 새로고침이 필요 없다. 화면 안쪽 콘텐츠에는 data-no-pull-refresh를
+// 붙여뒀지만, 화면 맨 위 공용 헤더(로고·매장선택 바)는 그 표시 밖에
+// 있어서 거기서 스와이프를 시작하면 여전히 새로고침으로 잡혔다 — 아예
+// 이 라우트에서는 터치가 어디서 시작하든 당겨서 새로고침을 안 켠다.
+const NO_PULL_REFRESH_ROUTES = ["/messages/rooms/"];
 
 export default function PullToRefresh({
   children,
@@ -13,9 +20,12 @@ export default function PullToRefresh({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const refreshingRef = useRef(false);
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
 
   useEffect(() => {
     let startY = 0;
@@ -23,6 +33,10 @@ export default function PullToRefresh({
 
     function onTouchStart(e: TouchEvent) {
       if (refreshingRef.current) {
+        pulling = false;
+        return;
+      }
+      if (NO_PULL_REFRESH_ROUTES.some((p) => pathnameRef.current?.startsWith(p))) {
         pulling = false;
         return;
       }
