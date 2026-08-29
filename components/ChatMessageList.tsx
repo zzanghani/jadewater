@@ -40,33 +40,7 @@ export default function ChatMessageList({
   );
   const mentionNames = Object.values(nameById);
   const seenIds = useRef<Set<string>>(new Set(initialMessages.map((m) => m.id)));
-  const scrollRef = useRef<HTMLUListElement>(null);
-  const [boxHeight, setBoxHeight] = useState<number | null>(null);
-
-  // 메시지 영역이 내용 길이에 따라 늘었다 줄었다 하면(짧은 대화 =
-  // 빈틈, 긴 대화 = 고정된 입력창에 마지막 메시지가 가려짐) 화면마다
-  // 다르게 보이는 문제가 있어서, 화면에 실제로 남는 공간을 재서 그
-  // 높이를 그대로 쓴다 — 고정 입력창 + 하단 메뉴 높이만큼만 빼고.
-  useLayoutEffect(() => {
-    function recalc() {
-      const el = scrollRef.current;
-      if (!el) return;
-      const top = el.getBoundingClientRect().top;
-      const RESERVED_BELOW_PX = 185; // 입력창(~96px) + 하단 메뉴(~80px) + 여유분
-      // 안드로이드 크롬은 주소창이 접혔다 펴지거나 키보드가 뜰 때
-      // window.innerHeight가 곧바로 안 갱신되는 경우가 있어서, 갱신이
-      // 더 정확한 visualViewport 값이 있으면 그걸 우선 쓴다.
-      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
-      setBoxHeight(Math.max(160, viewportHeight - top - RESERVED_BELOW_PX));
-    }
-    recalc();
-    window.addEventListener("resize", recalc);
-    window.visualViewport?.addEventListener("resize", recalc);
-    return () => {
-      window.removeEventListener("resize", recalc);
-      window.visualViewport?.removeEventListener("resize", recalc);
-    };
-  }, []);
+  const bottomRef = useRef<HTMLLIElement>(null);
 
   // 새 메시지가 오면(내가 보낸 것 포함) 실시간 구독으로만 목록에
   // 추가한다 — 서버 revalidate로도 같이 넣으면 중복될 수 있어서, 이
@@ -127,31 +101,19 @@ export default function ChatMessageList({
   }, [roomId]);
 
   // 메시지가 늘어날 때마다 가장 아래(최신 메시지)로 자동 스크롤한다.
+  // 안드로이드 크롬에서 목록 자체 높이를 고정해 내부 스크롤 박스로 만드는
+  // 방식이 화면 전체 스크롤과 뒤섞여 오작동해서, 목록을 그냥 페이지
+  // 흐름에 맡기고 화면 전체를 스크롤해 맨 아래로 보낸다.
   useLayoutEffect(() => {
-    const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    bottomRef.current?.scrollIntoView({ block: "end" });
   }, [messages.length]);
 
   if (messages.length === 0) {
-    return (
-      <ul
-        ref={scrollRef}
-        data-no-pull-refresh
-        style={{ height: boxHeight ?? undefined, overscrollBehavior: "contain" }}
-        className="scroll-visible flex flex-col justify-end overflow-y-auto"
-      >
-        <li className="text-sm text-muted">아직 메시지가 없습니다. 먼저 보내보세요.</li>
-      </ul>
-    );
+    return <p className="text-sm text-muted">아직 메시지가 없습니다. 먼저 보내보세요.</p>;
   }
 
   return (
-    <ul
-      ref={scrollRef}
-      data-no-pull-refresh
-      style={{ height: boxHeight ?? undefined, overscrollBehavior: "contain" }}
-      className="scroll-visible flex flex-col justify-end gap-2 overflow-y-auto pb-1"
-    >
+    <ul className="flex flex-col gap-2 pb-1">
       {messages.map((m) => {
         const mine = m.sender_id === currentUserId;
         return (
@@ -218,6 +180,9 @@ export default function ChatMessageList({
           </li>
         );
       })}
+      {/* 고정 입력창(RoomMessageForm)에 마지막 메시지가 가리지 않도록 여백을
+          두고, 새 메시지가 오면 이 지점으로 스크롤해 맨 아래로 보낸다. */}
+      <li ref={bottomRef} aria-hidden className="h-28 shrink-0" />
     </ul>
   );
 }
