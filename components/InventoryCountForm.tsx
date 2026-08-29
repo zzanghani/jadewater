@@ -129,23 +129,26 @@ export default function InventoryCountForm({
                 )}
                 <div className="flex items-center gap-2">
                   <div className="flex flex-1 flex-col items-center gap-0.5 rounded-lg bg-background px-2 py-1.5">
-                    <span className="text-[9px] font-semibold text-muted">전일</span>
+                    <span className="text-[9px] font-semibold text-muted">전일재고</span>
                     <span className="text-sm font-bold text-foreground">
                       {previousCountByItemId.get(item.id) ?? "-"}
                     </span>
                   </div>
-                  <input
-                    type="number"
-                    name={`qty_${item.id}`}
-                    step="any"
-                    min="0"
-                    value={quantities[item.id] ?? ""}
-                    onChange={(e) =>
-                      setQuantities((q) => ({ ...q, [item.id]: e.target.value }))
-                    }
-                    placeholder="0"
-                    className="w-24 shrink-0 rounded-lg border border-border bg-background px-3 py-2 text-center text-base font-semibold outline-none ring-brand/30 focus:ring-2"
-                  />
+                  <div className="flex w-24 shrink-0 flex-col items-center gap-0.5">
+                    <span className="text-[9px] font-semibold text-muted">마감재고</span>
+                    <input
+                      type="number"
+                      name={`qty_${item.id}`}
+                      step="any"
+                      min="0"
+                      value={quantities[item.id] ?? ""}
+                      onChange={(e) =>
+                        setQuantities((q) => ({ ...q, [item.id]: e.target.value }))
+                      }
+                      placeholder="0"
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-center text-base font-semibold outline-none ring-brand/30 focus:ring-2"
+                    />
+                  </div>
                   <div
                     className={`flex flex-1 flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 ${
                       countByItemId.has(item.id) ? "bg-brand-light" : "bg-background"
@@ -156,7 +159,7 @@ export default function InventoryCountForm({
                         countByItemId.has(item.id) ? "text-brand-dark" : "text-muted"
                       }`}
                     >
-                      확정
+                      확정재고
                     </span>
                     <span
                       className={`text-sm font-bold ${
