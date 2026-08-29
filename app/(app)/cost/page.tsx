@@ -121,7 +121,7 @@ export default async function CostPage() {
         .lte("date", today),
       supabase
         .from("daily_closings")
-        .select("food_sales, beverage_sales")
+        .select("food_sales, beverage_sales, coupang_eats_sales, baemin_sales")
         .eq("store_id", storeId)
         .gte("date", monthStart)
         .lte("date", today),
@@ -133,7 +133,7 @@ export default async function CostPage() {
         .lte("date", days[6]),
       supabase
         .from("daily_closings")
-        .select("date, food_sales, beverage_sales")
+        .select("date, food_sales, beverage_sales, coupang_eats_sales, baemin_sales")
         .eq("store_id", storeId)
         .gte("date", days[0])
         .lte("date", days[6]),
@@ -150,7 +150,13 @@ export default async function CostPage() {
       .filter((r) => r.category === "음료재료")
       .map((r) => r.amount)
   );
-  const monthFoodSales = sum((monthClosings ?? []).map((c) => c.food_sales));
+  // 배달(쿠팡이츠·배민)은 카테고리별로 안 나눠서 받으니 전부 음식으로 본다 —
+  // 배달앱으로 술·대여를 시키는 경우는 사실상 없어서, 음식 매출에 안 더하면
+  // 배달 비중이 큰 매장일수록 푸드코스트가 실제보다 높게 나온다.
+  const monthDeliverySales = sum(
+    (monthClosings ?? []).map((c) => c.coupang_eats_sales + c.baemin_sales)
+  );
+  const monthFoodSales = sum((monthClosings ?? []).map((c) => c.food_sales)) + monthDeliverySales;
   const monthBeverageSales = sum((monthClosings ?? []).map((c) => c.beverage_sales));
 
   // 일자별로 그날의 입고·매출만 따로 모아서, 주 단위로 뭉뚱그리지 않고
@@ -167,7 +173,7 @@ export default async function CostPage() {
   const foodSalesByDate = new Map<string, number>();
   const beverageSalesByDate = new Map<string, number>();
   for (const c of rangeClosings ?? []) {
-    foodSalesByDate.set(c.date, c.food_sales);
+    foodSalesByDate.set(c.date, c.food_sales + c.coupang_eats_sales + c.baemin_sales);
     beverageSalesByDate.set(c.date, c.beverage_sales);
   }
 
