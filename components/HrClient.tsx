@@ -61,6 +61,7 @@ export default function HrClient({
   attendance,
   damages,
   managerReviews,
+  isHrTeam,
 }: {
   stores: StoreInfo[];
   msoEmployees: Employee[];
@@ -76,6 +77,8 @@ export default function HrClient({
   attendance: EmployeeAttendance[];
   damages: DamageRecord[];
   managerReviews: ManagerReview[];
+  // 점장 평가는 대표·운영팀·R&D팀장만 채점한다. 지점장 계정에는 탭 자체를 숨긴다.
+  isHrTeam: boolean;
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -225,7 +228,7 @@ export default function HrClient({
           <div className="flex gap-2">
             {([
               ["eval", "직원 평가"],
-              ["manager", "점장 평가"],
+              ...(isHrTeam ? ([["manager", "점장 평가"]] as const) : []),
               ["records", `기록 ${records.length}`],
               ["attendance", "근태"],
               ["damage", `damage ${damages.length}`],
@@ -256,11 +259,10 @@ export default function HrClient({
               periodLabel={quarterLabel}
             />
           )}
-          {reviewTab === "manager" && (
+          {reviewTab === "manager" && isHrTeam && (
+            // 부점장은 직원 평가표(1~5점)로 채점하므로 여기 대상이 아니다.
             <ManagerEvalPanel
-              managers={allEmployees.filter(
-                (e) => e.position === "점장" || e.position === "부점장"
-              )}
+              managers={allEmployees.filter((e) => e.position === "점장" && e.store_id)}
               reviews={managerReviews}
               period={period}
               periodLabel={quarterLabel}

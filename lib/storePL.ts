@@ -13,9 +13,11 @@ export type MonthlyPL = {
   totalSales: number;
   guests: number;
   purchaseTotal: number;
+  fieldExpenseTotal: number;
   laborTotal: number;
   utilityTotal: number;
   hqFeeTotal: number;
+  // 퇴직연금(인건비 10%) + 부가세·법인세(각 매출 6%) + 본사운영비(매출 4%)
   taxReserveTotal: number;
   discountTotal: number;
   totalExpense: number;
@@ -42,7 +44,8 @@ export async function monthlyPL(
 ): Promise<MonthlyPL> {
   const { start, end } = monthRange(month);
 
-  const [{ data: closings }, { data: receipts }, { data: settlement }] = await Promise.all([
+  const [{ data: closings }, { data: receipts }, { data: fieldExpenses }, { data: settlement }] =
+    await Promise.all([
     supabase
       .from("daily_closings")
       .select("grand_total, discount_amount, total_guests")
@@ -56,17 +59,24 @@ export async function monthlyPL(
       .gte("date", start)
       .lte("date", end),
     supabase
+      .from("field_expenses")
+      .select("amount")
+      .eq("store_id", storeId)
+      .gte("date", start)
+      .lte("date", end),
+    supabase
       .from("monthly_settlements")
       .select("*")
       .eq("store_id", storeId)
       .eq("month", start)
       .maybeSingle(),
-  ]);
+    ]);
 
   const totalSales = sum((closings ?? []).map((c) => c.grand_total));
   const guests = sum((closings ?? []).map((c) => c.total_guests));
   const discountTotal = sum((closings ?? []).map((c) => c.discount_amount));
   const purchaseTotal = sum((receipts ?? []).map((r) => r.amount));
+  const fieldExpenseTotal = sum((fieldExpenses ?? []).map((r) => r.amount));
 
   // 공제총액(4대보험 등)도 매장이 실제 지출하는 인건비이므로 급여에 더한다.
   const laborTotal = sum(
@@ -76,19 +86,28 @@ export async function monthlyPL(
   const hqFeeTotal = sum((settlement?.hq_fee_items ?? []).map((i) => i.amount));
 
   // 세금·유보금은 월말정산과 같은 비율로 자동 산출한다.
+  // 퇴직연금 인건비 10% / 부가세·법인세 각 매출 6% / 본사운영비 매출 4%.
   const taxReserveTotal =
     Math.round(laborTotal * 0.1) +
     Math.round(totalSales * 0.06) +
-    Math.round(totalSales * 0.06);
+    Math.round(totalSales * 0.06) +
+    Math.round(totalSales * 0.04);
 
   const totalExpense =
-    purchaseTotal + laborTotal + utilityTotal + hqFeeTotal + taxReserveTotal + discountTotal;
+    purchaseTotal +
+    fieldExpenseTotal +
+    laborTotal +
+    utilityTotal +
+    hqFeeTotal +
+    taxReserveTotal +
+    discountTotal;
 
   return {
     month,
     totalSales,
     guests,
     purchaseTotal,
+    fieldExpenseTotal,
     laborTotal,
     utilityTotal,
     hqFeeTotal,
