@@ -4,6 +4,7 @@ import { forwardRef, useActionState, useEffect, useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import { saveDailyCounts } from "@/app/(app)/inventory/actions";
 import type { InventoryItem, InventorySection } from "@/lib/types";
+import type { InventoryForecast } from "@/lib/inventoryForecast";
 
 export default function InventoryCountForm({
   storeId,
@@ -14,6 +15,8 @@ export default function InventoryCountForm({
   items,
   countByItemId,
   previousCountByItemId,
+  producedByItemId,
+  forecastByItemId,
 }: {
   storeId: string;
   storeName: string;
@@ -23,12 +26,20 @@ export default function InventoryCountForm({
   items: InventoryItem[];
   countByItemId: Map<string, number>;
   previousCountByItemId: Map<string, number>;
+  producedByItemId?: Map<string, number>;
+  forecastByItemId?: Map<string, InventoryForecast>;
 }) {
   const isEditingExisting = countByItemId.size > 0;
+  const isKitchen = section === "주방";
   const [state, formAction, pending] = useActionState(saveDailyCounts, undefined);
   const [quantities, setQuantities] = useState<Record<string, string>>(() =>
     Object.fromEntries(
       items.map((item) => [item.id, String(countByItemId.get(item.id) ?? "")])
+    )
+  );
+  const [productions, setProductions] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      items.map((item) => [item.id, String(producedByItemId?.get(item.id) ?? "")])
     )
   );
 
@@ -38,6 +49,7 @@ export default function InventoryCountForm({
   useEffect(() => {
     if (!state?.success) return;
     setQuantities(Object.fromEntries(items.map((item) => [item.id, ""])));
+    setProductions(Object.fromEntries(items.map((item) => [item.id, ""])));
   }, [state, items]);
 
   const reportRef = useRef<HTMLDivElement>(null);
@@ -65,60 +77,108 @@ export default function InventoryCountForm({
       <form action={formAction} className="flex flex-col gap-2">
         <input type="hidden" name="store_id" value={storeId} />
         <input type="hidden" name="date" value={date} />
+        <input type="hidden" name="section" value={section} />
         <input type="hidden" name="item_ids" value={items.map((i) => i.id).join(",")} />
 
         <div className="flex flex-col gap-2">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3"
-            >
-              <span className="truncate text-sm font-semibold text-foreground">
-                {item.name}
-                {item.unit ? ` (${item.unit})` : ""}
-              </span>
-              <div className="flex items-center gap-2">
-                <div className="flex flex-1 flex-col items-center gap-0.5 rounded-lg bg-background px-2 py-1.5">
-                  <span className="text-[9px] font-semibold text-muted">전일</span>
-                  <span className="text-sm font-bold text-foreground">
-                    {previousCountByItemId.get(item.id) ?? "-"}
-                  </span>
-                </div>
-                <input
-                  type="number"
-                  name={`qty_${item.id}`}
-                  step="any"
-                  min="0"
-                  value={quantities[item.id] ?? ""}
-                  onChange={(e) =>
-                    setQuantities((q) => ({ ...q, [item.id]: e.target.value }))
-                  }
-                  placeholder="0"
-                  className="w-24 shrink-0 rounded-lg border border-border bg-background px-3 py-2 text-center text-base font-semibold outline-none ring-brand/30 focus:ring-2"
-                />
-                <div
-                  className={`flex flex-1 flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 ${
-                    countByItemId.has(item.id) ? "bg-brand-light" : "bg-background"
-                  }`}
-                >
-                  <span
-                    className={`text-[9px] font-semibold ${
-                      countByItemId.has(item.id) ? "text-brand-dark" : "text-muted"
+          {items.map((item) => {
+            const forecast = forecastByItemId?.get(item.id);
+            const forecastLabel =
+              forecast?.kind === "kitchen"
+                ? forecast.ready
+                  ? `내일 생산 제안: ${forecast.suggestedQty}${item.unit ?? ""}`
+                  : `생산량 데이터 수집 중 (${forecast.sampleCount}/2)`
+                : forecast?.kind === "hall"
+                  ? forecast.ready
+                    ? forecast.daysUntilStockout !== null
+                      ? `이 추세면 약 ${forecast.daysUntilStockout}일 후 소진`
+                      : null
+                    : `소진 예측 데이터 수집 중 (${forecast.sampleCount}/2)`
+                  : null;
+            const forecastUrgent =
+              forecast?.kind === "hall" &&
+              forecast.ready &&
+              forecast.daysUntilStockout !== null &&
+              forecast.daysUntilStockout <= 3;
+
+            return (
+              <div
+                key={item.id}
+                className="flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3"
+              >
+                <span className="truncate text-sm font-semibold text-foreground">
+                  {item.name}
+                  {item.unit ? ` (${item.unit})` : ""}
+                </span>
+                {isKitchen && (
+                  <div className="flex items-center gap-2">
+                    <span className="w-14 shrink-0 text-xs font-semibold text-muted">생산량</span>
+                    <input
+                      type="number"
+                      name={`produced_${item.id}`}
+                      step="any"
+                      min="0"
+                      value={productions[item.id] ?? ""}
+                      onChange={(e) =>
+                        setProductions((p) => ({ ...p, [item.id]: e.target.value }))
+                      }
+                      placeholder="0"
+                      className="w-24 shrink-0 rounded-lg border border-border bg-background px-3 py-2 text-center text-sm font-semibold outline-none ring-brand/30 focus:ring-2"
+                    />
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <div className="flex flex-1 flex-col items-center gap-0.5 rounded-lg bg-background px-2 py-1.5">
+                    <span className="text-[9px] font-semibold text-muted">전일</span>
+                    <span className="text-sm font-bold text-foreground">
+                      {previousCountByItemId.get(item.id) ?? "-"}
+                    </span>
+                  </div>
+                  <input
+                    type="number"
+                    name={`qty_${item.id}`}
+                    step="any"
+                    min="0"
+                    value={quantities[item.id] ?? ""}
+                    onChange={(e) =>
+                      setQuantities((q) => ({ ...q, [item.id]: e.target.value }))
+                    }
+                    placeholder="0"
+                    className="w-24 shrink-0 rounded-lg border border-border bg-background px-3 py-2 text-center text-base font-semibold outline-none ring-brand/30 focus:ring-2"
+                  />
+                  <div
+                    className={`flex flex-1 flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 ${
+                      countByItemId.has(item.id) ? "bg-brand-light" : "bg-background"
                     }`}
                   >
-                    확정
-                  </span>
-                  <span
-                    className={`text-sm font-bold ${
-                      countByItemId.has(item.id) ? "text-brand-dark" : "text-muted"
+                    <span
+                      className={`text-[9px] font-semibold ${
+                        countByItemId.has(item.id) ? "text-brand-dark" : "text-muted"
+                      }`}
+                    >
+                      확정
+                    </span>
+                    <span
+                      className={`text-sm font-bold ${
+                        countByItemId.has(item.id) ? "text-brand-dark" : "text-muted"
+                      }`}
+                    >
+                      {countByItemId.get(item.id) ?? "-"}
+                    </span>
+                  </div>
+                </div>
+                {forecastLabel && (
+                  <p
+                    className={`text-xs font-medium ${
+                      forecastUrgent ? "text-red-600" : "text-muted"
                     }`}
                   >
-                    {countByItemId.get(item.id) ?? "-"}
-                  </span>
-                </div>
+                    {forecastLabel}
+                  </p>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {state?.error && (

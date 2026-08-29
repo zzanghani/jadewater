@@ -529,6 +529,8 @@ export type InventoryCount = {
   store_id: string
   date: string
   quantity: number
+  // 주방 품목만 채워짐(홀 소모품은 계속 null) — 생산량 예측용.
+  produced_quantity: number | null
   created_by: string
   updated_by: string | null
   created_at: string
