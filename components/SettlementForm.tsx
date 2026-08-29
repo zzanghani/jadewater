@@ -108,7 +108,8 @@ export default function SettlementForm({
   const pensionReserve = Math.round(laborTotal * 0.1);
   const vatReserve = Math.round(totalSales * 0.06);
   const corpTaxReserve = Math.round(totalSales * 0.06);
-  const taxReserveTotal = pensionReserve + vatReserve + corpTaxReserve;
+  const hqOperatingReserve = Math.round(totalSales * 0.04);
+  const taxReserveTotal = pensionReserve + vatReserve + corpTaxReserve + hqOperatingReserve;
   const totalExpense =
     purchaseTotal +
     fieldExpenseTotal +
@@ -157,6 +158,7 @@ export default function SettlementForm({
         <input type="hidden" name="pension_reserve" value={pensionReserve} />
         <input type="hidden" name="vat_reserve" value={vatReserve} />
         <input type="hidden" name="corp_tax_reserve" value={corpTaxReserve} />
+        <input type="hidden" name="hq_operating_reserve" value={hqOperatingReserve} />
         <input type="hidden" name="discount_amount" value={autoDiscountTotal} />
         <input
           type="hidden"
@@ -233,6 +235,12 @@ export default function SettlementForm({
             hint="총매출의 6%"
             value={corpTaxReserve}
             percent={formatPercent(corpTaxReserve, totalSales)}
+          />
+          <ComputedRow
+            label="본사운영비(예상)"
+            hint="총매출의 4%"
+            value={hqOperatingReserve}
+            percent={formatPercent(hqOperatingReserve, totalSales)}
           />
         </FieldGroup>
 
@@ -344,6 +352,7 @@ export default function SettlementForm({
           pensionReserve={pensionReserve}
           vatReserve={vatReserve}
           corpTaxReserve={corpTaxReserve}
+          hqOperatingReserve={hqOperatingReserve}
           discountAmount={autoDiscountTotal}
           totalExpense={totalExpense}
           netProfit={netProfit}
@@ -896,6 +905,7 @@ type ReportProps = {
   pensionReserve: number;
   vatReserve: number;
   corpTaxReserve: number;
+  hqOperatingReserve: number;
   discountAmount: number;
   totalExpense: number;
   netProfit: number;
@@ -921,6 +931,7 @@ const SettlementReport = forwardRef<HTMLDivElement, ReportProps>(function Settle
     pensionReserve,
     vatReserve,
     corpTaxReserve,
+    hqOperatingReserve,
     discountAmount,
     totalExpense,
     netProfit,
@@ -1114,9 +1125,9 @@ const SettlementReport = forwardRef<HTMLDivElement, ReportProps>(function Settle
 
       <ReportSection
         title="세금·유보금·할인"
-        amount={pensionReserve + vatReserve + corpTaxReserve + discountAmount}
+        amount={pensionReserve + vatReserve + corpTaxReserve + hqOperatingReserve + discountAmount}
         percent={formatPercent(
-          pensionReserve + vatReserve + corpTaxReserve + discountAmount,
+          pensionReserve + vatReserve + corpTaxReserve + hqOperatingReserve + discountAmount,
           totalExpense
         )}
       >
@@ -1134,6 +1145,11 @@ const SettlementReport = forwardRef<HTMLDivElement, ReportProps>(function Settle
           label="법인세(예상)"
           value={corpTaxReserve}
           percent={formatPercent(corpTaxReserve, totalSales)}
+        />
+        <ReportRow
+          label="본사운영비(예상)"
+          value={hqOperatingReserve}
+          percent={formatPercent(hqOperatingReserve, totalSales)}
         />
         <ReportRow
           label="할인금액"

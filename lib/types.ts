@@ -150,6 +150,7 @@ export type MonthlySettlement = {
   pension_reserve: number
   vat_reserve: number
   corp_tax_reserve: number
+  hq_operating_reserve: number
   reserve_carryover: number
   reserve_deduction: number
   discount_amount: number
