@@ -85,7 +85,11 @@ export default async function ChatRoomPage({
   const members = memberIds.map((id) => ({ id, name: nameById.get(id) ?? "알 수 없음" }));
 
   return (
-    <div className="flex flex-col gap-4">
+    // 채팅방은 Realtime 구독으로 이미 새 메시지가 자동 반영되므로 당겨서
+    // 새로고침이 필요 없다 — 오히려 말풍선 밖(참여자 목록 등)에서 스와이프를
+    // 시작하면 스크롤 대신 새로고침으로 잡혀서 지난 메시지를 볼 수가 없는
+    // 문제가 있었다. 화면 전체를 당겨서 새로고침 대상에서 뺀다.
+    <div className="flex flex-col gap-4" data-no-pull-refresh>
       <MarkRoomRead roomId={roomId} />
 
       <Link
