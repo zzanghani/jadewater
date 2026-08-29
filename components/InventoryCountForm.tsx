@@ -66,18 +66,25 @@ export default function InventoryCountForm({
                 {item.name}
                 {item.unit ? ` (${item.unit})` : ""}
               </span>
-              <input
-                type="number"
-                name={`qty_${item.id}`}
-                step="any"
-                min="0"
-                value={quantities[item.id] ?? ""}
-                onChange={(e) =>
-                  setQuantities((q) => ({ ...q, [item.id]: e.target.value }))
-                }
-                placeholder="0"
-                className="w-20 shrink-0 rounded-lg border border-border bg-background px-3 py-1.5 text-right text-sm outline-none ring-brand/30 focus:ring-2"
-              />
+              <div className="flex shrink-0 items-center gap-2">
+                <input
+                  type="number"
+                  name={`qty_${item.id}`}
+                  step="any"
+                  min="0"
+                  value={quantities[item.id] ?? ""}
+                  onChange={(e) =>
+                    setQuantities((q) => ({ ...q, [item.id]: e.target.value }))
+                  }
+                  placeholder="0"
+                  className="w-20 shrink-0 rounded-lg border border-border bg-background px-3 py-1.5 text-right text-sm outline-none ring-brand/30 focus:ring-2"
+                />
+                {countByItemId.has(item.id) && (
+                  <span className="w-14 shrink-0 truncate text-right text-xs font-semibold text-brand">
+                    확정 {countByItemId.get(item.id)}
+                  </span>
+                )}
+              </div>
             </div>
           ))}
         </div>
