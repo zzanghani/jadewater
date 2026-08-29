@@ -7,7 +7,7 @@ import { deleteEmployeeShifts, unlockScheduleAdmin } from "@/app/(app)/schedule/
 import { SCHEDULE_ROLES, roleColor } from "@/lib/scheduleColors";
 import { kstWeekdayShortLabel, mondayWeekRangeLabel, shiftDateString } from "@/lib/date";
 import ScheduleCellForm from "@/components/ScheduleCellForm";
-import type { ScheduleRole, ScheduleShift } from "@/lib/types";
+import type { ScheduleRole, ScheduleShift, ScheduleShiftPreset } from "@/lib/types";
 
 export type WeekGridRow = {
   employeeName: string;
@@ -21,12 +21,14 @@ export default function ScheduleWeekGrid({
   rows,
   todayDate,
   readOnly = false,
+  presets,
 }: {
   weekStart: string;
   weekDates: string[];
   rows: WeekGridRow[];
   todayDate: string;
   readOnly?: boolean;
+  presets: ScheduleShiftPreset[];
 }) {
   const router = useRouter();
   const [unlockState, unlockAction, unlockPending] = useActionState(
@@ -284,6 +286,7 @@ export default function ScheduleWeekGrid({
           employeeName={selected.employeeName}
           defaultRole={selected.role}
           shift={selected.shift}
+          presets={presets}
           onClose={() => setSelected(null)}
         />
       )}

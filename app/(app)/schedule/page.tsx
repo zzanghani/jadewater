@@ -33,7 +33,7 @@ export default async function SchedulePage({
     : { data: null };
   const isEmployee = profile?.role === "staff";
 
-  const [{ data: todayShifts }, { data: weekShifts }, { data: rosterShifts }] =
+  const [{ data: todayShifts }, { data: weekShifts }, { data: rosterShifts }, { data: presets }] =
     await Promise.all([
       supabase
         .from("schedule_shifts")
@@ -53,6 +53,11 @@ export default async function SchedulePage({
         .eq("store_id", storeId)
         .gte("date", rosterStart)
         .lte("date", weekDates[6])
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("schedule_shift_presets")
+        .select("*")
+        .eq("store_id", storeId)
         .order("created_at", { ascending: true }),
     ]);
 
@@ -97,6 +102,7 @@ export default async function SchedulePage({
           rows={weekGridRows}
           todayDate={today}
           readOnly={isEmployee}
+          presets={presets ?? []}
         />
       </div>
 
