@@ -339,6 +339,69 @@ export async function deleteShift(formData: FormData) {
   revalidatePath("/schedule");
 }
 
+export type PresetFormState = { error?: string; success?: boolean } | undefined;
+
+// 근무 빠른입력 프리셋(오픈조/미들조/마감조 등) 추가/수정.
+export async function savePreset(
+  _prevState: PresetFormState,
+  formData: FormData
+): Promise<PresetFormState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "로그인이 필요합니다." };
+
+  const id = String(formData.get("id") ?? "").trim() || null;
+  const name = String(formData.get("name") ?? "").trim();
+  const startTime = String(formData.get("start_time") ?? "");
+  const endTime = String(formData.get("end_time") ?? "");
+  const breakMinutes = Number(formData.get("break_minutes") ?? 0);
+
+  if (!name) return { error: "이름을 입력해 주세요." };
+  if (!startTime || !endTime) return { error: "근무 시간을 입력해 주세요." };
+  if (!Number.isFinite(breakMinutes) || breakMinutes < 0) {
+    return { error: "휴게시간을 올바르게 입력해 주세요." };
+  }
+
+  const { storeId } = await getStoreContext(supabase);
+  const payload = {
+    store_id: storeId,
+    name,
+    start_time: startTime,
+    end_time: endTime,
+    break_minutes: breakMinutes,
+  };
+
+  const { error } = id
+    ? await supabase
+        .from("schedule_shift_presets")
+        .update({ ...payload, updated_by: user.id })
+        .eq("id", id)
+    : await supabase.from("schedule_shift_presets").insert({ ...payload, created_by: user.id });
+
+  if (error) {
+    return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+  }
+
+  revalidatePath("/schedule");
+  return { success: true };
+}
+
+export async function deletePreset(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  await supabase.from("schedule_shift_presets").delete().eq("id", id);
+  revalidatePath("/schedule");
+}
+
 // 주간표 명단에서 직원 한 명을 통째로 지운다(중복 입력/퇴사자 정리용).
 // 별도 직원 마스터가 없어 명단이 schedule_shifts 이력에서 나오는 구조라,
 // 이 매장에서 그 이름으로 등록된 근무 기록을 전부 지워야 명단에서도 사라진다.

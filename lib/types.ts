@@ -509,6 +509,20 @@ export type ScheduleShift = {
   updated_at: string
 }
 
+// 근무 빠른입력 프리셋(오픈조/미들조/마감조 등) — 매장마다 직접 정한다.
+export type ScheduleShiftPreset = {
+  id: string
+  store_id: string
+  name: string
+  start_time: string
+  end_time: string
+  break_minutes: number
+  created_by: string
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type InventorySection = '홀' | '주방'
 
 export type InventoryItem = {
@@ -704,6 +718,18 @@ export type Database = {
           created_by: string
         }
         Update: Partial<ScheduleShift>
+        Relationships: []
+      }
+      schedule_shift_presets: {
+        Row: ScheduleShiftPreset
+        Insert: Partial<ScheduleShiftPreset> & {
+          store_id: string
+          name: string
+          start_time: string
+          end_time: string
+          created_by: string
+        }
+        Update: Partial<ScheduleShiftPreset>
         Relationships: []
       }
       employees: {

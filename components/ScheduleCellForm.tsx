@@ -5,27 +5,32 @@ import { useRouter } from "next/navigation";
 import { deleteShift, saveCellShift } from "@/app/(app)/schedule/actions";
 import { BREAK_MINUTE_OPTIONS, SCHEDULE_ROLES, roleColor } from "@/lib/scheduleColors";
 import { kstDateLabel } from "@/lib/date";
-import AmPmTimeSelect, { parseTimeTo12h } from "@/components/AmPmTimeSelect";
-import type { ScheduleRole, ScheduleShift } from "@/lib/types";
+import AmPmTimeSelect, { parseTimeTo12h, type TimeValue } from "@/components/AmPmTimeSelect";
+import SchedulePresetManager from "@/components/SchedulePresetManager";
+import type { ScheduleRole, ScheduleShift, ScheduleShiftPreset } from "@/lib/types";
 
 export default function ScheduleCellForm({
   date,
   employeeName,
   defaultRole,
   shift,
+  presets,
   onClose,
 }: {
   date: string;
   employeeName: string;
   defaultRole: ScheduleRole;
   shift: ScheduleShift | null;
+  presets: ScheduleShiftPreset[];
   onClose: () => void;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(saveCellShift, undefined);
   const [role, setRole] = useState<ScheduleRole>(shift?.role ?? defaultRole);
-  const startDefault = parseTimeTo12h(shift?.start_time ?? "09:00");
-  const endDefault = parseTimeTo12h(shift?.end_time ?? "18:00");
+  const [start, setStart] = useState<TimeValue>(parseTimeTo12h(shift?.start_time ?? "09:00"));
+  const [end, setEnd] = useState<TimeValue>(parseTimeTo12h(shift?.end_time ?? "18:00"));
+  const [breakMinutes, setBreakMinutes] = useState(shift?.break_minutes ?? 0);
+  const [managingPresets, setManagingPresets] = useState(false);
 
   useEffect(() => {
     if (!state?.success) return;
@@ -33,6 +38,12 @@ export default function ScheduleCellForm({
     onClose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
+
+  function applyPreset(preset: ScheduleShiftPreset) {
+    setStart(parseTimeTo12h(preset.start_time));
+    setEnd(parseTimeTo12h(preset.end_time));
+    setBreakMinutes(preset.break_minutes);
+  }
 
   function handleDelete() {
     if (!shift) return;
@@ -95,29 +106,51 @@ export default function ScheduleCellForm({
         </div>
 
         <div className="flex flex-col gap-1.5 text-sm font-medium">
+          <div className="flex items-center justify-between">
+            빠른입력
+            <button
+              type="button"
+              onClick={() => setManagingPresets(true)}
+              className="text-xs font-medium text-muted underline-offset-2 hover:underline"
+            >
+              프리셋 관리
+            </button>
+          </div>
+          {presets.length === 0 ? (
+            <p className="text-xs text-muted">
+              등록된 프리셋이 없어요. "프리셋 관리"에서 오픈조·미들조·마감조를 만들어보세요.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {presets.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => applyPreset(p)}
+                  className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-brand hover:text-brand"
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-1.5 text-sm font-medium">
           출근
-          <AmPmTimeSelect
-            name="start_time"
-            defaultPeriod={startDefault.period}
-            defaultHour={startDefault.hour}
-            defaultMinute={startDefault.minute}
-          />
+          <AmPmTimeSelect name="start_time" value={start} onChange={setStart} />
         </div>
         <div className="flex flex-col gap-1.5 text-sm font-medium">
           퇴근
-          <AmPmTimeSelect
-            name="end_time"
-            defaultPeriod={endDefault.period}
-            defaultHour={endDefault.hour}
-            defaultMinute={endDefault.minute}
-          />
+          <AmPmTimeSelect name="end_time" value={end} onChange={setEnd} />
         </div>
 
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           휴게시간
           <select
             name="break_minutes"
-            defaultValue={shift?.break_minutes ?? 0}
+            value={breakMinutes}
+            onChange={(e) => setBreakMinutes(Number(e.target.value))}
             className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none ring-brand/30 focus:ring-2"
           >
             {BREAK_MINUTE_OPTIONS.map((m) => (
@@ -162,6 +195,10 @@ export default function ScheduleCellForm({
           </button>
         </div>
       </form>
+
+      {managingPresets && (
+        <SchedulePresetManager presets={presets} onClose={() => setManagingPresets(false)} />
+      )}
     </div>
   );
 }

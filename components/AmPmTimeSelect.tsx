@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 type Period = "오전" | "오후";
+export type TimeValue = { period: Period; hour: number; minute: number };
 
 const DEFAULT_MINUTES = [0, 10, 20, 30, 40, 50];
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -31,34 +32,53 @@ export default function AmPmTimeSelect({
   defaultHour = 9,
   defaultMinute = 0,
   minutes = DEFAULT_MINUTES,
+  value,
+  onChange,
 }: {
   name: string;
   defaultPeriod?: Period;
   defaultHour?: number;
   defaultMinute?: number;
   minutes?: number[];
+  // 빠른입력 프리셋 버튼처럼 부모가 값을 직접 바꿔야 할 때만 넘긴다 —
+  // 안 넘기면 예전처럼 이 컴포넌트가 알아서 자기 상태를 들고 있는다.
+  value?: TimeValue;
+  onChange?: (value: TimeValue) => void;
 }) {
-  const [period, setPeriod] = useState<Period>(defaultPeriod);
-  const [hour, setHour] = useState(defaultHour);
-  const [minute, setMinute] = useState(defaultMinute);
+  const [internal, setInternal] = useState<TimeValue>({
+    period: defaultPeriod,
+    hour: defaultHour,
+    minute: defaultMinute,
+  });
+  const current = value ?? internal;
+
+  function update(next: Partial<TimeValue>) {
+    const merged = { ...current, ...next };
+    if (onChange) onChange(merged);
+    else setInternal(merged);
+  }
 
   const selectClass =
     "rounded-xl border border-border bg-background px-2 py-2.5 text-sm outline-none ring-brand/30 focus:ring-2";
 
   return (
     <div className="flex gap-1.5">
-      <input type="hidden" name={name} value={to24h(period, hour, minute)} />
+      <input
+        type="hidden"
+        name={name}
+        value={to24h(current.period, current.hour, current.minute)}
+      />
       <select
-        value={period}
-        onChange={(e) => setPeriod(e.target.value as Period)}
+        value={current.period}
+        onChange={(e) => update({ period: e.target.value as Period })}
         className={selectClass}
       >
         <option value="오전">오전</option>
         <option value="오후">오후</option>
       </select>
       <select
-        value={hour}
-        onChange={(e) => setHour(Number(e.target.value))}
+        value={current.hour}
+        onChange={(e) => update({ hour: Number(e.target.value) })}
         className={`${selectClass} flex-1`}
       >
         {HOURS.map((h) => (
@@ -68,8 +88,8 @@ export default function AmPmTimeSelect({
         ))}
       </select>
       <select
-        value={minute}
-        onChange={(e) => setMinute(Number(e.target.value))}
+        value={current.minute}
+        onChange={(e) => update({ minute: Number(e.target.value) })}
         className={`${selectClass} flex-1`}
       >
         {minutes.map((m) => (
