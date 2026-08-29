@@ -59,20 +59,23 @@ export default function InventoryCountForm({
         <input type="hidden" name="date" value={date} />
         <input type="hidden" name="item_ids" value={items.map((i) => i.id).join(",")} />
 
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           {items.map((item) => (
             <div
               key={item.id}
-              className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-2.5"
+              className="flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3"
             >
-              <span className="min-w-0 truncate text-sm font-medium text-foreground">
+              <span className="truncate text-sm font-semibold text-foreground">
                 {item.name}
                 {item.unit ? ` (${item.unit})` : ""}
               </span>
-              <div className="flex shrink-0 items-center gap-2">
-                <span className="w-14 shrink-0 truncate text-right text-xs text-muted">
-                  전일 {previousCountByItemId.get(item.id) ?? "-"}
-                </span>
+              <div className="flex items-center gap-2">
+                <div className="flex flex-1 flex-col items-center gap-0.5 rounded-lg bg-background px-2 py-1.5">
+                  <span className="text-[9px] font-semibold text-muted">전일</span>
+                  <span className="text-sm font-bold text-foreground">
+                    {previousCountByItemId.get(item.id) ?? "-"}
+                  </span>
+                </div>
                 <input
                   type="number"
                   name={`qty_${item.id}`}
@@ -83,13 +86,28 @@ export default function InventoryCountForm({
                     setQuantities((q) => ({ ...q, [item.id]: e.target.value }))
                   }
                   placeholder="0"
-                  className="w-20 shrink-0 rounded-lg border border-border bg-background px-3 py-1.5 text-right text-sm outline-none ring-brand/30 focus:ring-2"
+                  className="w-24 shrink-0 rounded-lg border border-border bg-background px-3 py-2 text-center text-base font-semibold outline-none ring-brand/30 focus:ring-2"
                 />
-                {countByItemId.has(item.id) && (
-                  <span className="w-14 shrink-0 truncate text-right text-xs font-semibold text-brand">
-                    확정 {countByItemId.get(item.id)}
+                <div
+                  className={`flex flex-1 flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 ${
+                    countByItemId.has(item.id) ? "bg-brand-light" : "bg-background"
+                  }`}
+                >
+                  <span
+                    className={`text-[9px] font-semibold ${
+                      countByItemId.has(item.id) ? "text-brand-dark" : "text-muted"
+                    }`}
+                  >
+                    확정
                   </span>
-                )}
+                  <span
+                    className={`text-sm font-bold ${
+                      countByItemId.has(item.id) ? "text-brand-dark" : "text-muted"
+                    }`}
+                  >
+                    {countByItemId.get(item.id) ?? "-"}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
