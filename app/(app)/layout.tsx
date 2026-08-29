@@ -40,6 +40,8 @@ const EMPLOYEE_ALLOWED_PREFIXES = [
   "/cost",
   "/review-report",
   "/messages",
+  // 자기평가 — 직원 본인이 자기 평가표를 쓰고 확정 결과를 보는 화면.
+  "/my-review",
 ];
 
 export default async function AppLayout({

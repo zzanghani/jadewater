@@ -5,7 +5,23 @@ import { resignEmployee, restoreEmployee } from "@/app/(app)/hr/actions";
 import { tenureLabel, healthCertStatus, healthCertExpiry } from "@/lib/date";
 import { roleColor } from "@/lib/scheduleColors";
 import HrEmployeeForm from "@/components/HrEmployeeForm";
-import type { Employee, EmployeeTeam } from "@/lib/types";
+import EmployeeRecords from "@/components/EmployeeRecords";
+import AccountLinkPanel from "@/components/AccountLinkPanel";
+import EvalPanel from "@/components/EvalPanel";
+import AttendancePanel from "@/components/AttendancePanel";
+import DamagePanel from "@/components/DamagePanel";
+import ManagerEvalPanel from "@/components/ManagerEvalPanel";
+import type {
+  DamageRecord,
+  Employee,
+  EmployeeAttendance,
+  EmployeeRecord,
+  EmployeeTeam,
+  ManagerReview,
+  PerformanceReview,
+} from "@/lib/types";
+
+export type UnlinkedAccount = { id: string; name: string; email: string; storeId: string | null };
 
 type StoreInfo = { id: string; name: string; color: string };
 
@@ -36,18 +52,39 @@ export default function HrClient({
   employeesByStore,
   resignedEmployees,
   canManageMso,
+  records,
+  quarterLabel,
+  unlinkedAccounts,
+  myUserId,
+  period,
+  reviews,
+  attendance,
+  damages,
+  managerReviews,
 }: {
   stores: StoreInfo[];
   msoEmployees: Employee[];
   employeesByStore: Record<string, Employee[]>;
   resignedEmployees: Employee[];
   canManageMso: boolean;
+  records: EmployeeRecord[];
+  quarterLabel: string;
+  unlinkedAccounts: UnlinkedAccount[];
+  myUserId: string | null;
+  period: string;
+  reviews: PerformanceReview[];
+  attendance: EmployeeAttendance[];
+  damages: DamageRecord[];
+  managerReviews: ManagerReview[];
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [showResigned, setShowResigned] = useState(false);
   const [activeTab, setActiveTab] = useState<"roster" | "review">("roster");
+  // 인사평가 탭 안에서 "평가 채점"과 "사건 기록"을 나눈다 — 기록은 매일,
+  // 채점은 분기 말에만 쓰는 화면이라 섞어 놓으면 둘 다 찾기 힘들다.
+  const [reviewTab, setReviewTab] = useState<"eval" | "manager" | "records" | "attendance" | "damage">("eval");
 
   const storesWithPeople = stores.filter((s) => (employeesByStore[s.id]?.length ?? 0) > 0);
   const totalCount = msoEmployees.length + storesWithPeople.reduce(
@@ -178,9 +215,83 @@ export default function HrClient({
       </div>
 
       {activeTab === "review" && (
-        <p className="rounded-2xl border border-border bg-card p-4 text-sm text-muted">
-          준비 중인 기능입니다. 자료 정리되는 대로 반영될 예정이에요.
-        </p>
+        <>
+          <AccountLinkPanel
+            employees={allEmployees}
+            accounts={unlinkedAccounts}
+            storeNameById={storeNameById}
+          />
+
+          <div className="flex gap-2">
+            {([
+              ["eval", "직원 평가"],
+              ["manager", "점장 평가"],
+              ["records", `기록 ${records.length}`],
+              ["attendance", "근태"],
+              ["damage", `damage ${damages.length}`],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setReviewTab(key)}
+                className={`flex-1 rounded-xl border px-1 py-2.5 text-xs font-semibold transition-colors ${
+                  reviewTab === key
+                    ? "border-brand bg-brand/10 text-foreground"
+                    : "border-border bg-card text-muted"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {reviewTab === "eval" && (
+            <EvalPanel
+              employees={allEmployees}
+              reviews={reviews}
+              records={records}
+              attendance={attendance}
+              damages={damages}
+              period={period}
+              periodLabel={quarterLabel}
+            />
+          )}
+          {reviewTab === "manager" && (
+            <ManagerEvalPanel
+              managers={allEmployees.filter(
+                (e) => e.position === "점장" || e.position === "부점장"
+              )}
+              reviews={managerReviews}
+              period={period}
+              periodLabel={quarterLabel}
+              storeNameById={storeNameById}
+            />
+          )}
+          {reviewTab === "records" && (
+            <EmployeeRecords
+              employees={allEmployees}
+              records={records}
+              quarterLabel={quarterLabel}
+              myUserId={myUserId}
+            />
+          )}
+          {reviewTab === "attendance" && (
+            <AttendancePanel
+              employees={allEmployees}
+              attendance={attendance}
+              period={period}
+              periodLabel={quarterLabel}
+            />
+          )}
+          {reviewTab === "damage" && (
+            <DamagePanel
+              employees={allEmployees}
+              records={damages}
+              stores={stores}
+              periodLabel={quarterLabel}
+            />
+          )}
+        </>
       )}
 
       {activeTab === "roster" && (

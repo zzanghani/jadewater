@@ -73,6 +73,7 @@ export async function saveDailyCounts(
 
   const storeId = String(formData.get("store_id") ?? "");
   const date = String(formData.get("date") ?? "");
+  const section = String(formData.get("section") ?? "") as InventorySection;
   const itemIds = String(formData.get("item_ids") ?? "")
     .split(",")
     .filter(Boolean);
@@ -81,11 +82,14 @@ export async function saveDailyCounts(
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "잘못된 요청입니다." };
   if (itemIds.length === 0) return { success: true };
 
+  // 생산량 예측은 주방 품목에만 쓴다 — 홀 소모품은 계속 produced_quantity null로 남겨서
+  // 소진 예상일 계산(전일-금일 단순 차감)이 생산량 유무와 무관하게 동작하게 한다.
   const rows = itemIds.map((itemId) => ({
     item_id: itemId,
     store_id: storeId,
     date,
     quantity: Number(formData.get(`qty_${itemId}`) ?? 0) || 0,
+    produced_quantity: section === "주방" ? Number(formData.get(`produced_${itemId}`) ?? 0) || 0 : null,
     created_by: user.id,
     updated_by: user.id,
   }));

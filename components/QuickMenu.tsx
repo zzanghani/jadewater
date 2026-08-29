@@ -33,7 +33,11 @@ const EMPLOYEE_ITEMS = [
   { href: "/board?category=공지사항", label: "공지사항", icon: BoardIcon },
   { href: "/expense", label: "현장지출", icon: ReceiptIcon },
   { href: "/cost", label: "실시간 코스트", icon: GaugeIcon },
+  { href: "/my-review", label: "내 평가", icon: ReviewIcon },
 ] as const;
+
+// 지점장·부점장·팀장도 평가 대상이라 자기평가를 쓴다.
+const MY_REVIEW_ITEM = { href: "/my-review", label: "내 평가", icon: ReviewIcon } as const;
 
 export default function QuickMenu({
   isMaster = false,
@@ -65,7 +69,7 @@ export default function QuickMenu({
       ? EMPLOYEE_ITEMS
       : isMaster
         ? [...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), HR_ITEM, ACCOUNTS_ITEM]
-        : [...ALL_ITEMS, REVIEW_REPORT_ITEM, HR_ITEM];
+        : [...ALL_ITEMS, REVIEW_REPORT_ITEM, HR_ITEM, MY_REVIEW_ITEM];
 
   return (
     <section>
@@ -157,6 +161,16 @@ function CalendarIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="5" width="18" height="16" rx="2" />
       <path d="M3 10h18M8 3v4M16 3v4" />
+    </svg>
+  );
+}
+
+// 내 평가 — 체크리스트 모양. HR 아이콘(사람)과 헷갈리지 않게 구분한다.
+function ReviewIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 4h8a2 2 0 0 1 2 2v13a1 1 0 0 1-1.5.87L12 17.5l-4.5 2.37A1 1 0 0 1 6 19V6a2 2 0 0 1 2-2Z" />
+      <path d="m9.5 9.5 1.5 1.5 3.5-3.5" />
     </svg>
   );
 }

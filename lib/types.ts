@@ -373,8 +373,120 @@ export type Employee = {
   hire_date: string
   health_cert_issued_at: string | null
   resigned_at: string | null
+  // 로그인 계정(auth.users) 연결. 지점장이 직원 리스트에서 붙여준다.
+  // 연결돼 있어야 부점장·팀장이 기록을 남기고, 본인이 칭찬을 볼 수 있다.
+  user_id: string | null
   created_by: string
   updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+// 사건 기록 — 점장·부점장·팀장이 그날그날 남기는 짧은 칭찬/지적.
+// 분기 말 근무평가에서 문항별 근거 자료로 붙는다.
+export type EmployeeRecordKind = '칭찬' | '지적'
+
+export type EmployeeRecord = {
+  id: string
+  employee_id: string
+  store_id: string | null
+  kind: EmployeeRecordKind
+  body: string
+  occurred_on: string
+  eval_item: string | null
+  eval_item_source: 'ai' | 'manual'
+  // 칭찬은 저장 즉시 true, 지적은 면담 때 공개할 때까지 false.
+  shared_with_employee: boolean
+  created_by: string
+  created_at: string
+  edited_at: string | null
+  edit_count: number
+}
+
+// 근무평가 — 1차(점장)/2차(부점장·팀장·SV) 점수를 각각 담고,
+// 확정 시점의 총점·등급을 굳혀 둔다.
+export type PerformanceReview = {
+  id: string
+  employee_id: string
+  store_id: string | null
+  period: string
+  rubric_key: string
+  first_scores: Record<string, number>
+  first_comment: string | null
+  first_by: string | null
+  first_submitted_at: string | null
+  second_scores: Record<string, number>
+  second_comment: string | null
+  second_by: string | null
+  second_submitted_at: string | null
+  // 자기평가 — 점수에 반영하지 않고 면담에서 갭을 보여주는 용도.
+  self_scores: Record<string, number>
+  self_submitted_at: string | null
+  next_goals: string | null
+  midterm_good: string | null
+  midterm_improve: string | null
+  midterm_at: string | null
+  demotion_reason: string | null
+  total_score: number | null
+  grade: 'S' | 'A' | 'B' | 'C' | 'D' | null
+  finalized_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+// 매장 지문인식 근태를 월말에 옮겨 담는 표. 분기 3개월치를 합산해
+// 근무평가의 근태 문항을 자동 채점한다.
+export type EmployeeAttendance = {
+  id: string
+  employee_id: string
+  store_id: string | null
+  month: string
+  late_count: number
+  absent_count: number
+  unauthorized_count: number
+  note: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type DamageCategory = '기물' | '비품' | '시설' | '식자재' | '기타'
+export type DamageStatus = '확인중' | '처리완료' | '경고' | '변상'
+
+// 자산 분실·파손 기록. 한 달 3건 이상이면 근무평가 등급이 한 단계 내려간다.
+export type DamageRecord = {
+  id: string
+  store_id: string
+  employee_id: string | null
+  occurred_on: string
+  category: DamageCategory
+  item_name: string
+  quantity: number
+  reason: string | null
+  status: DamageStatus
+  action_note: string | null
+  amount: number | null
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+// 점장 분기 평가 — 직원 평가와 배점 구조가 달라 표를 따로 쓴다.
+export type ManagerReview = {
+  id: string
+  employee_id: string
+  store_id: string | null
+  period: string
+  scores: Record<string, number>
+  auto_snapshot: Record<string, unknown>
+  comment: string | null
+  gate_exempt: boolean
+  gate_applied: boolean
+  quarter_profit: number | null
+  total_score: number | null
+  grade: 'S' | 'A' | 'B' | 'C' | 'D' | null
+  finalized_at: string | null
+  finalized_by: string | null
   created_at: string
   updated_at: string
 }
@@ -417,6 +529,8 @@ export type InventoryCount = {
   store_id: string
   date: string
   quantity: number
+  // 주방 품목만 채워짐(홀 소모품은 계속 null) — 생산량 예측용.
+  produced_quantity: number | null
   created_by: string
   updated_by: string | null
   created_at: string
@@ -600,6 +714,49 @@ export type Database = {
           created_by: string
         }
         Update: Partial<Employee>
+        Relationships: []
+      }
+      employee_records: {
+        Row: EmployeeRecord
+        Insert: Partial<EmployeeRecord> & {
+          employee_id: string
+          kind: EmployeeRecordKind
+          body: string
+          created_by: string
+        }
+        Update: Partial<EmployeeRecord>
+        Relationships: []
+      }
+      performance_reviews: {
+        Row: PerformanceReview
+        Insert: Partial<PerformanceReview> & {
+          employee_id: string
+          period: string
+          rubric_key: string
+        }
+        Update: Partial<PerformanceReview>
+        Relationships: []
+      }
+      employee_attendance: {
+        Row: EmployeeAttendance
+        Insert: Partial<EmployeeAttendance> & { employee_id: string; month: string }
+        Update: Partial<EmployeeAttendance>
+        Relationships: []
+      }
+      damage_records: {
+        Row: DamageRecord
+        Insert: Partial<DamageRecord> & {
+          store_id: string
+          item_name: string
+          created_by: string
+        }
+        Update: Partial<DamageRecord>
+        Relationships: []
+      }
+      manager_reviews: {
+        Row: ManagerReview
+        Insert: Partial<ManagerReview> & { employee_id: string; period: string }
+        Update: Partial<ManagerReview>
         Relationships: []
       }
       inventory_items: {
