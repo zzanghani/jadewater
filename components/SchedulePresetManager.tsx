@@ -108,7 +108,7 @@ export default function SchedulePresetManager({
   const [adding, setAdding] = useState(false);
 
   function handleDelete(preset: ScheduleShiftPreset) {
-    if (!window.confirm(`"${preset.name}" 프리셋을 삭제할까요?`)) return;
+    if (!window.confirm(`"${preset.name}" 빠른입력을 삭제할까요?`)) return;
     const formData = new FormData();
     formData.set("id", preset.id);
     deletePreset(formData).then(() => router.refresh());
@@ -129,7 +129,7 @@ export default function SchedulePresetManager({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">빠른입력 프리셋 관리</h2>
+          <h2 className="text-sm font-semibold text-foreground">빠른입력 관리</h2>
           <button type="button" onClick={onClose} aria-label="닫기" className="text-muted">
             ✕
           </button>
@@ -137,7 +137,7 @@ export default function SchedulePresetManager({
 
         <div className="flex flex-col gap-2">
           {presets.length === 0 && !adding && (
-            <p className="text-sm text-muted">등록된 프리셋이 없습니다.</p>
+            <p className="text-sm text-muted">등록된 빠른입력이 없습니다.</p>
           )}
           {presets.map((p) =>
             editingId === p.id ? (
@@ -187,7 +187,7 @@ export default function SchedulePresetManager({
               onClick={() => setAdding(true)}
               className="rounded-xl border border-dashed border-border py-2.5 text-sm font-semibold text-muted transition-colors hover:border-brand hover:text-brand"
             >
-              + 새 프리셋 추가
+              + 새 빠른입력 추가
             </button>
           )}
         </div>
