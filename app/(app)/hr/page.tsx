@@ -105,11 +105,17 @@ export default async function HrPage() {
       .order("occurred_on", { ascending: false }),
   ]);
 
-  // 점장 평가는 배점 구조가 달라 별도 표를 쓴다.
-  const { data: managerReviews } = await supabase
-    .from("manager_reviews")
-    .select("*")
-    .eq("period", quarter.period);
+  // 점장 평가는 배점 구조가 달라 별도 표를 쓰고,
+  // 대표·운영팀·R&D팀장만 채점한다(RLS도 같은 기준).
+  const isHrTeam =
+    !myProfile?.store_id &&
+    (myProfile?.department === null ||
+      myProfile?.department === "rnd" ||
+      myProfile?.department === "ops");
+
+  const { data: managerReviews } = isHrTeam
+    ? await supabase.from("manager_reviews").select("*").eq("period", quarter.period)
+    : { data: [] as ManagerReview[] };
 
   const clientStores = stores.map((s) => ({
     id: s.id,
@@ -130,6 +136,7 @@ export default async function HrPage() {
       reviews={(reviews ?? []) as PerformanceReview[]}
       attendance={(attendance ?? []) as EmployeeAttendance[]}
       damages={(damages ?? []) as DamageRecord[]}
+      isHrTeam={!!isHrTeam}
       managerReviews={(managerReviews ?? []) as ManagerReview[]}
       unlinkedAccounts={unlinkedAccounts}
       myUserId={user?.id ?? null}
