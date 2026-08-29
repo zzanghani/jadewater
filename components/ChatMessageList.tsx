@@ -53,11 +53,19 @@ export default function ChatMessageList({
       if (!el) return;
       const top = el.getBoundingClientRect().top;
       const RESERVED_BELOW_PX = 185; // 입력창(~96px) + 하단 메뉴(~80px) + 여유분
-      setBoxHeight(Math.max(160, window.innerHeight - top - RESERVED_BELOW_PX));
+      // 안드로이드 크롬은 주소창이 접혔다 펴지거나 키보드가 뜰 때
+      // window.innerHeight가 곧바로 안 갱신되는 경우가 있어서, 갱신이
+      // 더 정확한 visualViewport 값이 있으면 그걸 우선 쓴다.
+      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+      setBoxHeight(Math.max(160, viewportHeight - top - RESERVED_BELOW_PX));
     }
     recalc();
     window.addEventListener("resize", recalc);
-    return () => window.removeEventListener("resize", recalc);
+    window.visualViewport?.addEventListener("resize", recalc);
+    return () => {
+      window.removeEventListener("resize", recalc);
+      window.visualViewport?.removeEventListener("resize", recalc);
+    };
   }, []);
 
   // 새 메시지가 오면(내가 보낸 것 포함) 실시간 구독으로만 목록에
@@ -129,8 +137,8 @@ export default function ChatMessageList({
       <ul
         ref={scrollRef}
         data-no-pull-refresh
-        style={{ height: boxHeight ?? undefined }}
-        className="flex flex-col justify-end overflow-y-auto"
+        style={{ height: boxHeight ?? undefined, overscrollBehavior: "contain" }}
+        className="scroll-visible flex flex-col justify-end overflow-y-auto"
       >
         <li className="text-sm text-muted">아직 메시지가 없습니다. 먼저 보내보세요.</li>
       </ul>
@@ -141,8 +149,8 @@ export default function ChatMessageList({
     <ul
       ref={scrollRef}
       data-no-pull-refresh
-      style={{ height: boxHeight ?? undefined }}
-      className="flex flex-col justify-end gap-2 overflow-y-auto pb-1"
+      style={{ height: boxHeight ?? undefined, overscrollBehavior: "contain" }}
+      className="scroll-visible flex flex-col justify-end gap-2 overflow-y-auto pb-1"
     >
       {messages.map((m) => {
         const mine = m.sender_id === currentUserId;

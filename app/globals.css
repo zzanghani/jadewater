@@ -101,3 +101,25 @@ select,
 textarea {
   font-size: 16px; /* iOS 확대 방지 */
 }
+
+/* 채팅방처럼 내부 스크롤 박스를 쓰는 화면 — 안드로이드 크롬은 터치
+   스크롤 컨테이너의 스크롤바를 기본적으로 완전히 숨겨서, 이 박스 안에
+   더 볼 내용(지난 채팅)이 있다는 걸 시각적으로 알아채기 어렵다. 스크롤
+   중이 아니어도 얇은 막대가 항상 보이게 강제한다. */
+.scroll-visible {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.scroll-visible::-webkit-scrollbar {
+  width: 5px;
+}
+
+.scroll-visible::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-visible::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 9999px;
+}
