@@ -106,27 +106,29 @@ export default function InventoryCountForm({
                 key={item.id}
                 className="flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3"
               >
-                <span className="truncate text-sm font-semibold text-foreground">
-                  {item.name}
-                  {item.unit ? ` (${item.unit})` : ""}
-                </span>
-                {isKitchen && (
-                  <div className="flex items-center gap-2">
-                    <span className="w-14 shrink-0 text-xs font-semibold text-muted">생산량</span>
-                    <input
-                      type="number"
-                      name={`produced_${item.id}`}
-                      step="any"
-                      min="0"
-                      value={productions[item.id] ?? ""}
-                      onChange={(e) =>
-                        setProductions((p) => ({ ...p, [item.id]: e.target.value }))
-                      }
-                      placeholder="0"
-                      className="w-24 shrink-0 rounded-lg border border-border bg-background px-3 py-2 text-center text-sm font-semibold outline-none ring-brand/30 focus:ring-2"
-                    />
-                  </div>
-                )}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-sm font-semibold text-foreground">
+                    {item.name}
+                    {item.unit ? ` (${item.unit})` : ""}
+                  </span>
+                  {isKitchen && (
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="shrink-0 text-xs font-semibold text-muted">금일생산량</span>
+                      <input
+                        type="number"
+                        name={`produced_${item.id}`}
+                        step="any"
+                        min="0"
+                        value={productions[item.id] ?? ""}
+                        onChange={(e) =>
+                          setProductions((p) => ({ ...p, [item.id]: e.target.value }))
+                        }
+                        placeholder="0"
+                        className="w-20 shrink-0 rounded-lg border border-border bg-background px-2 py-1.5 text-center text-sm font-semibold outline-none ring-brand/30 focus:ring-2"
+                      />
+                    </div>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   <div className="flex flex-1 flex-col items-center gap-0.5 rounded-lg bg-background px-2 py-1.5">
                     <span className="text-[9px] font-semibold text-muted">전일재고</span>
