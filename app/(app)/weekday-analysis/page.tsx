@@ -6,6 +6,8 @@ import { storeColor } from "@/lib/storeColors";
 
 // 요일별 분석 — "쉬는 날 없이 도는데 어느 요일이 인건비만 태우고 있나"를
 // 보려고 만든 화면. 최근 12주 마감 데이터를 요일별로 평균 내서 비교한다.
+// 마스터 계정이 매장을 바꿔가며 보는 건 헤더의 공용 매장 선택 드롭다운
+// (StoreSwitcher)으로 처리한다 — 월말정산·실시간 코스트와 같은 방식.
 const WEEKS = 12;
 const DAYS = WEEKS * 7;
 
