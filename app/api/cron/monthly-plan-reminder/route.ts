@@ -21,7 +21,14 @@ export async function GET(request: Request) {
       .select("id, title, end_date")
       .eq("end_date", targetDate)
       .eq("plan_type", "task"),
-    supabase.from("profiles").select("id").is("store_id", null),
+    // store_id가 비어있는 계정 = 본사 팀 계정 + 마스터. 매장을 아직 안 고른
+    // 직원 계정도 store_id가 똑같이 비어있어서 department/role로 더 걸러낸다.
+    supabase
+      .from("profiles")
+      .select("id")
+      .is("store_id", null)
+      .eq("status", "approved")
+      .or("department.not.is.null,role.eq.owner"),
   ]);
 
   if (plansError) {

@@ -125,7 +125,16 @@ let hqProfiles: { id: string; name: string; department: import("@/lib/types").De
 if (isHq) {
   const [{ data: plans }, { data: hqProfileRows }] = await Promise.all([
     supabase.from("monthly_plans").select("*").order("start_date", { ascending: true }),
-    supabase.from("profiles").select("id, name, department").is("store_id", null),
+    // store_id가 비어있는 계정 = 본사 팀 계정(department 있음) + 마스터(role=owner).
+    // 가입 후 아직 매장을 선택하지 않은 직원(role=staff, department도 없음) 계정도
+    // store_id가 똑같이 비어있어서, 이 조건을 안 걸면 그 직원들까지 캘린더
+    // 담당자 목록에 섞여 들어간다.
+    supabase
+      .from("profiles")
+      .select("id, name, department")
+      .is("store_id", null)
+      .eq("status", "approved")
+      .or("department.not.is.null,role.eq.owner"),
   ]);
   monthlyPlans = plans ?? [];
   hqProfiles = (hqProfileRows ?? []).sort((a, b) =>

@@ -243,10 +243,14 @@ async function notifyMentionedUsers(
 ) {
   if (!commentBody) return;
 
+  // store_id가 비어있는 계정 = 본사 팀 계정 + 마스터. 매장을 아직 안 고른
+  // 직원 계정도 store_id가 똑같이 비어있어서 department/role로 더 걸러낸다.
   const { data: hqProfiles } = await supabase
     .from("profiles")
     .select("id, name")
-    .is("store_id", null);
+    .is("store_id", null)
+    .eq("status", "approved")
+    .or("department.not.is.null,role.eq.owner");
   if (!hqProfiles?.length) return;
 
   const { data: commenterProfile } = await supabase

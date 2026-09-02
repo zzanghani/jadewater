@@ -7,6 +7,7 @@ const ALL_ITEMS = [
   { href: "/expense", label: "현장지출", icon: ReceiptIcon },
   { href: "/analysis", label: "주간 분석", icon: TrendIcon },
   { href: "/monthly-analysis", label: "월간 분석", icon: CalendarIcon },
+  { href: "/weekday-analysis", label: "요일별 분석", icon: WeekdayIcon },
   { href: "/cost", label: "실시간 코스트", icon: GaugeIcon },
 ] as const;
 
@@ -143,6 +144,16 @@ function ReceiptIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z" />
       <path d="M9 8h6M9 12h6" />
+    </svg>
+  );
+}
+
+function WeekdayIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+      <rect x="3" y="4" width="18" height="17" rx="2" />
+      <path d="M3 9h18M8 2v4M16 2v4" />
+      <path d="M8 14v3M12 12v5M16 15v2" />
     </svg>
   );
 }

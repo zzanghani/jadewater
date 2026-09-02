@@ -37,6 +37,7 @@ const EMPLOYEE_ALLOWED_PREFIXES = [
   "/expense",
   "/analysis",
   "/monthly-analysis",
+  "/weekday-analysis",
   "/cost",
   "/review-report",
   "/messages",
