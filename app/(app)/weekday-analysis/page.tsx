@@ -6,6 +6,8 @@ import { storeColor } from "@/lib/storeColors";
 
 // 요일별 분석 — "쉬는 날 없이 도는데 어느 요일이 인건비만 태우고 있나"를
 // 보려고 만든 화면. 최근 12주 마감 데이터를 요일별로 평균 내서 비교한다.
+// 마스터 계정이 매장을 바꿔가며 보는 건 헤더의 공용 매장 선택 드롭다운
+// (StoreSwitcher)으로 처리한다 — 월말정산·실시간 코스트와 같은 방식.
 const WEEKS = 12;
 const DAYS = WEEKS * 7;
 
@@ -42,42 +44,26 @@ function avg(total: number, days: number): number {
   return days === 0 ? 0 : total / days;
 }
 
-type WeekdayRow = {
-  date: string;
-  grand_total: number;
-  lunch_guests: number | null;
-  dinner_guests: number | null;
-  lunch_teams: number | null;
-  dinner_teams: number | null;
-  visit_teams: number | null;
-};
+export default async function WeekdayAnalysisPage() {
+  const supabase = await createClient();
+  const { storeId, storeName } = await getStoreContext(supabase);
+  const hanam = isHanamStore(storeName);
 
-type WeekdayRowView = {
-  label: string;
-  days: number;
-  dailySales: number;
-  dailyGuests: number;
-  dailyLunchGuests: number;
-  dailyDinnerGuests: number;
-  dailyTeams: number;
-  perGuest: number;
-};
+  const start = kstDateString(DAYS);
+  const end = kstDateString(0);
 
-type WeekdayStats = {
-  openDays: number;
-  rowsView: WeekdayRowView[];
-  maxSales: number;
-  weakest: WeekdayRowView;
-  strongest: WeekdayRowView;
-  avgDaily: number;
-  gapPct: number;
-  lossIfClosed: number;
-};
+  const { data: rows } = await supabase
+    .from("daily_closings")
+    .select(
+      "date, grand_total, lunch_guests, dinner_guests, lunch_teams, dinner_teams, visit_teams"
+    )
+    .eq("store_id", storeId)
+    .gte("date", start)
+    .lte("date", end);
 
-function computeWeekdayStats(rows: WeekdayRow[], hanam: boolean): WeekdayStats | null {
   const buckets: Bucket[] = WEEKDAY_LABELS.map(() => emptyBucket());
 
-  for (const r of rows) {
+  for (const r of rows ?? []) {
     // 마감은 입력됐지만 매출이 0인 날(휴무일 등)은 평균을 왜곡시키므로 뺀다.
     if (!r.grand_total) continue;
     const b = buckets[mondayIndex(r.date)];
@@ -91,9 +77,19 @@ function computeWeekdayStats(rows: WeekdayRow[], hanam: boolean): WeekdayStats |
   }
 
   const openDays = buckets.reduce((a, b) => a + b.days, 0);
-  if (openDays === 0) return null;
 
-  const rowsView: WeekdayRowView[] = WEEKDAY_LABELS.map((label, i) => {
+  if (openDays === 0) {
+    return (
+      <div className="flex flex-col gap-4">
+        <h1 className="text-lg font-bold">요일별 분석</h1>
+        <p className="rounded-2xl border border-border bg-card p-4 text-sm text-muted">
+          최근 {WEEKS}주 안에 {storeName}의 마감 데이터가 없습니다.
+        </p>
+      </div>
+    );
+  }
+
+  const rowsView = WEEKDAY_LABELS.map((label, i) => {
     const b = buckets[i];
     const dailySales = avg(b.sales, b.days);
     const guests = b.lunchGuests + b.dinnerGuests;
@@ -128,43 +124,21 @@ function computeWeekdayStats(rows: WeekdayRow[], hanam: boolean): WeekdayStats |
   const weakestMonthly = weakest.dailySales * (weakest.days / WEEKS) * (30 / 7);
   const lossIfClosed = weakestMonthly * 0.5;
 
-  return { openDays, rowsView, maxSales, weakest, strongest, avgDaily, gapPct, lossIfClosed };
-}
-
-function WeekdayStoreSection({
-  storeName,
-  hanam,
-  stats,
-}: {
-  storeName: string;
-  hanam: boolean;
-  stats: WeekdayStats | null;
-}) {
   const color = storeColor(storeName);
 
-  if (!stats) {
-    return (
-      <div className="flex flex-col gap-1">
-        <h2 className="text-base font-bold">{storeName}</h2>
-        <p className="rounded-2xl border border-border bg-card p-4 text-sm text-muted">
-          최근 {WEEKS}주 안에 마감 데이터가 없습니다.
-        </p>
-      </div>
-    );
-  }
-
-  const { openDays, rowsView, maxSales, weakest, strongest, avgDaily, gapPct, lossIfClosed } = stats;
-
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h2 className="text-base font-bold">{storeName}</h2>
+        <h1 className="text-lg font-bold">요일별 분석</h1>
         <p className="text-xs text-muted">
-          최근 {WEEKS}주 · 영업 {openDays}일 기준 (매출 0원인 날 제외)
+          {storeName} · 최근 {WEEKS}주 · 영업 {openDays}일 기준 (매출 0원인 날 제외)
         </p>
       </div>
 
-      <div style={{ backgroundColor: color }} className="rounded-2xl p-4 text-white shadow-lg">
+      <div
+        style={{ backgroundColor: color }}
+        className="rounded-2xl p-4 text-white shadow-lg"
+      >
         <p className="text-xs text-white/85">일평균 매출</p>
         <p className="mt-1 text-2xl font-bold">{formatWon(Math.round(avgDaily))}</p>
         <div className="mt-3 flex items-center justify-between border-t border-white/25 pt-2 text-[11px] text-white/90">
@@ -178,7 +152,9 @@ function WeekdayStoreSection({
       </div>
 
       <section className="rounded-2xl border border-border bg-card p-4">
-        <h3 className="mb-3 text-sm font-semibold text-foreground">요일별 일평균 매출</h3>
+        <h2 className="mb-3 text-sm font-semibold text-foreground">
+          요일별 일평균 매출
+        </h2>
         <div className="flex flex-col gap-2">
           {rowsView.map((r) => {
             const pct = maxSales === 0 ? 0 : (r.dailySales / maxSales) * 100;
@@ -211,7 +187,9 @@ function WeekdayStoreSection({
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-4">
-        <h3 className="mb-3 text-sm font-semibold text-foreground">요일별 상세</h3>
+        <h2 className="mb-3 text-sm font-semibold text-foreground">
+          요일별 상세
+        </h2>
         <div className="-mx-4 overflow-x-auto px-4">
           <table className="w-full min-w-[430px] text-xs tabular-nums">
             <thead>
@@ -246,11 +224,17 @@ function WeekdayStoreSection({
                       {r.days === 0 ? "-" : formatWon(Math.round(r.dailySales))}
                     </td>
                     {hanam ? (
-                      <td className="py-2 text-right">{r.dailyTeams.toFixed(1)}</td>
+                      <td className="py-2 text-right">
+                        {r.dailyTeams.toFixed(1)}
+                      </td>
                     ) : (
                       <>
-                        <td className="py-2 text-right">{r.dailyLunchGuests.toFixed(1)}</td>
-                        <td className="py-2 text-right">{r.dailyDinnerGuests.toFixed(1)}</td>
+                        <td className="py-2 text-right">
+                          {r.dailyLunchGuests.toFixed(1)}
+                        </td>
+                        <td className="py-2 text-right">
+                          {r.dailyDinnerGuests.toFixed(1)}
+                        </td>
                       </>
                     )}
                     <td className="py-2 text-right">
@@ -265,113 +249,36 @@ function WeekdayStoreSection({
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-4">
-        <h3 className="mb-2 text-sm font-semibold text-foreground">휴무일 검토</h3>
+        <h2 className="mb-2 text-sm font-semibold text-foreground">
+          휴무일 검토
+        </h2>
         <div className="flex flex-col gap-2 text-xs leading-relaxed text-muted">
           <p>
             가장 약한 요일은{" "}
-            <span className="font-semibold text-foreground">{weakest.label}요일</span>로, 일평균{" "}
-            {formatWon(Math.round(weakest.dailySales))}입니다. 가장 센 {strongest.label}요일보다{" "}
-            <span className="font-semibold text-foreground">{gapPct.toFixed(0)}% 낮습니다.</span>
+            <span className="font-semibold text-foreground">
+              {weakest.label}요일
+            </span>
+            로, 일평균 {formatWon(Math.round(weakest.dailySales))}입니다. 가장 센{" "}
+            {strongest.label}요일보다{" "}
+            <span className="font-semibold text-foreground">
+              {gapPct.toFixed(0)}% 낮습니다.
+            </span>
           </p>
           <p>
-            {weakest.label}요일을 정기휴무로 돌릴 경우, 그날 손님의 절반이 다른 요일로 옮겨온다고
-            보수적으로 잡으면 월 매출 영향은 약{" "}
+            {weakest.label}요일을 정기휴무로 돌릴 경우, 그날 손님의 절반이 다른
+            요일로 옮겨온다고 보수적으로 잡으면 월 매출 영향은 약{" "}
             <span className="font-semibold text-foreground">
               {formatWon(Math.round(lossIfClosed))}
             </span>{" "}
-            감소입니다. 이 금액보다 하루치 인건비 절감액이 크면 휴무 전환이 유리하고, 작으면
-            지금처럼 여는 게 맞습니다.
+            감소입니다. 이 금액보다 하루치 인건비 절감액이 크면 휴무 전환이
+            유리하고, 작으면 지금처럼 여는 게 맞습니다.
           </p>
           <p className="text-[11px]">
-            요일 간 차이가 20% 미만이면 특정 요일이 문제인 게 아니라 전 요일에 걸쳐 손님이
-            부족한 것이므로, 휴무일 조정보다 유입 개선이 먼저입니다.
+            요일 간 차이가 20% 미만이면 특정 요일이 문제인 게 아니라 전 요일에
+            걸쳐 손님이 부족한 것이므로, 휴무일 조정보다 유입 개선이 먼저입니다.
           </p>
         </div>
       </section>
-    </div>
-  );
-}
-
-export default async function WeekdayAnalysisPage() {
-  const supabase = await createClient();
-  const { storeId, storeName, stores } = await getStoreContext(supabase);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: profile } = user
-    ? await supabase.from("profiles").select("department").eq("id", user.id).single()
-    : { data: null };
-  // 팀 계정은 애초에 이 라우트에 못 들어오니(레이아웃 가드) 여기선 store_id
-  // 없는 계정 = 마스터로만 취급하면 된다.
-  const isMaster = stores.length > 1 && !profile?.department;
-
-  const start = kstDateString(DAYS);
-  const end = kstDateString(0);
-
-  if (isMaster) {
-    const { data: rows } = await supabase
-      .from("daily_closings")
-      .select(
-        "store_id, date, grand_total, lunch_guests, dinner_guests, lunch_teams, dinner_teams, visit_teams"
-      )
-      .gte("date", start)
-      .lte("date", end);
-
-    const rowsByStore = new Map<string, WeekdayRow[]>();
-    for (const r of rows ?? []) {
-      const list = rowsByStore.get(r.store_id) ?? [];
-      list.push(r);
-      rowsByStore.set(r.store_id, list);
-    }
-
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-lg font-bold">요일별 분석</h1>
-          <p className="text-xs text-muted">전체 매장 · 최근 {WEEKS}주 (매출 0원인 날 제외)</p>
-        </div>
-
-        {stores.map((s, i) => (
-          <div key={s.id} className={i > 0 ? "border-t border-border pt-6" : ""}>
-            <WeekdayStoreSection
-              storeName={s.name}
-              hanam={isHanamStore(s.name)}
-              stats={computeWeekdayStats(rowsByStore.get(s.id) ?? [], isHanamStore(s.name))}
-            />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  const hanam = isHanamStore(storeName);
-
-  const { data: rows } = await supabase
-    .from("daily_closings")
-    .select(
-      "date, grand_total, lunch_guests, dinner_guests, lunch_teams, dinner_teams, visit_teams"
-    )
-    .eq("store_id", storeId)
-    .gte("date", start)
-    .lte("date", end);
-
-  const stats = computeWeekdayStats(rows ?? [], hanam);
-
-  if (!stats) {
-    return (
-      <div className="flex flex-col gap-4">
-        <h1 className="text-lg font-bold">요일별 분석</h1>
-        <p className="rounded-2xl border border-border bg-card p-4 text-sm text-muted">
-          최근 {WEEKS}주 안에 {storeName}의 마감 데이터가 없습니다.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-lg font-bold">요일별 분석</h1>
-      <WeekdayStoreSection storeName={storeName} hanam={hanam} stats={stats} />
     </div>
   );
 }

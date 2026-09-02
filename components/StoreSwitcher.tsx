@@ -17,14 +17,15 @@ export default function StoreSwitcher({
 
   if (stores.length === 0) return null;
 
-  // 마스터 계정(매장이 여러 개 보이는 계정)은 월말정산·실시간 코스트 화면에서만
-  // 매장 선택이 필요하다. R&D팀 계정은 재고관리 화면에서 매장을 골라야 해서
-  // 같은 방식으로 열어준다.
+  // 마스터 계정(매장이 여러 개 보이는 계정)은 월말정산·실시간 코스트·요일별
+  // 분석 화면에서만 매장 선택이 필요하다. R&D팀 계정은 재고관리 화면에서
+  // 매장을 골라야 해서 같은 방식으로 열어준다.
   const showsStoreSwitcher =
     pathname.startsWith("/settlement") ||
     pathname.startsWith("/inventory") ||
     pathname.startsWith("/cost") ||
-    pathname.startsWith("/payment");
+    pathname.startsWith("/payment") ||
+    pathname.startsWith("/weekday-analysis");
   if (stores.length > 1 && !showsStoreSwitcher) {
     return null;
   }
