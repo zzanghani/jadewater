@@ -113,10 +113,18 @@ export default async function AppLayout({
     const pathname = (await headers()).get("x-pathname") ?? "";
     const isHrTeam = profile?.department === "rnd" || profile?.department === "ops";
     const isRnd = profile?.department === "rnd";
+    // R&D팀은 재고관리 입력에 더해, 스케줄러·실시간 코스트·요일별 분석을
+    // "보기 전용"으로 본다(실제 조회 제한은 RLS의 user_can_view_store_ops).
+    const isRndViewOnly =
+      isRnd &&
+      (pathname.startsWith("/schedule") ||
+        pathname.startsWith("/cost") ||
+        pathname.startsWith("/weekday-analysis"));
     const allowed =
       TEAM_ALLOWED_PREFIXES.some((p) => (p === "/" ? pathname === "/" : pathname.startsWith(p))) ||
       (isHrTeam && pathname.startsWith("/hr")) ||
-      (isRnd && pathname.startsWith("/inventory"));
+      (isRnd && pathname.startsWith("/inventory")) ||
+      isRndViewOnly;
     if (!allowed) {
       redirect("/");
     }

@@ -11,7 +11,9 @@ const ALL_ITEMS = [
   { href: "/cost", label: "실시간 코스트", icon: GaugeIcon },
 ] as const;
 
-const MASTER_EXCLUDED_HREFS: string[] = ["/closing", "/schedule", "/receipts", "/expense"];
+// 마스터는 마감입력·입고입력·현장지출처럼 매일 직접 입력하는 화면은 굳이
+// 빠른메뉴에 안 두지만, 스케줄러는 전 매장을 훑어보는 용도라 남겨둔다.
+const MASTER_EXCLUDED_HREFS: string[] = ["/closing", "/receipts", "/expense"];
 
 const TEAM_ITEMS = [
   { href: "/board", label: "게시판", icon: BoardIcon },
@@ -24,6 +26,13 @@ const HR_ITEM = { href: "/hr", label: "HR", icon: HrIcon } as const;
 const ACCOUNTS_ITEM = { href: "/accounts", label: "가입승인", icon: HrIcon } as const;
 const INVENTORY_ITEM = { href: "/inventory", label: "재고관리", icon: BoxIcon } as const;
 const MESSAGES_ITEM = { href: "/messages", label: "메시지", icon: MessageIcon } as const;
+// R&D팀 전용 보기 전용 항목(스케줄러·실시간 코스트·요일별 분석) — 입력 권한은
+// 없고 전 매장을 매장 선택 드롭다운으로 바꿔가며 조회만 한다.
+const RND_VIEW_ITEMS = [
+  { href: "/schedule", label: "스케줄러", icon: ScheduleIcon },
+  { href: "/cost", label: "실시간 코스트", icon: GaugeIcon },
+  { href: "/weekday-analysis", label: "요일별 분석", icon: WeekdayIcon },
+] as const;
 // 지점장(매장) 계정은 리뷰리포트가 하단 메뉴 대신 여기로 옮겨왔다.
 const REVIEW_REPORT_ITEM = { href: "/review-report", label: "리뷰리포트", icon: StarIcon } as const;
 
@@ -46,6 +55,7 @@ export default function QuickMenu({
   employeeOnly = false,
   showHr = false,
   showInventory = false,
+  showStoreOpsView = false,
   hasUnreadMessages = false,
   pendingAccountCount = 0,
 }: {
@@ -54,6 +64,7 @@ export default function QuickMenu({
   employeeOnly?: boolean;
   showHr?: boolean;
   showInventory?: boolean;
+  showStoreOpsView?: boolean;
   hasUnreadMessages?: boolean;
   pendingAccountCount?: number;
 }) {
@@ -64,6 +75,7 @@ export default function QuickMenu({
         ...TEAM_ITEMS,
         ...(showHr ? [HR_ITEM] : []),
         ...(showInventory ? [INVENTORY_ITEM] : []),
+        ...(showStoreOpsView ? RND_VIEW_ITEMS : []),
         MESSAGES_ITEM,
       ]
     : employeeOnly
