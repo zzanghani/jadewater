@@ -60,18 +60,18 @@ export async function fetchNaverBlogPosts(
   }));
 }
 
-// 지점별 지역 키워드. 글 안에 어느 키워드가 가장 많이 나오는지로 그 글이
-// 어느 지점 얘기인지 판별한다.
-const BRANCH_KEYWORDS: [string, string[]][] = [
-  ["옥수", ["옥수"]],
-  ["서울역", ["서울역"]],
-  ["성수", ["성수"]],
-  ["하남", ["하남", "스타필드"]],
-];
+// 브랜드 검색으로 가져온 글을 매장별로 나눈다.
+//
+// 예전에는 지점 키워드("옥수"/"서울역"/"성수"/"하남")를 이 파일에 하드코딩해
+// 두고 매장 이름으로 찾았다. 정다미 서울역점이 생기면서 "서울역"이 두 브랜드에
+// 겹쳐 제이드앤워터 서울역점 글이 정다미로 갈 수 있게 돼서, 키워드를
+// stores.blog_keywords 컬럼으로 옮기고 분류를 브랜드 안에서만 하도록 바꿨다.
+// (supabase/migration_brands.sql 참고)
 
-export function branchKeyForStoreName(storeName: string): string | null {
-  return BRANCH_KEYWORDS.find(([key]) => storeName.includes(key))?.[0] ?? null;
-}
+export type BlogStore = {
+  id: string;
+  blog_keywords: string[];
+};
 
 function countOccurrences(text: string, keywords: string[]): number {
   return keywords.reduce((sum, k) => {
@@ -80,29 +80,40 @@ function countOccurrences(text: string, keywords: string[]): number {
   }, 0);
 }
 
-// "제이드앤워터"로 넓게 검색해 가져온 글들을, 어느 지점 얘기가 가장 많이
-// 나오는지로 지점별로 분류한다. 브랜드명이 없거나 지점을 특정할 수 없으면
-// (아무도 안 나오거나 여러 지점이 동점이면) 버린다.
-export function classifyPostsByBranch(
-  posts: NaverBlogPost[]
+// matchToken은 그 브랜드 글인지 걸러내는 짧은 토큰이다("제이드" / "정다미").
+// 브랜드에 매장이 하나뿐이면 나눌 것이 없으니 걸러진 글을 전부 그 매장에 준다.
+// 매장이 여럿이면 지역 키워드가 가장 많이 나온 매장에 주고, 아무도 안 나오거나
+// 동점이면(어느 지점인지 애매하면) 버린다.
+export function classifyPostsByStore(
+  posts: NaverBlogPost[],
+  matchToken: string | null,
+  stores: BlogStore[]
 ): Record<string, NaverBlogPost[]> {
   const result: Record<string, NaverBlogPost[]> = {};
-  for (const [branch] of BRANCH_KEYWORDS) {
-    result[branch] = [];
+  for (const store of stores) {
+    result[store.id] = [];
+  }
+  if (stores.length === 0) return result;
+
+  const matched = matchToken
+    ? posts.filter((p) => `${p.title} ${p.body}`.includes(matchToken))
+    : posts;
+
+  if (stores.length === 1) {
+    result[stores[0].id] = matched;
+    return result;
   }
 
-  for (const post of posts) {
+  for (const post of matched) {
     const text = `${post.title} ${post.body}`;
-    if (!text.includes("제이드")) continue;
-
-    const counts = BRANCH_KEYWORDS.map(
-      ([branch, keywords]) => [branch, countOccurrences(text, keywords)] as const
+    const counts = stores.map(
+      (store) => [store.id, countOccurrences(text, store.blog_keywords)] as const
     );
     const maxCount = Math.max(...counts.map(([, c]) => c));
     if (maxCount === 0) continue;
 
     const winners = counts.filter(([, c]) => c === maxCount);
-    if (winners.length !== 1) continue; // 동점(어느 지점인지 애매)이면 버린다
+    if (winners.length !== 1) continue;
 
     result[winners[0][0]].push(post);
   }

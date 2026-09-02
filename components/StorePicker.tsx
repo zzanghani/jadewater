@@ -30,7 +30,7 @@ export default function StorePicker({ stores }: { stores: Store[] }) {
         <input type="hidden" name="store_id" value={selectedId ?? ""} />
 
         {stores.map((s) => {
-          const color = storeColor(s.name);
+          const color = storeColor(s);
           const isSelected = selectedId === s.id;
           return (
             <button

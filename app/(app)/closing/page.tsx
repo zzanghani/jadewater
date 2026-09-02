@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatWon } from "@/lib/format";
 import { kstDateLabel, kstDateString } from "@/lib/date";
-import { getStoreContext, isHanamStore } from "@/lib/store";
+import { getStoreContext } from "@/lib/store";
 import ClosingForm from "@/components/ClosingForm";
 
 export default async function ClosingPage({
@@ -12,8 +12,8 @@ export default async function ClosingPage({
 }) {
   const { date: dateParam } = await searchParams;
   const supabase = await createClient();
-  const { storeId, storeName } = await getStoreContext(supabase);
-  const isHanam = isHanamStore(storeName);
+  const { storeId, store } = await getStoreContext(supabase);
+  const isHanam = !(store?.uses_service_split ?? true);
   const today = kstDateString(0);
   const isValidDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) && dateParam <= today;
   const targetDate = isValidDate ? dateParam : today;

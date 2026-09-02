@@ -96,16 +96,18 @@ export default async function AppLayout({
       .eq("recipient_id", user.id)
       .is("read_at", null),
   ]);
-  const { storeId, stores } = storeContext;
+  const { storeId, brand, stores, brands } = storeContext;
   const isTeamAccount = !!profile?.department;
   const isMaster = stores.length > 1 && !isTeamAccount;
   // 직원(staff) role로 매장이 배정된 계정 — 지점장(owner)보다 제한된
   // 화면만 이용한다. 지점장/마스터 계정은 role이 'owner'다.
   const isEmployee = !isTeamAccount && !isMaster && profile?.role === "staff";
-  // 베스트메이트컴퍼니(본사) 계정 — 마스터 + 팀 계정. 매장 지점장/직원은 그대로
-  // 제이드앤워터 톤을 본다. 실제 색상 값은 globals.css의 .theme-jadewater /
-  // .theme-bestmate 참고.
+  // 베스트메이트컴퍼니(본사) 계정 — 마스터 + 팀 계정. 매장 지점장/직원은
+  // 자기 매장이 속한 브랜드(제이드앤워터 / 정다미)의 로고와 톤을 본다.
+  // 톤 클래스와 로고 경로는 brands 테이블에서 오고, 실제 색상 값은
+  // globals.css의 .theme-jadewater / .theme-jeongdami / .theme-bestmate 참고.
   const isBestmateHq = isTeamAccount || isMaster;
+  const themeClass = isBestmateHq ? "theme-bestmate" : brand?.theme_class ?? "theme-jadewater";
 
   if (isTeamAccount) {
     const pathname = (await headers()).get("x-pathname") ?? "";
@@ -140,9 +142,7 @@ export default async function AppLayout({
 
   return (
     <div
-      className={`flex w-full flex-1 flex-col bg-background ${
-        isBestmateHq ? "theme-bestmate" : "theme-jadewater"
-      }`}
+      className={`flex w-full flex-1 flex-col bg-background ${themeClass}`}
     >
       <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="flex items-center justify-between px-4 py-3">
@@ -155,14 +155,20 @@ export default async function AppLayout({
                 height={472}
                 className="h-7 w-auto"
               />
-            ) : (
+            ) : brand?.logo_path ? (
               <Image
-                src="/logo.png"
-                alt="JADE & WATER"
+                src={brand.logo_path}
+                alt={brand.name}
                 width={1000}
                 height={244}
                 className="h-7 w-auto"
               />
+            ) : (
+              /* 로고 이미지가 아직 없는 브랜드는 이름을 글자로 보여준다.
+                 public/에 PNG를 넣고 brands.logo_path만 채우면 이미지로 바뀐다. */
+              <span className="text-lg font-bold tracking-tight text-brand-dark">
+                {brand?.name ?? "매장"}
+              </span>
             )}
           </Link>
           <div className="flex items-center gap-2">
@@ -176,7 +182,7 @@ export default async function AppLayout({
             <LogoutButton />
           </div>
         </div>
-        <StoreSwitcher stores={stores} current={storeId} />
+        <StoreSwitcher stores={stores} brands={brands} current={storeId} />
       </header>
 
       {/* 하단 내비는 iOS Safari의 sticky bottom 버그를 피하려고 fixed로

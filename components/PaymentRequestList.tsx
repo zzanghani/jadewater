@@ -11,6 +11,7 @@ import type { PaymentRequest } from "@/lib/types";
 
 type Row = PaymentRequest & {
   storeName?: string;
+  storeColor?: string;
   isTeamRequest?: boolean;
   teamDepartmentLabel?: string;
 };
@@ -94,7 +95,7 @@ export default function PaymentRequestList({
                   r.storeName && (
                     <p
                       className="mb-0.5 text-[11px] font-semibold"
-                      style={{ color: storeColorSoft(r.storeName) }}
+                      style={{ color: storeColorSoft({ name: r.storeName, color: r.storeColor }) }}
                     >
                       {r.storeName}
                     </p>
@@ -167,7 +168,7 @@ export default function PaymentRequestList({
               selected.storeName && (
                 <p
                   className="text-sm font-semibold"
-                  style={{ color: storeColorSoft(selected.storeName) }}
+                  style={{ color: storeColorSoft({ name: selected.storeName, color: selected.storeColor }) }}
                 >
                   {selected.storeName}
                 </p>

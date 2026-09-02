@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatWon } from "@/lib/format";
 import { kstDateString, kstWeekday } from "@/lib/date";
-import { getStoreContext, isHanamStore } from "@/lib/store";
+import { getStoreContext } from "@/lib/store";
 import { storeColor } from "@/lib/storeColors";
 
 // 요일별 분석 — "쉬는 날 없이 도는데 어느 요일이 인건비만 태우고 있나"를
@@ -46,8 +46,8 @@ function avg(total: number, days: number): number {
 
 export default async function WeekdayAnalysisPage() {
   const supabase = await createClient();
-  const { storeId, storeName } = await getStoreContext(supabase);
-  const hanam = isHanamStore(storeName);
+  const { storeId, storeName, store } = await getStoreContext(supabase);
+  const hanam = !(store?.uses_service_split ?? true);
 
   const start = kstDateString(DAYS);
   const end = kstDateString(0);
@@ -124,7 +124,7 @@ export default async function WeekdayAnalysisPage() {
   const weakestMonthly = weakest.dailySales * (weakest.days / WEEKS) * (30 / 7);
   const lossIfClosed = weakestMonthly * 0.5;
 
-  const color = storeColor(storeName);
+  const color = storeColor(store);
 
   return (
     <div className="flex flex-col gap-6">

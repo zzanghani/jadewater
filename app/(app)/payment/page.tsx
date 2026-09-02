@@ -157,10 +157,11 @@ async function ConfirmTab({
 
   const { data: history } = await query.limit(50);
 
-  const storeNameById = new Map(stores.map((s) => [s.id, s.name]));
+  const storeById = new Map(stores.map((s) => [s.id, s]));
   const rows = (history ?? []).map((r) => ({
     ...r,
-    storeName: r.store_id ? storeNameById.get(r.store_id) : undefined,
+    storeName: r.store_id ? storeById.get(r.store_id)?.name : undefined,
+    storeColor: r.store_id ? storeById.get(r.store_id)?.color : undefined,
     isTeamRequest: !!r.department,
     teamDepartmentLabel: r.department ? DEPARTMENT_LABELS[r.department] : undefined,
   }));

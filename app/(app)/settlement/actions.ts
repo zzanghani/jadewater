@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { APP_ADMIN_PASSWORD } from "@/lib/appPassword";
+import { getStoreContext } from "@/lib/store";
+import { verifyAdminPassword } from "@/lib/adminPassword";
 import type { LaborItem, LineItem, UtilityItem } from "@/lib/types";
 
 export type SettlementFormState = { error?: string; success?: boolean } | undefined;
@@ -15,7 +16,12 @@ export async function unlockSettlement(
 ): Promise<UnlockFormState> {
   const password = String(formData.get("password") ?? "");
 
-  if (password !== APP_ADMIN_PASSWORD) {
+  // 지금 보고 있는 매장이 속한 브랜드의 암호와 대조한다. 마스터 계정은
+  // 매장을 바꿔가며 보므로, 선택된 매장의 브랜드 암호가 기준이 된다.
+  const supabase = await createClient();
+  const { brand } = await getStoreContext(supabase);
+
+  if (!(await verifyAdminPassword(supabase, brand?.id, password))) {
     return { error: "비밀번호가 올바르지 않습니다." };
   }
 

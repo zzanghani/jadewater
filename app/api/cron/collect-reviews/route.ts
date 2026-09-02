@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { fetchGooglePlaceSnapshot } from "@/lib/googlePlaces";
-import { branchKeyForStoreName, classifyPostsByBranch, fetchNaverBlogPosts } from "@/lib/naverBlog";
+import { classifyPostsByStore, fetchNaverBlogPosts, type NaverBlogPost } from "@/lib/naverBlog";
 import { generateReviewSummary } from "@/lib/claude";
 import { kstDateString } from "@/lib/date";
 
@@ -25,30 +25,52 @@ export async function GET(request: Request) {
   const today = kstDateString(0);
   const yesterday = kstDateString(1);
 
-  const { data: stores, error: storesError } = await supabase
-    .from("stores")
-    .select("id, name, google_place_id");
+  const [{ data: stores, error: storesError }, { data: brands, error: brandsError }] =
+    await Promise.all([
+      supabase.from("stores").select("id, name, brand_id, blog_keywords, google_place_id"),
+      supabase.from("brands").select("id, name, review_keyword, blog_match_token"),
+    ]);
 
-  if (storesError) {
-    return NextResponse.json({ error: storesError.message }, { status: 500 });
+  if (storesError || brandsError) {
+    return NextResponse.json(
+      { error: storesError?.message ?? brandsError?.message },
+      { status: 500 }
+    );
   }
 
   const results: Record<string, string> = {};
 
-  // 매장별로 따로 검색하는 대신 "제이드앤워터"로 한 번에 넓게 검색한 뒤,
-  // 글마다 어느 지점 얘기가 가장 많이 나오는지로 분류한다.
+  // 매장별로 따로 검색하는 대신 브랜드명("제이드앤워터" / "정다미")으로 한 번에
+  // 넓게 검색한 뒤, 글마다 어느 지점 얘기가 가장 많이 나오는지로 분류한다.
   // (매장별 검색은 결과 개수 제한 때문에 누락이 많았다.)
+  //
+  // 브랜드별로 따로 검색하고 그 브랜드의 매장 안에서만 분류하는 게 중요하다.
+  // 제이드앤워터 서울역점과 정다미 서울역점처럼 지역 키워드가 겹치는 매장이
+  // 다른 브랜드에 있으면, 한 번에 섞어서 분류할 경우 서로 남의 글을 가져간다.
   //
   // 네이버 검색은 관련도순(sort=sim)이라 몇 달 전 글이 오늘 처음 100위 안에
   // 잡히는 경우가 있는데, 그러면 실제로는 오래된 글인데도 "오늘 새로 발견"으로
   // 저장돼서 리포트에 "새로 달린 후기"처럼 보이는 문제가 있었다. 그래서 실제
   // 작성일(postedAt)이 최근 7일 이내인 글만 저장 대상으로 남긴다.
   const sevenDaysAgo = kstDateString(7);
-  let postsByBranch: Record<string, ReturnType<typeof classifyPostsByBranch>[string]> = {};
+  const postsByStore: Record<string, NaverBlogPost[]> = {};
   if (naverClientId && naverClientSecret) {
-    const allPosts = await fetchNaverBlogPosts("제이드앤워터", naverClientId, naverClientSecret);
-    const recentPosts = allPosts.filter((p) => p.postedAt >= sevenDaysAgo);
-    postsByBranch = classifyPostsByBranch(recentPosts);
+    for (const brand of brands ?? []) {
+      if (!brand.review_keyword) continue;
+      const brandStores = (stores ?? []).filter((s) => s.brand_id === brand.id);
+      if (brandStores.length === 0) continue;
+
+      const allPosts = await fetchNaverBlogPosts(
+        brand.review_keyword,
+        naverClientId,
+        naverClientSecret
+      );
+      const recentPosts = allPosts.filter((p) => p.postedAt >= sevenDaysAgo);
+      Object.assign(
+        postsByStore,
+        classifyPostsByStore(recentPosts, brand.blog_match_token, brandStores)
+      );
+    }
   }
 
   for (const store of stores ?? []) {
@@ -104,9 +126,8 @@ export async function GET(request: Request) {
     }
 
     let blogSummary = "";
-    const branchKey = branchKeyForStoreName(store.name);
-    if (branchKey) {
-      const posts = postsByBranch[branchKey] ?? [];
+    {
+      const posts = postsByStore[store.id] ?? [];
       if (posts.length > 0) {
         const { error: blogError, count } = await supabase.from("blog_posts").upsert(
           posts.map((p) => ({

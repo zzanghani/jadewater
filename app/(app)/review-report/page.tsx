@@ -31,7 +31,7 @@ export default async function ReviewReportPage() {
   const clientStores = stores.map((s) => ({
     id: s.id,
     name: s.name,
-    color: storeColor(s.name),
+    color: storeColor(s),
   }));
 
   return <ReviewReportClient stores={clientStores} dates={dateEntries} reports={reports} />;

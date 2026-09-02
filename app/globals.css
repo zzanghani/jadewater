@@ -65,6 +65,33 @@
   }
 }
 
+/* 매장(정다미) 지점장·직원 계정 톤 — 한식당이라 단청 석간주(붉은 흙색)를
+   포인트로 쓰고 바탕은 따뜻한 아이보리. 색을 바꾸려면 이 블록의 값만 고치면
+   되고, 어느 매장이 이 톤을 쓸지는 brands.theme_class가 정한다. */
+.theme-jeongdami {
+  --background: #faf7f2;
+  --foreground: #26201c;
+  --brand: #9c3d2e;
+  --brand-dark: #6f281d;
+  --brand-light: #f4e7e2;
+  --card: #ffffff;
+  --border: #e8dfd4;
+  --muted: #7a6b60;
+}
+
+@media (prefers-color-scheme: dark) {
+  .theme-jeongdami {
+    --background: #191412;
+    --foreground: #f3e9e3;
+    --brand: #d4796a;
+    --brand-dark: #b25646;
+    --brand-light: #33201b;
+    --card: #221a17;
+    --border: #362823;
+    --muted: #b09b90;
+  }
+}
+
 /* 본사(베스트메이트컴퍼니: 마스터 + 팀 계정) 톤 */
 .theme-bestmate {
   --background: #eef0f6;
