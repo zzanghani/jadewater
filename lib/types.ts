@@ -23,10 +23,34 @@ export type Profile = {
   created_at: string
 }
 
+// 브랜드 — 베스트메이트컴퍼니 아래의 사업 브랜드(제이드앤워터 / 정다미).
+// 헤더 로고와 화면 톤, 리뷰 수집 검색어가 브랜드 단위로 갈린다.
+export type Brand = {
+  id: string
+  name: string
+  sort_order: number
+  // 비어 있으면 헤더에 로고 대신 브랜드명을 글자로 보여준다.
+  logo_path: string | null
+  theme_class: string
+  review_keyword: string | null
+  blog_match_token: string | null
+  created_at: string
+}
+
 export type Store = {
   id: string
   name: string
   sort_order: number
+  brand_id: string
+  // 매장 라벨 색과 사람 이름 옆에 붙는 짧은 태그. 예전에는 매장 이름 글자를
+  // 매칭해서 뽑았는데, 브랜드가 늘면 "정다미 서울역점"이 "제이드앤워터
+  // 서울역점"으로 오인식돼서 컬럼 값으로 옮겼다.
+  color: string
+  short_label: string | null
+  // 런치/디너 객수를 나눠 받을지. 하남처럼 브레이크타임이 없는 매장은 false.
+  uses_service_split: boolean
+  // 네이버 블로그 글이 이 매장 얘기인지 판별할 지역 키워드.
+  blog_keywords: string[]
   google_place_id: string | null
   naver_place_id: string | null
   kakao_place_id: string | null
@@ -592,6 +616,12 @@ export type Database = {
         Row: Profile
         Insert: Partial<Profile> & { id: string; email: string; name: string }
         Update: Partial<Profile>
+        Relationships: []
+      }
+      brands: {
+        Row: Brand
+        Insert: Partial<Brand> & { name: string }
+        Update: Partial<Brand>
         Relationships: []
       }
       stores: {

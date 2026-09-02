@@ -29,10 +29,10 @@ export default async function MessageThreadPage({
   if (!otherProfile) notFound();
 
   const { data: otherStore } = otherProfile.store_id
-    ? await supabase.from("stores").select("name").eq("id", otherProfile.store_id).maybeSingle()
+    ? await supabase.from("stores").select("name, short_label").eq("id", otherProfile.store_id).maybeSingle()
     : { data: null };
   const otherDisplayName = otherStore
-    ? `${otherProfile.name} [${storeShortLabel(otherStore.name)}]`
+    ? `${otherProfile.name} [${storeShortLabel(otherStore)}]`
     : otherProfile.name;
 
   const { data: messages } = await supabase

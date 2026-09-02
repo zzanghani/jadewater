@@ -101,7 +101,7 @@ export default async function AnalysisPage() {
     const storeCards = stores.map((s) => ({
       id: s.id,
       name: s.name,
-      color: storeColor(s.name),
+      color: storeColor(s),
       current: sum(thisWeek.map((d) => byDateStore.get(d)?.get(s.id) ?? 0)),
       previous: sum(lastWeek.map((d) => byDateStore.get(d)?.get(s.id) ?? 0)),
     }));
@@ -116,7 +116,7 @@ export default async function AnalysisPage() {
     const series: StoreSeries[] = stores.map((s) => ({
       key: s.id,
       name: s.name,
-      color: storeColor(s.name),
+      color: storeColor(s),
     }));
 
     return (

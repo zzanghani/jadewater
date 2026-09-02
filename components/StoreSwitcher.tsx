@@ -3,13 +3,15 @@
 import { useRef } from "react";
 import { usePathname } from "next/navigation";
 import { selectStore } from "@/app/actions/store";
-import type { Store } from "@/lib/types";
+import type { Brand, Store } from "@/lib/types";
 
 export default function StoreSwitcher({
   stores,
+  brands,
   current,
 }: {
   stores: Store[];
+  brands: Brand[];
   current: string;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -55,11 +57,23 @@ export default function StoreSwitcher({
             onChange={() => formRef.current?.requestSubmit()}
             className="w-full appearance-none rounded-xl border border-border bg-card py-2 pl-12 pr-8 text-sm font-semibold text-foreground outline-none ring-brand/30 focus:ring-2"
           >
-            {stores.map((store) => (
-              <option key={store.id} value={store.id}>
-                {store.name}
-              </option>
-            ))}
+            {brands.length > 1
+              ? brands.map((brand) => (
+                  <optgroup key={brand.id} label={brand.name}>
+                    {stores
+                      .filter((store) => store.brand_id === brand.id)
+                      .map((store) => (
+                        <option key={store.id} value={store.id}>
+                          {store.name}
+                        </option>
+                      ))}
+                  </optgroup>
+                ))
+              : stores.map((store) => (
+                  <option key={store.id} value={store.id}>
+                    {store.name}
+                  </option>
+                ))}
           </select>
           <svg
             className="pointer-events-none absolute right-3 text-muted"

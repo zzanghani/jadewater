@@ -22,7 +22,7 @@ export default async function WeeklyReportPage() {
   const { data: reports } = await query.limit(30);
   const rows = reports ?? [];
 
-  const storeNameById = new Map(stores.map((s) => [s.id, s.name]));
+  const storeById = new Map(stores.map((s) => [s.id, s]));
 
   return (
     <div className="flex flex-col gap-4">
@@ -56,11 +56,11 @@ export default async function WeeklyReportPage() {
                     <span
                       className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
                       style={{
-                        backgroundColor: `${storeColor(storeNameById.get(r.store_id) ?? "")}1A`,
-                        color: storeColor(storeNameById.get(r.store_id) ?? ""),
+                        backgroundColor: `${storeColor(storeById.get(r.store_id))}1A`,
+                        color: storeColor(storeById.get(r.store_id)),
                       }}
                     >
-                      {storeNameById.get(r.store_id) ?? "알 수 없음"}
+                      {storeById.get(r.store_id)?.name ?? "알 수 없음"}
                     </span>
                   )}
                 </div>

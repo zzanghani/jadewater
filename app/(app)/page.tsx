@@ -16,7 +16,7 @@ import MonthlyPlanAlerts from "@/components/MonthlyPlanAlerts";
 import type { PlanComment, PlanFollower } from "@/components/MonthlyPlanDetail";
 import PushSubscribeButton from "@/components/PushSubscribeButton";
 import ScheduleDayTimeline from "@/components/ScheduleDayTimeline";
-import { getStoreContext, isHanamStore } from "@/lib/store";
+import { getStoreContext } from "@/lib/store";
 import { storeColor } from "@/lib/storeColors";
 import { avatarPublicUrl } from "@/lib/avatar";
 import type { DailyClosing } from "@/lib/types";
@@ -37,8 +37,8 @@ function momLabel(current: number, prev: number): string {
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const { storeId, storeName, stores } = await getStoreContext(supabase);
-  const isHanam = isHanamStore(storeName);
+  const { storeId, store, stores } = await getStoreContext(supabase);
+  const isHanam = !(store?.uses_service_split ?? true);
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -105,7 +105,7 @@ export default async function DashboardPage() {
     sales: byDate.get(date)?.grand_total ?? 0,
   }));
 
-  let storeTodaySales: { id: string; name: string; sales: number }[] = [];
+  let storeTodaySales: { id: string; name: string; color: string; sales: number }[] = [];
   let multiChartData: MultiStorePoint[] = [];
   let multiChartSeries: StoreSeries[] = [];
   let storeMonthCompare: {
@@ -261,6 +261,7 @@ if (isHq) {
     storeTodaySales = stores.map((s) => ({
       id: s.id,
       name: s.name,
+      color: storeColor(s),
       sales: todayMap.get(s.id) ?? 0,
     }));
 
@@ -280,7 +281,7 @@ if (isHq) {
     multiChartSeries = stores.map((s) => ({
       key: s.id,
       name: s.name,
-      color: storeColor(s.name),
+      color: storeColor(s),
     }));
 
     storeMonthCompare = stores.map((s) => {
@@ -289,7 +290,7 @@ if (isHq) {
       return {
         id: s.id,
         name: s.name,
-        color: storeColor(s.name),
+        color: storeColor(s),
         thisMonth: thisMonthSales,
         lastMonth: lastMonthSales,
         mom: momLabel(thisMonthSales, lastMonthSales),
@@ -353,7 +354,7 @@ if (isHq) {
               <Link
                 key={s.id}
                 href={`/store/${s.id}`}
-                style={{ backgroundColor: storeColor(s.name) }}
+                style={{ backgroundColor: s.color }}
                 className="rounded-2xl p-4 text-white shadow-lg transition-opacity active:opacity-80"
               >
                 <p className="text-xs leading-tight text-white/85">{s.name}</p>

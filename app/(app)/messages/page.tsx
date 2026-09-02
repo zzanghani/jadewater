@@ -58,16 +58,16 @@ export default async function MessagesPage() {
           .neq("id", user.id)
           .order("name")
       : supabase.from("profiles").select("id, name, store_id").neq("id", user.id).order("name"),
-    supabase.from("stores").select("id, name"),
+    supabase.from("stores").select("id, name, short_label"),
   ]);
 
   // 같은 이름이 여러 매장에 있을 수 있어서, 이름 뒤에 소속 매장을
   // "[옥수]"처럼 짧게 붙여 구분한다. 매장이 없는 계정(마스터/본사
   // 팀)은 태그 없이 이름만.
-  const storeNameById = new Map((stores ?? []).map((s) => [s.id, s.name]));
+  const storeById = new Map((stores ?? []).map((s) => [s.id, s]));
   function withStoreTag(name: string, storeId: string | null): string {
-    const storeName = storeId ? storeNameById.get(storeId) : null;
-    return storeName ? `${name} [${storeShortLabel(storeName)}]` : name;
+    const store = storeId ? storeById.get(storeId) : null;
+    return store ? `${name} [${storeShortLabel(store)}]` : name;
   }
 
   const profilesWithTag = (allProfiles ?? []).map((p) => ({

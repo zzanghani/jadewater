@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatWon } from "@/lib/format";
 import { daysInMonthKST, kstDateString } from "@/lib/date";
-import { getStoreContext, isHanamStore } from "@/lib/store";
+import { getStoreContext } from "@/lib/store";
 import { storeColor } from "@/lib/storeColors";
 import ClosingCalendar from "@/components/ClosingCalendar";
 import type { DailyClosing } from "@/lib/types";
@@ -65,7 +65,7 @@ export default async function StoreHistoryPage({
   const monthTotal = (rows ?? []).reduce((sum, r) => sum + r.grand_total, 0);
   const days = daysInMonthKST(start);
   const today = kstDateString(0);
-  const color = storeColor(store.name);
+  const color = storeColor(store);
 
   return (
     <div className="flex flex-col gap-4">
@@ -98,7 +98,7 @@ export default async function StoreHistoryPage({
         editable={isOwnStore}
         accentColor={color}
         todayDate={today}
-        isHanam={isHanamStore(store.name)}
+        isHanam={!store.uses_service_split}
       />
     </div>
   );
