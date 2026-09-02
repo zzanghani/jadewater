@@ -315,6 +315,7 @@ if (isHq) {
           teamOnly
           showHr={profile?.department === "rnd" || profile?.department === "ops"}
           showInventory={profile?.department === "rnd"}
+          showStoreOpsView={profile?.department === "rnd"}
           hasUnreadMessages={hasUnreadMessages}
         />
 
