@@ -249,6 +249,7 @@ async function notifyMentionedUsers(
     .from("profiles")
     .select("id, name")
     .is("store_id", null)
+    .eq("status", "approved")
     .or("department.not.is.null,role.eq.owner");
   if (!hqProfiles?.length) return;
 

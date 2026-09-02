@@ -27,6 +27,7 @@ export async function GET(request: Request) {
       .from("profiles")
       .select("id")
       .is("store_id", null)
+      .eq("status", "approved")
       .or("department.not.is.null,role.eq.owner"),
   ]);
 
