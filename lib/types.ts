@@ -965,6 +965,13 @@ export type Database = {
         }
         Returns: PushSubscriptionRow[]
       }
+      verify_brand_admin_password: {
+        Args: {
+          p_brand_id: string
+          p_attempt: string
+        }
+        Returns: boolean
+      }
       get_daily_closings_totals: {
         Args: {
           p_start: string

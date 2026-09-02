@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
 import { SCHEDULE_ROLES } from "@/lib/scheduleColors";
-import { APP_ADMIN_PASSWORD } from "@/lib/appPassword";
+import { verifyAdminPassword } from "@/lib/adminPassword";
 import type { ScheduleRole } from "@/lib/types";
 
 export type ScheduleFormState = { error?: string; success?: boolean } | undefined;
@@ -74,7 +74,11 @@ export async function unlockScheduleAdmin(
 ): Promise<UnlockFormState> {
   const password = String(formData.get("password") ?? "");
 
-  if (password !== APP_ADMIN_PASSWORD) {
+  // 지금 보고 있는 매장이 속한 브랜드의 암호와 대조한다.
+  const supabase = await createClient();
+  const { brand } = await getStoreContext(supabase);
+
+  if (!(await verifyAdminPassword(supabase, brand?.id, password))) {
     return { error: "비밀번호가 올바르지 않습니다." };
   }
 
