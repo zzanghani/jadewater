@@ -30,17 +30,27 @@ const EMPLOYEE_TABS = [
   { href: "/messages", label: "메시지", icon: MessageIcon },
 ] as const;
 
+// 본사 팀 계정(마케팅/운영/R&D/디자인) — 게시판·메시지만 자주 오가서
+// 빠른 메뉴 그리드 대신 하단 탭으로 내려달라는 요청. 나머지 업무는
+// 그대로 빠른 메뉴에 남는다.
+const TEAM_TABS = [
+  { href: "/board", label: "게시판", icon: BoardIcon },
+  { href: "/messages", label: "메시지", icon: MessageIcon },
+] as const;
+
 export default function BottomNav({
   isMaster = false,
   isEmployee = false,
+  isTeam = false,
   hasUnreadMessages = false,
 }: {
   isMaster?: boolean;
   isEmployee?: boolean;
+  isTeam?: boolean;
   hasUnreadMessages?: boolean;
 }) {
   const pathname = usePathname();
-  const tabs = isEmployee ? EMPLOYEE_TABS : isMaster ? MASTER_TABS : STORE_TABS;
+  const tabs = isTeam ? TEAM_TABS : isEmployee ? EMPLOYEE_TABS : isMaster ? MASTER_TABS : STORE_TABS;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 pb-[env(safe-area-inset-bottom)]">
