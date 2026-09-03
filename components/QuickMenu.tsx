@@ -15,8 +15,8 @@ const ALL_ITEMS = [
 // 빠른메뉴에 안 두지만, 스케줄러는 전 매장을 훑어보는 용도라 남겨둔다.
 const MASTER_EXCLUDED_HREFS: string[] = ["/closing", "/receipts", "/expense"];
 
+// 게시판·메시지는 하단 탭으로 옮겨서 여기엔 안 둔다.
 const TEAM_ITEMS = [
-  { href: "/board", label: "게시판", icon: BoardIcon },
   { href: "/expense", label: "현장지출", icon: ReceiptIcon },
   { href: "/payment", label: "입금요청", icon: PaymentIcon },
   { href: "/review-report", label: "리뷰리포트", icon: StarIcon },
@@ -25,7 +25,6 @@ const TEAM_ITEMS = [
 const HR_ITEM = { href: "/hr", label: "HR", icon: HrIcon } as const;
 const ACCOUNTS_ITEM = { href: "/accounts", label: "가입승인", icon: HrIcon } as const;
 const INVENTORY_ITEM = { href: "/inventory", label: "재고관리", icon: BoxIcon } as const;
-const MESSAGES_ITEM = { href: "/messages", label: "메시지", icon: MessageIcon } as const;
 // R&D팀 전용 보기 전용 항목(스케줄러·실시간 코스트·요일별 분석) — 입력 권한은
 // 없고 전 매장을 매장 선택 드롭다운으로 바꿔가며 조회만 한다.
 const RND_VIEW_ITEMS = [
@@ -56,7 +55,6 @@ export default function QuickMenu({
   showHr = false,
   showInventory = false,
   showStoreOpsView = false,
-  hasUnreadMessages = false,
   pendingAccountCount = 0,
 }: {
   isMaster?: boolean;
@@ -65,18 +63,15 @@ export default function QuickMenu({
   showHr?: boolean;
   showInventory?: boolean;
   showStoreOpsView?: boolean;
-  hasUnreadMessages?: boolean;
   pendingAccountCount?: number;
 }) {
-  // 매장/마스터 계정은 하단 메뉴에 메시지가 있어서 여기엔 안 넣는다.
-  // 하단 메뉴가 없는 본사 팀 계정만 여기서 메시지로 들어간다.
+  // 게시판·메시지는 이제 본사 팀 계정도 하단 탭으로 오가서 여기엔 안 넣는다.
   const items = teamOnly
     ? [
         ...TEAM_ITEMS,
         ...(showHr ? [HR_ITEM] : []),
         ...(showInventory ? [INVENTORY_ITEM] : []),
         ...(showStoreOpsView ? RND_VIEW_ITEMS : []),
-        MESSAGES_ITEM,
       ]
     : employeeOnly
       ? EMPLOYEE_ITEMS
@@ -96,9 +91,6 @@ export default function QuickMenu({
           >
             <span className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-brand-light text-brand">
               <Icon />
-              {href === "/messages" && hasUnreadMessages && (
-                <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500" />
-              )}
               {href === "/accounts" && pendingAccountCount > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500" />
               )}
@@ -232,14 +224,6 @@ function GaugeIcon() {
       <path d="M4 14a8 8 0 1 1 16 0" />
       <path d="M12 14 16 9" />
       <path d="M12 17.5h.01" />
-    </svg>
-  );
-}
-
-function MessageIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 11.5a8.38 8.38 0 0 1-4.7 7.6 8.5 8.5 0 0 1-8.9-.8L3 20l1.7-4.4A8.5 8.5 0 1 1 21 11.5Z" />
     </svg>
   );
 }

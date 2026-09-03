@@ -196,22 +196,18 @@ export default async function AppLayout({
       {/* 하단 내비는 iOS Safari의 sticky bottom 버그를 피하려고 fixed로
           띄워서 문서 흐름 밖에 있으므로, 본문 아래쪽에 그 높이만큼
           여백을 직접 확보해줘야 마지막 콘텐츠가 가려지지 않는다.
-          팀 계정은 하단바 없이 홈 화면 빠른메뉴로만 이동한다. */}
-      <main
-        className={`flex-1 px-4 pt-4 ${
-          isTeamAccount ? "pb-[calc(1rem+env(safe-area-inset-bottom))]" : "pb-[calc(5rem+env(safe-area-inset-bottom))]"
-        }`}
-      >
+          팀 계정도 게시판·메시지는 하단바로 오가고, 나머지 업무는
+          홈 화면 빠른메뉴로 이동한다. */}
+      <main className="flex-1 px-4 pt-4 pb-[calc(5rem+env(safe-area-inset-bottom))]">
         <PullToRefresh>{children}</PullToRefresh>
       </main>
 
-      {!isTeamAccount && (
-        <BottomNav
-          isMaster={isMaster}
-          isEmployee={isEmployee}
-          hasUnreadMessages={(unreadMessageCount ?? 0) > 0}
-        />
-      )}
+      <BottomNav
+        isMaster={isMaster}
+        isEmployee={isEmployee}
+        isTeam={isTeamAccount}
+        hasUnreadMessages={(unreadMessageCount ?? 0) > 0}
+      />
     </div>
   );
 }

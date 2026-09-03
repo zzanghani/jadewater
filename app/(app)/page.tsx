@@ -50,15 +50,6 @@ export default async function DashboardPage() {
   const isHq = isMaster || isTeamAccount;
   const isEmployee = !isTeamAccount && !isMaster && profile?.role === "staff";
 
-  const { count: unreadMessageCount } = user
-    ? await supabase
-        .from("direct_messages")
-        .select("id", { count: "exact", head: true })
-        .eq("recipient_id", user.id)
-        .is("read_at", null)
-    : { count: 0 };
-  const hasUnreadMessages = (unreadMessageCount ?? 0) > 0;
-
   const { count: pendingAccountCount } = isMaster
     ? await supabase
         .from("profiles")
@@ -316,7 +307,6 @@ if (isHq) {
           showHr={profile?.department === "rnd" || profile?.department === "ops"}
           showInventory={profile?.department === "rnd"}
           showStoreOpsView={profile?.department === "rnd"}
-          hasUnreadMessages={hasUnreadMessages}
         />
 
         <section className="rounded-2xl border border-border bg-card p-4">
@@ -403,7 +393,6 @@ if (isHq) {
       <QuickMenu
         isMaster={isMaster}
         employeeOnly={isEmployee}
-        hasUnreadMessages={hasUnreadMessages}
         pendingAccountCount={pendingAccountCount ?? 0}
       />
 
