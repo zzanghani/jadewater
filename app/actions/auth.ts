@@ -57,7 +57,13 @@ export async function signup(
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name } },
+    options: {
+      data: { name },
+      // Site URL을 비밀번호 재설정 링크(/reset-password)로 맞춰두면 이 값이
+      // 없을 때 가입 확인 메일도 같이 그리로 튕긴다 — 가입 확인은 홈으로
+      // 보내도록 여기서 명시적으로 고정한다.
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://jadewater.vercel.app"}/`,
+    },
   });
 
   if (error) {
