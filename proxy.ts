@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_PATHS = ['/login', '/signup']
+const PUBLIC_PATHS = ['/login', '/signup', '/reset-password']
 
 // Next.js 16: `middleware.ts`/`middleware()`는 `proxy.ts`/`proxy()`로 이름이 바뀌었다.
 // 여기서는 Supabase 세션 쿠키를 갱신하고, 비로그인 사용자를 /login으로 보낸다.
