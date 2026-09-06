@@ -138,6 +138,7 @@ export default async function InventoryPage({
           <p className="text-sm text-muted">먼저 품목을 등록해 주세요.</p>
         ) : (
           <InventoryCountForm
+            key={`${section}-${date}`}
             storeId={storeId}
             storeName={storeName}
             section={section}
