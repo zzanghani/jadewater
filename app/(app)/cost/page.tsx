@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatWon } from "@/lib/format";
 import { kstDateString, kstShortDateLabel, kstWeekdayShortLabel, last7DaysKST, monthRangeKST } from "@/lib/date";
 import { getStoreContext } from "@/lib/store";
+import AnalysisTabs from "@/components/AnalysisTabs";
 
 function sum(values: number[]) {
   return values.reduce((a, b) => a + b, 0);
@@ -193,7 +194,7 @@ export default async function CostPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-lg font-bold">실시간 코스트</h1>
+        <AnalysisTabs />
         <p className="mt-1 text-xs text-muted">
           30% 이하 초록 · 30~35% 노랑 · 35% 초과 빨강
         </p>

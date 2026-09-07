@@ -3,13 +3,15 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
 const TABS = [
-  { href: "/analysis", label: "주간" },
-  { href: "/monthly-analysis", label: "월간" },
-  { href: "/weekday-analysis", label: "요일별" },
+  { href: "/analysis", label: "주간", title: "주간 분석" },
+  { href: "/monthly-analysis", label: "월간", title: "월간 분석" },
+  { href: "/weekday-analysis", label: "요일별", title: "요일별 분석" },
+  { href: "/cost", label: "코스트", title: "실시간 코스트" },
 ] as const;
 
-// 주간·월간·요일별 분석 세 화면을 "매출 분석" 하나로 묶는 상단 탭.
-// R&D팀은 요일별만 볼 수 있어서(레이아웃 가드) 탭을 아예 안 보여준다.
+// 주간·월간·요일별 분석과 실시간 코스트를 "매출 분석" 하나로 묶는 상단 탭.
+// R&D팀은 요일별·코스트만 볼 수 있고(레이아웃 가드), 직원 계정은 빠른
+// 메뉴에서 코스트만 열어줬으므로 그 범위 안의 탭만 보여준다.
 export default async function AnalysisTabs() {
   const pathname = (await headers()).get("x-pathname") ?? "";
   const supabase = await createClient();
@@ -17,16 +19,26 @@ export default async function AnalysisTabs() {
     data: { session },
   } = await supabase.auth.getSession();
   const { data: profile } = session
-    ? await supabase.from("profiles").select("department").eq("id", session.user.id).maybeSingle()
+    ? await supabase.from("profiles").select("role, department").eq("id", session.user.id).maybeSingle()
     : { data: null };
-  const showTabs = profile?.department !== "rnd";
+
+  const isRnd = profile?.department === "rnd";
+  const isStaff = !profile?.department && profile?.role === "staff";
+  const tabs = isRnd
+    ? TABS.filter((t) => t.href === "/weekday-analysis" || t.href === "/cost")
+    : isStaff
+      ? TABS.filter((t) => t.href === "/cost")
+      : TABS;
+
+  const current = TABS.find((t) => pathname.startsWith(t.href));
+  const title = tabs.length > 1 ? "매출 분석" : (current?.title ?? "매출 분석");
 
   return (
     <div className="flex flex-col gap-3">
-      <h1 className="text-lg font-bold">매출 분석</h1>
-      {showTabs && (
+      <h1 className="text-lg font-bold">{title}</h1>
+      {tabs.length > 1 && (
         <div className="flex rounded-xl bg-card p-1 ring-1 ring-border">
-          {TABS.map((t) => {
+          {tabs.map((t) => {
             const active = pathname.startsWith(t.href);
             return (
               <Link

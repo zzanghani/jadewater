@@ -5,9 +5,8 @@ const ALL_ITEMS = [
   { href: "/schedule", label: "스케줄러", icon: ScheduleIcon },
   { href: "/receipts", label: "입고 입력", icon: BoxIcon },
   { href: "/expense", label: "현장지출", icon: ReceiptIcon },
-  // 주간·월간·요일별 분석은 한 화면(상단 탭)으로 묶었다.
+  // 주간·월간·요일별 분석과 실시간 코스트는 한 화면(상단 탭)으로 묶었다.
   { href: "/analysis", label: "매출 분석", icon: TrendIcon },
-  { href: "/cost", label: "실시간 코스트", icon: GaugeIcon },
 ] as const;
 
 // 마스터는 마감입력·입고입력·현장지출처럼 매일 직접 입력하는 화면은 굳이
@@ -28,8 +27,8 @@ const INVENTORY_ITEM = { href: "/inventory", label: "재고관리", icon: BoxIco
 // 없고 전 매장을 매장 선택 드롭다운으로 바꿔가며 조회만 한다.
 const RND_VIEW_ITEMS = [
   { href: "/schedule", label: "스케줄러", icon: ScheduleIcon },
-  { href: "/cost", label: "실시간 코스트", icon: GaugeIcon },
-  { href: "/weekday-analysis", label: "요일별 분석", icon: WeekdayIcon },
+  // 요일별·코스트 탭이 있는 화면으로 들어간다.
+  { href: "/weekday-analysis", label: "매출 분석", icon: TrendIcon },
 ] as const;
 // 지점장(매장) 계정은 리뷰리포트가 하단 메뉴 대신 여기로 옮겨왔다.
 const REVIEW_REPORT_ITEM = { href: "/review-report", label: "리뷰리포트", icon: StarIcon } as const;
@@ -147,16 +146,6 @@ function ReceiptIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z" />
       <path d="M9 8h6M9 12h6" />
-    </svg>
-  );
-}
-
-function WeekdayIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-      <rect x="3" y="4" width="18" height="17" rx="2" />
-      <path d="M3 9h18M8 2v4M16 2v4" />
-      <path d="M8 14v3M12 12v5M16 15v2" />
     </svg>
   );
 }
