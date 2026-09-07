@@ -7,6 +7,7 @@ const ALL_ITEMS = [
   { href: "/expense", label: "현장지출", icon: ReceiptIcon },
   // 주간·월간·요일별 분석과 실시간 코스트는 한 화면(상단 탭)으로 묶었다.
   { href: "/analysis", label: "매출 분석", icon: TrendIcon },
+  { href: "/payroll", label: "급여신고", icon: PayrollIcon },
 ] as const;
 
 // 마스터는 마감입력·입고입력·현장지출처럼 매일 직접 입력하는 화면은 굳이
@@ -146,6 +147,17 @@ function ReceiptIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z" />
       <path d="M9 8h6M9 12h6" />
+    </svg>
+  );
+}
+
+// 급여신고 — 지폐 모양.
+function PayrollIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M6 12h.01M18 12h.01" />
     </svg>
   );
 }
