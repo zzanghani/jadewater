@@ -15,9 +15,9 @@ Flow for every code change, without asking for confirmation at each step:
 
 ## Supabase SQL / DB access
 
-Two Supabase MCP connectors are available (claude.ai connectors; a session must be started after they were added to see them):
-- **"Supabase 그린"** — the staging project (`agpkupfkeawhjsfqrycr`), read + write.
-- **"Supabase 블루 (읽기전용)"** — the production project (`pqexkkmajbbcdwjinwdz`), read-only.
+Two Supabase MCP servers are registered in Claude Code at user scope on the user's Mac (`claude mcp list`); they are visible only in sessions running on that Mac (including phone sessions via Remote Control), not in cloud/web sessions:
+- **`supabase-green`** — the staging project (`agpkupfkeawhjsfqrycr`), read + write.
+- **`supabase-blue-readonly`** — the production project (`pqexkkmajbbcdwjinwdz`), read-only.
 
 Rules:
 1. Migration SQL still lives in the repo as a file under `supabase/` (idempotent, re-runnable). Commit it with the code change.
