@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatWon } from "@/lib/format";
-import { kstDateLabel, kstDateString } from "@/lib/date";
+import { kstDateLabel, kstDateString, last7DaysKST } from "@/lib/date";
 import { getStoreContext } from "@/lib/store";
 import ClosingForm from "@/components/ClosingForm";
 
@@ -34,12 +34,38 @@ export default async function ClosingPage({
       .limit(14),
   ]);
 
+  // 최근 7일 중 오늘을 뺀, 아직 마감보고가 없는 날.
+  // 날짜는 폼에서 바꿀 수 있지만 그걸 모르고 지나치는 지점장이 있어서 눈에 띄게 알려준다.
+  const writtenDates = new Set((history ?? []).map((c) => c.date));
+  const missingDates = last7DaysKST()
+    .filter((d) => d !== today && !writtenDates.has(d))
+    .reverse();
+
   return (
     <div className="flex flex-col gap-6">
+      {missingDates.length > 0 && targetDate === today && (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-800">아직 안 쓴 마감보고가 있어요</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {missingDates.map((d) => (
+              <Link
+                key={d}
+                href={`/closing?date=${d}`}
+                className="rounded-full bg-white px-3 py-1.5 text-sm font-medium text-amber-800 ring-1 ring-amber-300"
+              >
+                {kstDateLabel(d)} 쓰기
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h1 className="text-lg font-bold">
-            {isEditingPast ? `${kstDateLabel(targetDate)} 마감 수정` : "일 마감 입력"}
+            {isEditingPast
+              ? `${kstDateLabel(targetDate)} 마감 ${targetClosing ? "수정" : "입력"}`
+              : "일 마감 입력"}
           </h1>
           {isEditingPast && (
             <Link href="/closing" className="text-sm font-medium text-brand">
