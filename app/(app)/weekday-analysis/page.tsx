@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatWon } from "@/lib/format";
 import { kstDateString, kstWeekday } from "@/lib/date";
 import { getStoreContext } from "@/lib/store";
+import AnalysisTabs from "@/components/AnalysisTabs";
 import { storeColor } from "@/lib/storeColors";
 
 // 요일별 분석 — "쉬는 날 없이 도는데 어느 요일이 인건비만 태우고 있나"를
@@ -81,7 +82,7 @@ export default async function WeekdayAnalysisPage() {
   if (openDays === 0) {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="text-lg font-bold">요일별 분석</h1>
+        <AnalysisTabs />
         <p className="rounded-2xl border border-border bg-card p-4 text-sm text-muted">
           최근 {WEEKS}주 안에 {storeName}의 마감 데이터가 없습니다.
         </p>
@@ -129,7 +130,7 @@ export default async function WeekdayAnalysisPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-lg font-bold">요일별 분석</h1>
+        <AnalysisTabs />
         <p className="text-xs text-muted">
           {storeName} · 최근 {WEEKS}주 · 영업 {openDays}일 기준 (매출 0원인 날 제외)
         </p>

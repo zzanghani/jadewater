@@ -5,9 +5,8 @@ const ALL_ITEMS = [
   { href: "/schedule", label: "스케줄러", icon: ScheduleIcon },
   { href: "/receipts", label: "입고 입력", icon: BoxIcon },
   { href: "/expense", label: "현장지출", icon: ReceiptIcon },
-  { href: "/analysis", label: "주간 분석", icon: TrendIcon },
-  { href: "/monthly-analysis", label: "월간 분석", icon: CalendarIcon },
-  { href: "/weekday-analysis", label: "요일별 분석", icon: WeekdayIcon },
+  // 주간·월간·요일별 분석은 한 화면(상단 탭)으로 묶었다.
+  { href: "/analysis", label: "매출 분석", icon: TrendIcon },
   { href: "/cost", label: "실시간 코스트", icon: GaugeIcon },
 ] as const;
 
@@ -167,15 +166,6 @@ function TrendIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 17 9 11l4 4 8-8" />
       <path d="M15 7h6v6" />
-    </svg>
-  );
-}
-
-function CalendarIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="5" width="18" height="16" rx="2" />
-      <path d="M3 10h18M8 3v4M16 3v4" />
     </svg>
   );
 }

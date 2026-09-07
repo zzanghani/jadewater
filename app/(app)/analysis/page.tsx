@@ -7,6 +7,7 @@ import WeeklySalesChart, {
 import MultiStoreChart, { type MultiStorePoint, type StoreSeries } from "@/components/MultiStoreChart";
 import PeriodSummaryToggle from "@/components/PeriodSummaryToggle";
 import { getStoreContext } from "@/lib/store";
+import AnalysisTabs from "@/components/AnalysisTabs";
 import { storeColor } from "@/lib/storeColors";
 import { computePeriodBreakdown } from "@/lib/periodBreakdown";
 import type { DailyClosing } from "@/lib/types";
@@ -121,7 +122,7 @@ export default async function AnalysisPage() {
 
     return (
       <div className="flex flex-col gap-6">
-        <h1 className="text-lg font-bold">주간 분석</h1>
+        <AnalysisTabs />
 
         <div className="grid grid-cols-2 gap-3">
           {storeCards.map((s) => (
@@ -199,7 +200,7 @@ export default async function AnalysisPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-lg font-bold">주간 분석</h1>
+      <AnalysisTabs />
 
       <section className="grid grid-cols-3 gap-2">
         <SalesCompareCard
