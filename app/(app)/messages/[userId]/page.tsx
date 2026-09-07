@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import Avatar from "@/components/Avatar";
 import MarkThreadRead from "@/components/MarkThreadRead";
 import MessageThreadForm from "@/components/MessageThreadForm";
+import ScrollToBottomOnMount from "@/components/ScrollToBottomOnMount";
 import { fetchAvatarUrlById } from "@/lib/avatar";
 import { kstDateTimeLabel } from "@/lib/date";
 import { storeShortLabel } from "@/lib/storeColors";
@@ -84,6 +85,7 @@ export default async function MessageThreadPage({
       )}
 
       <MessageThreadForm recipientId={otherId} />
+      <ScrollToBottomOnMount />
     </div>
   );
 }
