@@ -7,6 +7,7 @@ import MonthlySalesChart, {
 import MultiStoreChart, { type MultiStorePoint, type StoreSeries } from "@/components/MultiStoreChart";
 import PeriodSummaryToggle from "@/components/PeriodSummaryToggle";
 import { getStoreContext } from "@/lib/store";
+import AnalysisTabs from "@/components/AnalysisTabs";
 import { storeColor } from "@/lib/storeColors";
 import { computePeriodBreakdown } from "@/lib/periodBreakdown";
 import type { DailyClosing } from "@/lib/types";
@@ -125,7 +126,7 @@ export default async function MonthlyAnalysisPage() {
     return (
       <div className="flex flex-col gap-6">
         <div>
-          <h1 className="text-lg font-bold">월간 분석</h1>
+          <AnalysisTabs />
           <p className="mt-1 text-xs text-muted">{thisMonth.label}</p>
         </div>
 
@@ -226,7 +227,7 @@ export default async function MonthlyAnalysisPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-lg font-bold">월간 분석</h1>
+        <AnalysisTabs />
         <p className="mt-1 text-xs text-muted">{thisMonth.label}</p>
       </div>
 
