@@ -264,6 +264,29 @@ export type FieldExpense = {
   created_at: string
 }
 
+/** 프리랜서 = 3.3% 사업소득 원천징수 신고자 */
+export type PayrollPosition = '점장' | '부점장' | '팀장' | '사원' | '파트타이머' | '프리랜서'
+
+export type PayrollEntry = {
+  id: string
+  store_id: string
+  /** 해당 월의 1일 (YYYY-MM-01) */
+  month: string
+  employee_name: string
+  position: PayrollPosition | null
+  /** 계약총급여. 파트타이머는 시급 × 근무시간 계산값 */
+  base_pay: number
+  bonus: number
+  extra_pay: number
+  hourly_rate: number | null
+  work_hours: number | null
+  notes: string | null
+  created_by: string
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type MonthlyPlanType = 'task' | 'vacation'
 
 export type MonthlyPlan = {
@@ -728,6 +751,17 @@ export type Database = {
           created_by: string
         }
         Update: Partial<FieldExpense>
+        Relationships: []
+      }
+      payroll_entries: {
+        Row: PayrollEntry
+        Insert: Partial<PayrollEntry> & {
+          store_id: string
+          month: string
+          employee_name: string
+          created_by: string
+        }
+        Update: Partial<PayrollEntry>
         Relationships: []
       }
       weekly_reports: {

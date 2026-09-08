@@ -29,7 +29,8 @@ export default function StoreSwitcher({
     pathname.startsWith("/cost") ||
     pathname.startsWith("/payment") ||
     pathname.startsWith("/weekday-analysis") ||
-    pathname.startsWith("/schedule");
+    pathname.startsWith("/schedule") ||
+    pathname.startsWith("/payroll");
   if (stores.length > 1 && !showsStoreSwitcher) {
     return null;
   }
