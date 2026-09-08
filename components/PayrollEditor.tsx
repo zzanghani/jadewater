@@ -175,7 +175,7 @@ export default function PayrollEditor({
 
       {rows.length > 0 && !adding && (
         <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4">
-          <p className="text-sm font-semibold">작성 완료했으면 본사로 보내기</p>
+          <p className="text-sm font-semibold">작성 완료했으면 노무법인으로 보내기</p>
           <p className="text-xs text-muted">이번 달 내역 전체가 do@leadhr.kr 로 발송돼요.</p>
           <button
             type="button"
