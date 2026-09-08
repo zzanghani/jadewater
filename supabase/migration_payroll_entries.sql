@@ -58,3 +58,7 @@ create trigger payroll_entries_set_updated_at
 
 create index if not exists payroll_entries_store_month_idx
   on public.payroll_entries (store_id, month desc);
+
+-- 파트타이머는 시급 × 근무시간으로 급여를 계산한다. base_pay에는 계산 결과가 들어간다.
+alter table public.payroll_entries add column if not exists hourly_rate numeric(10, 0);
+alter table public.payroll_entries add column if not exists work_hours numeric(6, 1);

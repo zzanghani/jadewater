@@ -5,6 +5,7 @@ import {
   copyPreviousMonthPayroll,
   deletePayrollEntry,
   savePayrollEntry,
+  sendPayrollReport,
   updatePayrollEntry,
 } from "@/app/(app)/payroll/actions";
 import { formatWon } from "@/lib/format";
@@ -32,6 +33,8 @@ export default function PayrollEditor({
   const [adding, setAdding] = useState(false);
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
   const [copying, startCopy] = useTransition();
+  const [mailMessage, setMailMessage] = useState<string | null>(null);
+  const [mailing, startMail] = useTransition();
 
   const totals = rows.reduce(
     (acc, r) => ({
@@ -61,7 +64,7 @@ export default function PayrollEditor({
         <p className="mt-1 text-2xl font-bold">{formatWon(grandTotal)}</p>
         <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
           <div>
-            <p className="text-white/70">기본급</p>
+            <p className="text-white/70">계약총급여</p>
             <p className="font-semibold">{formatWon(totals.base)}</p>
           </div>
           <div>
@@ -100,31 +103,38 @@ export default function PayrollEditor({
         </div>
       ) : (
         <ul className="flex flex-col gap-2">
-          {rows.map((r) => (
-            <li key={r.id}>
-              <button
-                type="button"
-                onClick={() => setEditing(r)}
-                className="flex w-full flex-col gap-2 rounded-2xl border border-border bg-card p-4 text-left"
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold">
-                    {r.employee_name}
-                    {r.position && (
-                      <span className="ml-1.5 text-xs font-medium text-muted">{r.position}</span>
-                    )}
-                  </p>
-                  <p className="text-sm font-bold text-brand">{formatWon(rowTotal(r))}</p>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-xs text-muted">
-                  <span>기본급 {formatWon(r.base_pay)}</span>
-                  <span>상여 {formatWon(r.bonus)}</span>
-                  <span>수당 {formatWon(r.extra_pay)}</span>
-                </div>
-                {r.notes && <p className="text-xs text-muted">{r.notes}</p>}
-              </button>
-            </li>
-          ))}
+          {rows.map((r) => {
+            const isPartTimer = r.position === "파트타이머";
+            return (
+              <li key={r.id}>
+                <button
+                  type="button"
+                  onClick={() => setEditing(r)}
+                  className="flex w-full flex-col gap-2 rounded-2xl border border-border bg-card p-4 text-left"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold">
+                      {r.employee_name}
+                      {r.position && (
+                        <span className="ml-1.5 text-xs font-medium text-muted">{r.position}</span>
+                      )}
+                    </p>
+                    <p className="text-sm font-bold text-brand">{formatWon(rowTotal(r))}</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs text-muted">
+                    <span>
+                      {isPartTimer
+                        ? `시급 ${formatWon(r.hourly_rate ?? 0)} × ${r.work_hours ?? 0}h`
+                        : `급여 ${formatWon(r.base_pay)}`}
+                    </span>
+                    <span>상여 {formatWon(r.bonus)}</span>
+                    <span>수당 {formatWon(r.extra_pay)}</span>
+                  </div>
+                  {r.notes && <p className="text-xs text-muted">{r.notes}</p>}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -139,8 +149,39 @@ export default function PayrollEditor({
           + 직원 추가
         </button>
       )}
+
+      {rows.length > 0 && !adding && (
+        <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4">
+          <p className="text-sm font-semibold">작성 완료했으면 본사로 보내기</p>
+          <p className="text-xs text-muted">이번 달 내역 전체가 lee@bestmateco.com 으로 발송돼요.</p>
+          <button
+            type="button"
+            disabled={mailing}
+            onClick={() => {
+              if (!confirm(`${rows.length}명 급여 내역을 메일로 보낼까요?`)) return;
+              startMail(async () => {
+                const result = await sendPayrollReport(storeId, month);
+                setMailMessage(result.error ?? "메일을 보냈어요.");
+              });
+            }}
+            className="rounded-xl border border-brand bg-brand-light py-2.5 text-sm font-semibold text-brand disabled:opacity-60"
+          >
+            {mailing ? "보내는 중..." : "메일로 보내기"}
+          </button>
+          {mailMessage && <p className="text-xs text-muted">{mailMessage}</p>}
+        </div>
+      )}
     </div>
   );
+}
+
+function formatDigits(n: number | null | undefined): string {
+  return n ? n.toLocaleString() : "";
+}
+
+function parseDigits(s: string): number {
+  const digits = s.replace(/[^\d]/g, "");
+  return digits ? Number(digits) : 0;
 }
 
 function PayrollForm({
@@ -158,6 +199,12 @@ function PayrollForm({
   const [state, formAction, pending] = useActionState(action, undefined);
   const [deleting, startDelete] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+
+  const [position, setPosition] = useState<PayrollPosition | "">(entry?.position ?? "");
+  const [hourlyRate, setHourlyRate] = useState(formatDigits(entry?.hourly_rate));
+  const [workHours, setWorkHours] = useState(entry?.work_hours ? String(entry.work_hours) : "");
+  const isPartTimer = position === "파트타이머";
+  const partTimerPay = Math.round(parseDigits(hourlyRate) * (Number(workHours) || 0));
 
   useEffect(() => {
     if (state?.success) onDone();
@@ -191,7 +238,8 @@ function PayrollForm({
           직급
           <select
             name="position"
-            defaultValue={entry?.position ?? ""}
+            value={position}
+            onChange={(e) => setPosition(e.target.value as PayrollPosition | "")}
             className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none ring-brand/30 focus:ring-2"
           >
             <option value="">선택 안 함</option>
@@ -204,7 +252,48 @@ function PayrollForm({
         </label>
       </div>
 
-      <AmountField label="기본급" name="base_pay" defaultValue={entry?.base_pay} />
+      {isPartTimer ? (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1 text-xs font-medium text-muted">
+              시급
+              <div className="flex items-center rounded-xl border border-border bg-background px-3 focus-within:ring-2 focus-within:ring-brand/30">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  name="hourly_rate"
+                  value={hourlyRate}
+                  onChange={(e) => setHourlyRate(formatDigits(parseDigits(e.target.value)))}
+                  placeholder="10,030"
+                  className="w-full bg-transparent py-2.5 text-right text-sm text-foreground outline-none"
+                />
+                <span className="ml-1 text-sm text-muted">원</span>
+              </div>
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-medium text-muted">
+              근무시간
+              <div className="flex items-center rounded-xl border border-border bg-background px-3 focus-within:ring-2 focus-within:ring-brand/30">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  name="work_hours"
+                  value={workHours}
+                  onChange={(e) => setWorkHours(e.target.value.replace(/[^\d.]/g, ""))}
+                  placeholder="80"
+                  className="w-full bg-transparent py-2.5 text-right text-sm text-foreground outline-none"
+                />
+                <span className="ml-1 text-sm text-muted">시간</span>
+              </div>
+            </label>
+          </div>
+          <p className="rounded-lg bg-brand-light px-3 py-2 text-xs text-brand-dark">
+            급여 = {formatWon(partTimerPay)}
+          </p>
+        </>
+      ) : (
+        <AmountField label="계약총급여" name="base_pay" defaultValue={entry?.base_pay} />
+      )}
+
       <AmountField label="상여금" name="bonus" defaultValue={entry?.bonus} />
       <AmountField label="추가수당" name="extra_pay" defaultValue={entry?.extra_pay} />
 
@@ -269,7 +358,7 @@ function AmountField({
   name: string;
   defaultValue?: number;
 }) {
-  const [value, setValue] = useState(defaultValue ? defaultValue.toLocaleString() : "");
+  const [value, setValue] = useState(formatDigits(defaultValue));
   return (
     <label className="flex flex-col gap-1 text-xs font-medium text-muted">
       {label}
@@ -279,10 +368,7 @@ function AmountField({
           inputMode="numeric"
           name={name}
           value={value}
-          onChange={(e) => {
-            const digits = e.target.value.replace(/[^\d]/g, "");
-            setValue(digits ? Number(digits).toLocaleString() : "");
-          }}
+          onChange={(e) => setValue(formatDigits(parseDigits(e.target.value)))}
           placeholder="0"
           className="w-full bg-transparent py-2.5 text-right text-sm text-foreground outline-none"
         />

@@ -273,9 +273,12 @@ export type PayrollEntry = {
   month: string
   employee_name: string
   position: PayrollPosition | null
+  /** 계약총급여. 파트타이머는 시급 × 근무시간 계산값 */
   base_pay: number
   bonus: number
   extra_pay: number
+  hourly_rate: number | null
+  work_hours: number | null
   notes: string | null
   created_by: string
   updated_by: string | null
