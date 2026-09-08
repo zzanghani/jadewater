@@ -119,7 +119,12 @@ export default function PayrollEditor({
                         <span className="ml-1.5 text-xs font-medium text-muted">{r.position}</span>
                       )}
                     </p>
-                    <p className="text-sm font-bold text-brand">{formatWon(rowTotal(r))}</p>
+                    <p className="flex items-center gap-2 text-sm font-bold text-brand">
+                      {formatWon(rowTotal(r))}
+                      <span className="rounded-md bg-brand-light px-1.5 py-0.5 text-[10px] font-medium text-brand">
+                        수정
+                      </span>
+                    </p>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-xs text-muted">
                     <span>
