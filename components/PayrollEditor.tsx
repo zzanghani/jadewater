@@ -11,10 +11,20 @@ import {
 import { formatWon } from "@/lib/format";
 import type { PayrollEntry, PayrollPosition } from "@/lib/types";
 
-const POSITIONS: PayrollPosition[] = ["점장", "부점장", "팀장", "사원", "파트타이머"];
+const POSITIONS: PayrollPosition[] = ["점장", "부점장", "팀장", "사원", "파트타이머", "프리랜서"];
+const FREELANCER_WITHHOLDING_RATE = 0.033;
+
+function positionLabel(p: PayrollPosition): string {
+  return p === "프리랜서" ? "프리랜서 (3.3%)" : p;
+}
 
 function rowTotal(r: Pick<PayrollEntry, "base_pay" | "bonus" | "extra_pay">) {
   return r.base_pay + r.bonus + r.extra_pay;
+}
+
+function freelancerNet(total: number) {
+  const withheld = Math.round(total * FREELANCER_WITHHOLDING_RATE);
+  return { withheld, net: total - withheld };
 }
 
 export default function PayrollEditor({
@@ -116,7 +126,9 @@ export default function PayrollEditor({
                     <p className="text-sm font-semibold">
                       {r.employee_name}
                       {r.position && (
-                        <span className="ml-1.5 text-xs font-medium text-muted">{r.position}</span>
+                        <span className="ml-1.5 text-xs font-medium text-muted">
+                          {positionLabel(r.position)}
+                        </span>
                       )}
                     </p>
                     <p className="flex items-center gap-2 text-sm font-bold text-brand">
@@ -135,6 +147,12 @@ export default function PayrollEditor({
                     <span>상여 {formatWon(r.bonus)}</span>
                     <span>수당 {formatWon(r.extra_pay)}</span>
                   </div>
+                  {r.position === "프리랜서" && (
+                    <p className="text-xs text-muted">
+                      3.3% 공제 {formatWon(freelancerNet(rowTotal(r)).withheld)} → 실지급{" "}
+                      {formatWon(freelancerNet(rowTotal(r)).net)}
+                    </p>
+                  )}
                   {r.notes && <p className="text-xs text-muted">{r.notes}</p>}
                 </button>
               </li>
@@ -158,7 +176,7 @@ export default function PayrollEditor({
       {rows.length > 0 && !adding && (
         <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4">
           <p className="text-sm font-semibold">작성 완료했으면 본사로 보내기</p>
-          <p className="text-xs text-muted">이번 달 내역 전체가 lee@bestmateco.com 으로 발송돼요.</p>
+          <p className="text-xs text-muted">이번 달 내역 전체가 do@leadhr.kr 로 발송돼요.</p>
           <button
             type="button"
             disabled={mailing}
@@ -250,7 +268,7 @@ function PayrollForm({
             <option value="">선택 안 함</option>
             {POSITIONS.map((p) => (
               <option key={p} value={p}>
-                {p}
+                {positionLabel(p)}
               </option>
             ))}
           </select>

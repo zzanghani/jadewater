@@ -62,3 +62,8 @@ create index if not exists payroll_entries_store_month_idx
 -- 파트타이머는 시급 × 근무시간으로 급여를 계산한다. base_pay에는 계산 결과가 들어간다.
 alter table public.payroll_entries add column if not exists hourly_rate numeric(10, 0);
 alter table public.payroll_entries add column if not exists work_hours numeric(6, 1);
+
+-- 프리랜서(3.3% 사업소득 신고자) 유형 추가.
+alter table public.payroll_entries drop constraint if exists payroll_entries_position_check;
+alter table public.payroll_entries add constraint payroll_entries_position_check
+  check (position in ('점장', '부점장', '팀장', '사원', '파트타이머', '프리랜서'));

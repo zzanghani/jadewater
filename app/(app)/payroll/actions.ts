@@ -9,8 +9,9 @@ import type { PayrollEntry, PayrollPosition } from "@/lib/types";
 
 export type PayrollFormState = { error?: string; success?: boolean } | undefined;
 
-const POSITIONS: PayrollPosition[] = ["점장", "부점장", "팀장", "사원", "파트타이머"];
-const PAYROLL_REPORT_TO = "lee@bestmateco.com";
+const POSITIONS: PayrollPosition[] = ["점장", "부점장", "팀장", "사원", "파트타이머", "프리랜서"];
+const PAYROLL_REPORT_TO = "do@leadhr.kr";
+const FREELANCER_WITHHOLDING_RATE = 0.033;
 
 function readAmount(formData: FormData, key: string): number {
   const raw = String(formData.get(key) ?? "").replace(/[^\d]/g, "");
@@ -193,6 +194,14 @@ function payDetail(r: PayrollEntry): string {
   return "";
 }
 
+// 프리랜서는 3.3% 원천징수 후 실지급액을 같이 적어준다.
+function totalDetail(r: PayrollEntry): string {
+  if (r.position !== "프리랜서") return "";
+  const total = r.base_pay + r.bonus + r.extra_pay;
+  const withheld = Math.round(total * FREELANCER_WITHHOLDING_RATE);
+  return `3.3% 공제 ${formatWon(withheld)} · 실지급 ${formatWon(total - withheld)}`;
+}
+
 // 이번 달 급여 내역 전체를 본사(대표)에게 메일로 보낸다.
 export async function sendPayrollReport(
   storeId: string,
@@ -239,11 +248,11 @@ export async function sendPayrollReport(
     .map(
       (r) => `<tr>
   <td ${td}>${escapeHtml(r.employee_name)}</td>
-  <td ${td}>${escapeHtml(r.position ?? "")}</td>
+  <td ${td}>${escapeHtml(r.position === "프리랜서" ? "프리랜서 (3.3%)" : (r.position ?? ""))}</td>
   <td ${tdRight}>${formatWon(r.base_pay)}${payDetail(r) ? `<br><span style="color:#6b7280;font-size:11px">${escapeHtml(payDetail(r))}</span>` : ""}</td>
   <td ${tdRight}>${formatWon(r.bonus)}</td>
   <td ${tdRight}>${formatWon(r.extra_pay)}</td>
-  <td ${tdRight}><strong>${formatWon(r.base_pay + r.bonus + r.extra_pay)}</strong></td>
+  <td ${tdRight}><strong>${formatWon(r.base_pay + r.bonus + r.extra_pay)}</strong>${totalDetail(r) ? `<br><span style="color:#6b7280;font-size:11px">${escapeHtml(totalDetail(r))}</span>` : ""}</td>
   <td ${td}>${escapeHtml(r.notes ?? "")}</td>
 </tr>`
     )

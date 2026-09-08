@@ -264,7 +264,8 @@ export type FieldExpense = {
   created_at: string
 }
 
-export type PayrollPosition = '점장' | '부점장' | '팀장' | '사원' | '파트타이머'
+/** 프리랜서 = 3.3% 사업소득 원천징수 신고자 */
+export type PayrollPosition = '점장' | '부점장' | '팀장' | '사원' | '파트타이머' | '프리랜서'
 
 export type PayrollEntry = {
   id: string
