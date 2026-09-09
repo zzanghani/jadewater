@@ -175,6 +175,8 @@ export type MonthlySettlement = {
   vat_reserve: number
   corp_tax_reserve: number
   hq_operating_reserve: number
+  /** 쿠팡이츠·배민 수수료 — 배달매출의 32% 자동계산 */
+  delivery_platform_fee: number
   reserve_carryover: number
   reserve_deduction: number
   discount_amount: number

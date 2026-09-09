@@ -4,6 +4,7 @@ import { forwardRef, useActionState, useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import { saveSettlement } from "@/app/(app)/settlement/actions";
 import { formatAmountInput, formatPercent, formatWon } from "@/lib/format";
+import { DELIVERY_PLATFORM_FEE_RATE } from "@/lib/settlementRates";
 import type {
   LaborItem,
   LineItem,
@@ -110,6 +111,9 @@ export default function SettlementForm({
   const corpTaxReserve = Math.round(totalSales * 0.06);
   const hqOperatingReserve = Math.round(totalSales * 0.04);
   const taxReserveTotal = pensionReserve + vatReserve + corpTaxReserve + hqOperatingReserve;
+  // 배달매출은 마감에 통으로 잡히므로 쿠팡이츠·배민 수수료를 지출로 따로 뺀다.
+  const deliverySales = autoSales.coupangSales + autoSales.baeminSales;
+  const deliveryPlatformFee = Math.round(deliverySales * DELIVERY_PLATFORM_FEE_RATE);
   const totalExpense =
     purchaseTotal +
     fieldExpenseTotal +
@@ -117,6 +121,7 @@ export default function SettlementForm({
     utilityTotal +
     hqFeeTotal +
     taxReserveTotal +
+    deliveryPlatformFee +
     autoDiscountTotal;
   const netProfit = totalSales - totalExpense;
   const corpReserve =
@@ -159,6 +164,7 @@ export default function SettlementForm({
         <input type="hidden" name="vat_reserve" value={vatReserve} />
         <input type="hidden" name="corp_tax_reserve" value={corpTaxReserve} />
         <input type="hidden" name="hq_operating_reserve" value={hqOperatingReserve} />
+        <input type="hidden" name="delivery_platform_fee" value={deliveryPlatformFee} />
         <input type="hidden" name="discount_amount" value={autoDiscountTotal} />
         <input
           type="hidden"
@@ -241,6 +247,15 @@ export default function SettlementForm({
             hint="총매출의 4%"
             value={hqOperatingReserve}
             percent={formatPercent(hqOperatingReserve, totalSales)}
+          />
+        </FieldGroup>
+
+        <FieldGroup title="배달플랫폼 수수료 (자동계산)" total={formatWon(deliveryPlatformFee)}>
+          <ComputedRow
+            label="쿠팡이츠·배민 수수료"
+            hint={`배달매출 ${formatWon(deliverySales)}의 ${Math.round(DELIVERY_PLATFORM_FEE_RATE * 100)}%`}
+            value={deliveryPlatformFee}
+            percent={formatPercent(deliveryPlatformFee, totalSales)}
           />
         </FieldGroup>
 
@@ -353,6 +368,8 @@ export default function SettlementForm({
           vatReserve={vatReserve}
           corpTaxReserve={corpTaxReserve}
           hqOperatingReserve={hqOperatingReserve}
+          deliverySales={deliverySales}
+          deliveryPlatformFee={deliveryPlatformFee}
           discountAmount={autoDiscountTotal}
           totalExpense={totalExpense}
           netProfit={netProfit}
@@ -906,6 +923,8 @@ type ReportProps = {
   vatReserve: number;
   corpTaxReserve: number;
   hqOperatingReserve: number;
+  deliverySales: number;
+  deliveryPlatformFee: number;
   discountAmount: number;
   totalExpense: number;
   netProfit: number;
@@ -932,6 +951,8 @@ const SettlementReport = forwardRef<HTMLDivElement, ReportProps>(function Settle
     vatReserve,
     corpTaxReserve,
     hqOperatingReserve,
+    deliverySales,
+    deliveryPlatformFee,
     discountAmount,
     totalExpense,
     netProfit,
@@ -1121,6 +1142,18 @@ const SettlementReport = forwardRef<HTMLDivElement, ReportProps>(function Settle
             />
           ))
         )}
+      </ReportSection>
+
+      <ReportSection
+        title="배달플랫폼 수수료"
+        amount={deliveryPlatformFee}
+        percent={formatPercent(deliveryPlatformFee, totalExpense)}
+      >
+        <ReportRow
+          label={`쿠팡이츠·배민 수수료 (배달매출 ${formatWon(deliverySales)}의 ${Math.round(DELIVERY_PLATFORM_FEE_RATE * 100)}%)`}
+          value={deliveryPlatformFee}
+          percent={formatPercent(deliveryPlatformFee, totalSales)}
+        />
       </ReportSection>
 
       <ReportSection

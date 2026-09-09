@@ -78,6 +78,7 @@ export async function saveSettlement(
     "vat_reserve",
     "corp_tax_reserve",
     "hq_operating_reserve",
+    "delivery_platform_fee",
     "reserve_carryover",
     "reserve_deduction",
     "discount_amount",

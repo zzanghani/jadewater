@@ -7,6 +7,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
+import { DELIVERY_PLATFORM_FEE_RATE } from "./settlementRates";
 
 export type MonthlyPL = {
   month: string;
@@ -19,6 +20,8 @@ export type MonthlyPL = {
   hqFeeTotal: number;
   // 퇴직연금(인건비 10%) + 부가세·법인세(각 매출 6%) + 본사운영비(매출 4%)
   taxReserveTotal: number;
+  // 쿠팡이츠·배민 수수료 (배달매출의 32%)
+  deliveryPlatformFee: number;
   discountTotal: number;
   totalExpense: number;
   netProfit: number;
@@ -48,7 +51,7 @@ export async function monthlyPL(
     await Promise.all([
     supabase
       .from("daily_closings")
-      .select("grand_total, discount_amount, total_guests")
+      .select("grand_total, discount_amount, total_guests, coupang_eats_sales, baemin_sales")
       .eq("store_id", storeId)
       .gte("date", start)
       .lte("date", end),
@@ -93,6 +96,12 @@ export async function monthlyPL(
     Math.round(totalSales * 0.06) +
     Math.round(totalSales * 0.04);
 
+  // 배달매출은 마감에 통으로 잡히므로 플랫폼 수수료를 지출로 따로 뺀다.
+  const deliverySales = sum(
+    (closings ?? []).map((c) => c.coupang_eats_sales + c.baemin_sales)
+  );
+  const deliveryPlatformFee = Math.round(deliverySales * DELIVERY_PLATFORM_FEE_RATE);
+
   const totalExpense =
     purchaseTotal +
     fieldExpenseTotal +
@@ -100,6 +109,7 @@ export async function monthlyPL(
     utilityTotal +
     hqFeeTotal +
     taxReserveTotal +
+    deliveryPlatformFee +
     discountTotal;
 
   return {
@@ -112,6 +122,7 @@ export async function monthlyPL(
     utilityTotal,
     hqFeeTotal,
     taxReserveTotal,
+    deliveryPlatformFee,
     discountTotal,
     totalExpense,
     netProfit: totalSales - totalExpense,
