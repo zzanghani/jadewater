@@ -15,6 +15,16 @@ export default function MessageThreadForm({ recipientId }: { recipientId: string
     formRef.current?.reset();
   }, [state]);
 
+  // 엔터로 바로 전송, 쉬프트+엔터는 줄바꿈. 한글 조합 중인 엔터는
+  // 전송으로 잡아채면 안 되므로 isComposing / keyCode 229를 확인한다.
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key !== "Enter" || e.shiftKey) return;
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+    e.preventDefault();
+    if (pending) return;
+    formRef.current?.requestSubmit();
+  }
+
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-2">
       <input type="hidden" name="recipient_id" value={recipientId} />
@@ -24,6 +34,7 @@ export default function MessageThreadForm({ recipientId }: { recipientId: string
           required
           rows={2}
           placeholder="메시지를 입력하세요"
+          onKeyDown={handleKeyDown}
           className="flex-1 resize-none rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
         />
         <button
