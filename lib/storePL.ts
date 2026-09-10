@@ -20,7 +20,7 @@ export type MonthlyPL = {
   hqFeeTotal: number;
   // 퇴직연금(인건비 10%) + 부가세·법인세(각 매출 6%) + 본사운영비(매출 4%)
   taxReserveTotal: number;
-  // 쿠팡이츠·배민 수수료 (배달매출의 32%)
+  // 쿠팡이츠·배민 수수료 (배달매출의 25%)
   deliveryPlatformFee: number;
   discountTotal: number;
   totalExpense: number;
