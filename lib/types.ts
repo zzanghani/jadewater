@@ -289,6 +289,21 @@ export type PayrollEntry = {
   updated_at: string
 }
 
+/** 금전대차 상환표 한 줄 — 매장·투자자별 투자금과 상환액 (마스터 전용) */
+export type LoanRepayment = {
+  id: string
+  store_name: string
+  investor_name: string
+  principal: number
+  repaid: number
+  notes: string | null
+  sort_order: number
+  created_by: string
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type MonthlyPlanType = 'task' | 'vacation'
 
 export type MonthlyPlan = {
@@ -753,6 +768,16 @@ export type Database = {
           created_by: string
         }
         Update: Partial<FieldExpense>
+        Relationships: []
+      }
+      loan_repayments: {
+        Row: LoanRepayment
+        Insert: Partial<LoanRepayment> & {
+          store_name: string
+          investor_name: string
+          created_by: string
+        }
+        Update: Partial<LoanRepayment>
         Relationships: []
       }
       payroll_entries: {
