@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { resolveChatFileUrls } from "@/app/(app)/messages/rooms/actions";
 import Avatar from "@/components/Avatar";
 import ChatImageBubble from "@/components/ChatImageBubble";
@@ -104,8 +104,21 @@ export default function ChatMessageList({
   // 안드로이드 크롬에서 목록 자체 높이를 고정해 내부 스크롤 박스로 만드는
   // 방식이 화면 전체 스크롤과 뒤섞여 오작동해서, 목록을 그냥 페이지
   // 흐름에 맡기고 화면 전체를 스크롤해 맨 아래로 보낸다.
-  useLayoutEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" });
+  //
+  // 처음 열 때는 Next.js 라우터가 페이지 이동 직후 스크롤을 맨 위로 올리는데,
+  // 그게 이 이펙트보다 늦게 실행돼서 바로 내리면 다시 위로 튕긴다. 그래서
+  // 두 프레임 뒤로 미뤄 라우터 스크롤 다음에 내린다 (ScrollToBottomOnMount와 동일).
+  useEffect(() => {
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => {
+        bottomRef.current?.scrollIntoView({ block: "end" });
+      });
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
   }, [messages.length]);
 
   if (messages.length === 0) {
