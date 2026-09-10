@@ -304,6 +304,17 @@ export type LoanRepayment = {
   updated_at: string
 }
 
+/** 상환 기록 한 건 — 합계가 트리거로 loan_repayments.repaid에 반영된다 */
+export type LoanRepaymentEvent = {
+  id: string
+  loan_id: string
+  paid_on: string
+  amount: number
+  notes: string | null
+  created_by: string
+  created_at: string
+}
+
 export type MonthlyPlanType = 'task' | 'vacation'
 
 export type MonthlyPlan = {
@@ -778,6 +789,17 @@ export type Database = {
           created_by: string
         }
         Update: Partial<LoanRepayment>
+        Relationships: []
+      }
+      loan_repayment_events: {
+        Row: LoanRepaymentEvent
+        Insert: Partial<LoanRepaymentEvent> & {
+          loan_id: string
+          paid_on: string
+          amount: number
+          created_by: string
+        }
+        Update: Partial<LoanRepaymentEvent>
         Relationships: []
       }
       payroll_entries: {

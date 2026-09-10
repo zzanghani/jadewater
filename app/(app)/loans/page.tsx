@@ -19,11 +19,14 @@ export default async function LoansPage() {
   const isHqMaster = !!profile && profile.store_id === null && profile.department === null;
   if (!isHqMaster) redirect("/");
 
-  const { data: rows } = await supabase
-    .from("loan_repayments")
-    .select("*")
-    .order("sort_order")
-    .order("created_at");
+  const [{ data: rows }, { data: events }] = await Promise.all([
+    supabase.from("loan_repayments").select("*").order("sort_order").order("created_at"),
+    supabase
+      .from("loan_repayment_events")
+      .select("*")
+      .order("paid_on", { ascending: false })
+      .order("created_at", { ascending: false }),
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -31,7 +34,11 @@ export default async function LoansPage() {
         <h1 className="text-lg font-bold">금전대차 상환표</h1>
         <p className="mt-1 text-xs text-muted">매장별 투자자 원금과 상환액 · 대표님만 볼 수 있어요</p>
       </div>
-      <LoanRepaymentTable rows={rows ?? []} storeNames={stores.map((s) => s.name)} />
+      <LoanRepaymentTable
+        rows={rows ?? []}
+        events={events ?? []}
+        storeNames={stores.map((s) => s.name)}
+      />
     </div>
   );
 }

@@ -98,3 +98,68 @@ cross join lateral (
   limit 1
 ) as m
 where not exists (select 1 from public.loan_repayments);
+
+-- --------------------------------------------------------------------------
+-- 상환 기록 — 상환할 때마다 날짜·금액을 한 줄씩 남기고, 합계가 자동으로
+-- loan_repayments.repaid에 반영된다 (트리거). 상환액을 손으로 고치지 않는다.
+-- --------------------------------------------------------------------------
+create table if not exists public.loan_repayment_events (
+  id uuid primary key default gen_random_uuid(),
+  loan_id uuid not null references public.loan_repayments (id) on delete cascade,
+  paid_on date not null,
+  amount numeric(14, 0) not null,
+  notes text,
+  created_by uuid not null references public.profiles (id),
+  created_at timestamptz not null default now()
+);
+
+alter table public.loan_repayment_events enable row level security;
+
+drop policy if exists "loan_repayment_events_select_master" on public.loan_repayment_events;
+create policy "loan_repayment_events_select_master"
+  on public.loan_repayment_events for select
+  to authenticated
+  using (public.user_is_hq_master());
+
+drop policy if exists "loan_repayment_events_insert_master" on public.loan_repayment_events;
+create policy "loan_repayment_events_insert_master"
+  on public.loan_repayment_events for insert
+  to authenticated
+  with check (public.user_is_hq_master() and auth.uid() = created_by);
+
+drop policy if exists "loan_repayment_events_delete_master" on public.loan_repayment_events;
+create policy "loan_repayment_events_delete_master"
+  on public.loan_repayment_events for delete
+  to authenticated
+  using (public.user_is_hq_master());
+
+create index if not exists loan_repayment_events_loan_idx
+  on public.loan_repayment_events (loan_id, paid_on desc);
+
+create or replace function public.sync_loan_repaid()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target uuid := coalesce(new.loan_id, old.loan_id);
+begin
+  update public.loan_repayments
+  set repaid = coalesce((select sum(amount) from public.loan_repayment_events where loan_id = target), 0)
+  where id = target;
+  return null;
+end;
+$$;
+
+drop trigger if exists loan_repayment_events_sync on public.loan_repayment_events;
+create trigger loan_repayment_events_sync
+  after insert or update or delete on public.loan_repayment_events
+  for each row execute function public.sync_loan_repaid();
+
+-- 엑셀에서 넘어온 상환액은 "이월" 기록 한 줄로 남긴다 (기록이 하나도 없는 줄만).
+insert into public.loan_repayment_events (loan_id, paid_on, amount, notes, created_by)
+select l.id, date '2026-09-10', l.repaid, '엑셀 이월', l.created_by
+from public.loan_repayments l
+where l.repaid > 0
+  and not exists (select 1 from public.loan_repayment_events e where e.loan_id = l.id);
