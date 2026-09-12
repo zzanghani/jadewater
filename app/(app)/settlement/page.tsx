@@ -109,7 +109,7 @@ export default async function SettlementPage({
   const content = (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-base font-bold">월말정산</h1>
+        <h1 className="text-lg font-bold">월말정산</h1>
         <div className="flex items-center gap-2 text-sm font-medium">
           <Link
             href={`/settlement?month=${prev}`}
