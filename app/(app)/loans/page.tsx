@@ -13,10 +13,11 @@ export default async function LoansPage() {
   if (!user) redirect("/login");
 
   const [{ data: profile }, { stores }] = await Promise.all([
-    supabase.from("profiles").select("store_id, department").eq("id", user.id).maybeSingle(),
+    supabase.from("profiles").select("role, store_id, department").eq("id", user.id).maybeSingle(),
     getStoreContext(supabase),
   ]);
-  const isHqMaster = !!profile && profile.store_id === null && profile.department === null;
+  const isHqMaster =
+    !!profile && profile.role === "owner" && profile.store_id === null && profile.department === null;
   if (!isHqMaster) redirect("/");
 
   const [{ data: rows }, { data: events }] = await Promise.all([

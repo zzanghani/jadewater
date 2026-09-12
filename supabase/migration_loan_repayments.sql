@@ -4,7 +4,8 @@
 --
 -- 대표가 엑셀로 관리하던 "매장 / 투자자 / 투자금 / 상환액 / 상환비율" 표를
 -- 그대로 옮긴 것. 매장은 아직 앱에 없는 곳(온다미, 고양)도 있어서 이름 글자로 둔다.
--- 남의 원금·상환액이 담기므로 본사 마스터(매장·부서 모두 없는 계정)만 읽고 쓴다.
+-- 남의 원금·상환액이 담기므로 본사 마스터(role=owner, 매장·부서 모두 없는 계정)만 읽고 쓴다.
+-- (매장 배정 전 승인된 staff 계정도 store/department가 비어 있으므로 role 조건이 꼭 필요하다.)
 -- ============================================================================
 
 create or replace function public.user_is_hq_master()
@@ -17,6 +18,7 @@ as $$
   select exists (
     select 1 from public.profiles
     where id = auth.uid()
+      and role = 'owner'
       and store_id is null
       and department is null
       and status = 'approved'
@@ -93,7 +95,7 @@ from (values
 ) as v(store_name, investor_name, principal, repaid, sort_order)
 cross join lateral (
   select id from public.profiles
-  where store_id is null and department is null and status = 'approved'
+  where role = 'owner' and store_id is null and department is null and status = 'approved'
   order by created_at
   limit 1
 ) as m
