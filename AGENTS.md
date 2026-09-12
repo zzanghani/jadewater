@@ -25,3 +25,7 @@ Rules:
 3. **블루**: apply only SQL that is already committed in the repo, only when the user says to merge to `main` (or explicitly asks to apply to 블루). Before applying, inspect 블루 with the read tools (does the table/column/policy already exist? does the seed data precondition hold?) and tell the user in one line what will be applied. Then apply via `apply_migration` (the user approves the prompt) and verify afterwards with a read query. Never run ad-hoc destructive SQL (drop/delete/truncate) on 블루.
 4. Never create, delete, or modify Supabase Auth accounts — that's always the user's own action in the dashboard.
 5. If the connectors are not visible in the current session, fall back to the old behavior: hand the SQL to the user to run themselves.
+
+## Vercel deploy status
+
+A Vercel connector is available (team `team_teDSOuNReWx5fCNr8gqh7NzS`, project `prj_4oSbHC8g9sRSj16tQt60yAgY4mJY` = jadewater). Deploys take about 1–2 minutes after a push. Whenever a push to `staging` or `main` happens (by you or by the user), wait ~90 seconds, then check the newest deployment for that branch with `list_deployments` / `get_deployment`. If it is READY, tell the user in one line (and send a push notification if they are not watching). If it is ERROR, pull `get_deployment_build_logs` with `errorsOnly`, fix the cause, and push again. `githubCommitSha` on the deployment tells you which commit is live.
