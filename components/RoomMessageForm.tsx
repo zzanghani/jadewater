@@ -1,8 +1,11 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { sendRoomMessage, uploadInlineChatFile, type SendRoomMessageState } from "@/app/(app)/messages/rooms/actions";
+import { sendRoomMessage, type SendRoomMessageState } from "@/app/(app)/messages/rooms/actions";
 import MediaInsertButton from "@/components/MediaInsertButton";
+import { makeInlineUploader } from "@/lib/uploadToStorage";
+
+const uploadInlineChatFile = makeInlineUploader("chat");
 
 type Member = { id: string; name: string };
 

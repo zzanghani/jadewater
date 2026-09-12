@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { uploadInlineBoardFile } from "@/app/(app)/board/actions";
 import MediaInsertButton from "@/components/MediaInsertButton";
+import { makeInlineUploader } from "@/lib/uploadToStorage";
+
+const uploadInlineBoardFile = makeInlineUploader("board");
 import ToggleInsertButton from "@/components/ToggleInsertButton";
 
 type TextSegment = { type: "text"; id: string; value: string };

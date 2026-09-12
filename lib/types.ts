@@ -289,6 +289,32 @@ export type PayrollEntry = {
   updated_at: string
 }
 
+/** 금전대차 상환표 한 줄 — 매장·투자자별 투자금과 상환액 (마스터 전용) */
+export type LoanRepayment = {
+  id: string
+  store_name: string
+  investor_name: string
+  principal: number
+  repaid: number
+  notes: string | null
+  sort_order: number
+  created_by: string
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** 상환 기록 한 건 — 합계가 트리거로 loan_repayments.repaid에 반영된다 */
+export type LoanRepaymentEvent = {
+  id: string
+  loan_id: string
+  paid_on: string
+  amount: number
+  notes: string | null
+  created_by: string
+  created_at: string
+}
+
 export type MonthlyPlanType = 'task' | 'vacation'
 
 export type MonthlyPlan = {
@@ -753,6 +779,27 @@ export type Database = {
           created_by: string
         }
         Update: Partial<FieldExpense>
+        Relationships: []
+      }
+      loan_repayments: {
+        Row: LoanRepayment
+        Insert: Partial<LoanRepayment> & {
+          store_name: string
+          investor_name: string
+          created_by: string
+        }
+        Update: Partial<LoanRepayment>
+        Relationships: []
+      }
+      loan_repayment_events: {
+        Row: LoanRepaymentEvent
+        Insert: Partial<LoanRepaymentEvent> & {
+          loan_id: string
+          paid_on: string
+          amount: number
+          created_by: string
+        }
+        Update: Partial<LoanRepaymentEvent>
         Relationships: []
       }
       payroll_entries: {

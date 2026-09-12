@@ -159,6 +159,22 @@ export async function createBoardPost(
   }
 
   await uploadAttachments(supabase, user.id, files, { post_id: inserted.id });
+
+  // 첨부파일은 브라우저에서 스토리지에 미리 올리고 경로만 넘어온다
+  // (서버 액션 본문 한도 회피). 여기서는 board_attachments에 등록만 한다.
+  const attachmentPaths = formData.getAll("attachment_path").map(String);
+  const attachmentNames = formData.getAll("attachment_name").map(String);
+  if (attachmentPaths.length > 0) {
+    await supabase.from("board_attachments").insert(
+      attachmentPaths.map((path, i) => ({
+        post_id: inserted.id,
+        storage_path: path,
+        file_name: attachmentNames[i] || path.split("/").pop() || "파일",
+        created_by: user.id,
+      }))
+    );
+  }
+
   await registerInlineAttachments(supabase, user.id, inserted.id, body);
 
   if (followerIds.length > 0) {
