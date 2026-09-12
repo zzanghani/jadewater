@@ -185,7 +185,7 @@ export default function SettlementForm({
           readOnly
         />
 
-        <label className="flex flex-col gap-1.5 text-sm font-medium">
+        <label className="flex flex-col gap-1.5 text-[13px] font-medium">
           담당자
           <input
             type="text"
@@ -276,7 +276,7 @@ export default function SettlementForm({
           />
         </FieldGroup>
 
-        <label className="flex flex-col gap-1.5 text-sm font-medium">
+        <label className="flex flex-col gap-1.5 text-[13px] font-medium">
           특이사항
           <textarea
             name="notes"
@@ -288,7 +288,7 @@ export default function SettlementForm({
           />
         </label>
 
-        <div className="flex flex-col gap-2 rounded-2xl bg-brand-light p-4 text-sm">
+        <div className="flex flex-col gap-2 rounded-2xl bg-brand-light p-4 text-[13px]">
           <SummaryRow label="총매출" value={totalSales} percent={formatPercent(totalSales, totalSales)} />
           <SummaryRow
             label="총지출"
@@ -316,12 +316,12 @@ export default function SettlementForm({
         </div>
 
         {state?.error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-[13px] text-red-600">
             {state.error}
           </p>
         )}
         {state?.success && (
-          <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+          <p className="rounded-lg bg-green-50 px-3 py-2 text-[13px] text-green-700">
             저장되었습니다.
           </p>
         )}
@@ -329,7 +329,7 @@ export default function SettlementForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-xl bg-brand py-3 text-sm font-semibold text-white shadow-md shadow-brand/30 transition-opacity disabled:opacity-60"
+          className="rounded-xl bg-brand py-3 text-[13px] font-semibold text-white shadow-md shadow-brand/30 transition-opacity disabled:opacity-60"
         >
           {pending ? "저장 중..." : "정산 저장"}
         </button>
@@ -337,7 +337,7 @@ export default function SettlementForm({
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">정산 리포트</h2>
+          <h2 className="text-[13px] font-semibold text-foreground">정산 리포트</h2>
           <button
             type="button"
             onClick={handleSaveImage}
@@ -417,8 +417,8 @@ function FieldGroup({
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        <span className="text-sm font-bold text-brand">{total}</span>
+        <h3 className="text-[13px] font-semibold text-foreground">{title}</h3>
+        <span className="text-[13px] font-bold text-brand">{total}</span>
       </div>
       <div className="flex flex-col gap-3">{children}</div>
     </div>
@@ -439,7 +439,7 @@ function NumberField({
   percentOf?: number;
 }) {
   return (
-    <label className="flex flex-col gap-1.5 text-sm font-medium">
+    <label className="flex flex-col gap-1.5 text-[13px] font-medium">
       <span className="flex items-baseline justify-between">
         {label}
         {percentOf !== undefined && (
@@ -461,7 +461,7 @@ function NumberField({
           }}
           className="w-full rounded-xl border border-border bg-card px-4 py-3 pr-10 outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
         />
-        <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm text-muted">
+        <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-[13px] text-muted">
           원
         </span>
       </div>
@@ -483,11 +483,11 @@ function ComputedRow({
   return (
     <div className="flex items-center justify-between rounded-xl bg-background px-3 py-2.5">
       <div>
-        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="text-[13px] font-medium text-foreground">{label}</p>
         <p className="text-[11px] text-muted">{hint}</p>
       </div>
       <span className="text-right">
-        <span className="block text-sm font-semibold text-foreground">
+        <span className="block text-[13px] font-semibold text-foreground">
           {formatWon(value)}
         </span>
         <span className="block text-[11px] text-muted">{percent}</span>
@@ -540,8 +540,8 @@ function ItemListEditor<
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        <span className="text-sm font-bold text-brand">{formatWon(total)}</span>
+        <h3 className="text-[13px] font-semibold text-foreground">{title}</h3>
+        <span className="text-[13px] font-bold text-brand">{formatWon(total)}</span>
       </div>
 
       {items.length === 0 && (
@@ -570,7 +570,7 @@ function ItemListEditor<
                 value={item.name}
                 onChange={(e) => updateItem(item.key, { name: e.target.value } as Partial<T>)}
                 placeholder={namePlaceholder}
-                className="min-w-0 flex-1 rounded-lg border border-border bg-card px-2.5 py-2 text-sm outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
+                className="min-w-0 flex-1 rounded-lg border border-border bg-card px-2.5 py-2 text-[13px] outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
               />
               <input
                 type="text"
@@ -583,7 +583,7 @@ function ItemListEditor<
                   } as Partial<T>);
                 }}
                 placeholder="0"
-                className="w-24 shrink-0 rounded-lg border border-border bg-card px-2.5 py-2 text-right text-sm outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
+                className="w-24 shrink-0 rounded-lg border border-border bg-card px-2.5 py-2 text-right text-[13px] outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
               />
               <button
                 type="button"
@@ -610,7 +610,7 @@ function ItemListEditor<
                     } as Partial<T>);
                   }}
                   placeholder="0"
-                  className="ml-auto w-24 shrink-0 rounded-lg border border-border bg-card px-2.5 py-1.5 text-right text-sm outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
+                  className="ml-auto w-24 shrink-0 rounded-lg border border-border bg-card px-2.5 py-1.5 text-right text-[13px] outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
                 />
               </div>
             )}
@@ -722,10 +722,10 @@ function AutoSummary({
 
       <div className="rounded-2xl border border-border bg-card p-4">
         <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground">
+          <h3 className="text-[13px] font-semibold text-foreground">
             거래처별 매입 (자동집계)
           </h3>
-          <span className="text-sm font-bold text-brand">{formatWon(purchaseTotal)}</span>
+          <span className="text-[13px] font-bold text-brand">{formatWon(purchaseTotal)}</span>
         </div>
         {supplierList.length === 0 ? (
           <p className="text-xs text-muted">이번달 등록된 입고 내역이 없습니다.</p>
@@ -748,10 +748,10 @@ function AutoSummary({
 
       <div className="rounded-2xl border border-border bg-card p-4">
         <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground">
+          <h3 className="text-[13px] font-semibold text-foreground">
             현장지출 (자동집계)
           </h3>
-          <span className="text-sm font-bold text-brand">{formatWon(fieldExpenseTotal)}</span>
+          <span className="text-[13px] font-bold text-brand">{formatWon(fieldExpenseTotal)}</span>
         </div>
         {fieldExpenseList.length === 0 ? (
           <p className="text-xs text-muted">이번달 등록된 현장지출 내역이 없습니다.</p>
@@ -806,7 +806,7 @@ function PaymentBreakdown({
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
-      <h3 className="mb-3 text-sm font-semibold text-foreground">결제수단별 매출</h3>
+      <h3 className="mb-3 text-[13px] font-semibold text-foreground">결제수단별 매출</h3>
 
       {totalSales > 0 && (
         <div className="mb-3 flex h-3 w-full overflow-hidden rounded-full bg-background">
@@ -868,8 +868,8 @@ function BigStatCard({
   if (tone === "brand") {
     return (
       <div className="rounded-2xl bg-gradient-to-br from-brand to-brand-dark p-4 text-white shadow-lg shadow-brand/25">
-        <p className="text-sm text-white/85">{label}</p>
-        <p className="mt-1 text-2xl font-bold">{formatWon(value)}</p>
+        <p className="text-[13px] text-white/85">{label}</p>
+        <p className="mt-1 text-xl font-bold">{formatWon(value)}</p>
       </div>
     );
   }
@@ -879,8 +879,8 @@ function BigStatCard({
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
-      <p className="text-sm text-muted">{label}</p>
-      <p className={`mt-1 text-2xl font-bold ${valueColor}`}>{formatWon(value)}</p>
+      <p className="text-[13px] text-muted">{label}</p>
+      <p className={`mt-1 text-xl font-bold ${valueColor}`}>{formatWon(value)}</p>
       {percent && <p className="mt-0.5 text-xs text-muted">{percent}</p>}
     </div>
   );
@@ -898,7 +898,7 @@ function MiniStat({
   return (
     <div className="rounded-2xl border border-border bg-card p-3">
       <p className="text-xs text-muted">{label}</p>
-      <p className="mt-1 text-sm font-bold text-foreground">{formatWon(value)}</p>
+      <p className="mt-1 text-[13px] font-bold text-foreground">{formatWon(value)}</p>
       <p className="text-[11px] text-muted">{percent}</p>
     </div>
   );
@@ -966,10 +966,10 @@ const SettlementReport = forwardRef<HTMLDivElement, ReportProps>(function Settle
     <div ref={ref} className="flex flex-col gap-4 rounded-2xl border border-border bg-white p-5 text-[#1c2624]">
       <div className="flex items-center justify-between border-b border-border pb-3">
         <div>
-          <p className="text-lg font-bold">{storeName}</p>
-          <p className="text-sm text-muted">{monthLabel} 결산보고</p>
+          <p className="text-base font-bold">{storeName}</p>
+          <p className="text-[13px] text-muted">{monthLabel} 결산보고</p>
         </div>
-        <div className="text-right text-sm text-muted">
+        <div className="text-right text-[13px] text-muted">
           <p>담당자</p>
           <p className="font-semibold text-foreground">{managerName || "-"}</p>
         </div>
@@ -1263,7 +1263,7 @@ function ReportStat({
     >
       <p className="text-[11px] text-muted">{label}</p>
       <p
-        className={`mt-0.5 text-sm font-bold ${
+        className={`mt-0.5 text-[13px] font-bold ${
           highlight ? (value >= 0 ? "text-brand-dark" : "text-red-600") : "text-foreground"
         }`}
       >
