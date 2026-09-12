@@ -1,11 +1,10 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import {
-  createBoardComment,
-  uploadInlineBoardFile,
-  type BoardFormState,
-} from "@/app/(app)/board/actions";
+import { createBoardComment, type BoardFormState } from "@/app/(app)/board/actions";
+import { makeInlineUploader } from "@/lib/uploadToStorage";
+
+const uploadInlineBoardFile = makeInlineUploader("board");
 
 type Profile = { id: string; name: string };
 type UploadedAttachment = { path: string; fileName: string; url: string; isImage: boolean };
