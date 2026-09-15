@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type CSSProperties } from "react";
+import { sendReviewReportEmail } from "@/app/(app)/review-report/actions";
 import type { ReviewReportsByDate } from "@/lib/reviewReport";
 
 type StoreInfo = { id: string; name: string; color: string };
@@ -35,13 +36,12 @@ export default function ReviewReportClient({
   const data = report?.[selectedStoreId];
   const newCount = data?.newReviews.length ?? 0;
 
-  function handleRequestNow() {
+  async function handleRequestNow() {
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setToast("📧 리포트 이메일을 발송했어요!");
-      setTimeout(() => setToast(""), 3000);
-    }, 2000);
+    const result = await sendReviewReportEmail(selectedDate);
+    setLoading(false);
+    setToast(result.error ?? "📧 lee@bestmateco.com 으로 발송했어요!");
+    setTimeout(() => setToast(""), 4000);
   }
 
   return (
