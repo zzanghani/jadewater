@@ -24,11 +24,14 @@ export async function fetchNaverBlogPosts(
   clientSecret: string,
   display = 100
 ): Promise<NaverBlogPost[]> {
-  // sort=date(최신순)는 "하남"처럼 흔한 단어가 매장명에 들어가면 완전히 무관한
-  // 글(부동산/주식 등)까지 끌려온다. sort=sim(관련도순)이 훨씬 정확하다.
+  // 최신순(sort=date)으로 가져온다. 예전엔 "하남"처럼 흔한 단어로 매장별 검색을
+  // 해서 최신순이면 무관한 글이 섞였지만, 지금은 브랜드명("제이드앤워터")으로
+  // 검색하므로 최신순이어도 전부 브랜드 글이다. 관련도순(sim)은 상위 100개가
+  // 몇 달 전 글로 채워져서 "최근 7일 글만 저장" 조건에 아무것도 안 걸렸다
+  // (2026-08-25 이후 신규 후기가 한 건도 안 들어온 원인).
   const url = `https://openapi.naver.com/v1/search/blog.json?query=${encodeURIComponent(
     query
-  )}&display=${display}&sort=sim`;
+  )}&display=${display}&sort=date`;
 
   const res = await fetch(url, {
     headers: {
