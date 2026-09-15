@@ -290,6 +290,10 @@ if (isHq) {
   }
 
   if (isTeamAccount) {
+    // 마케팅팀은 마스터 홈과 같은 "실시간매출" 매장 카드를 본다. 카드를 누르면
+    // 매장별 달력 + 마감보고(/store/[id])로 간다 — daily_closings 조회는
+    // migration_marketing_view_closings.sql의 RLS(user_can_view_closings)로 열어 둠.
+    const showStoreSalesCards = profile?.department === "marketing";
     return (
       <div className="flex flex-col gap-5">
         <PushSubscribeButton storeId={null} />
@@ -301,6 +305,28 @@ if (isHq) {
           hqProfiles={hqProfiles}
           currentUserId={user?.id}
         />
+
+        {showStoreSalesCards && (
+          <section>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-foreground">실시간매출</h2>
+              <span className="text-2xl font-bold text-foreground">{todayLabel}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {storeTodaySales.map((s) => (
+                <Link
+                  key={s.id}
+                  href={`/store/${s.id}`}
+                  style={{ backgroundColor: s.color }}
+                  className="rounded-2xl p-4 text-white shadow-lg transition-opacity active:opacity-80"
+                >
+                  <p className="text-xs leading-tight text-white/85">{s.name}</p>
+                  <p className="mt-1 text-lg font-bold">{formatWon(s.sales)}</p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         <QuickMenu
           teamOnly

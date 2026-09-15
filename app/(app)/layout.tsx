@@ -120,11 +120,16 @@ export default async function AppLayout({
       (pathname.startsWith("/schedule") ||
         pathname.startsWith("/cost") ||
         pathname.startsWith("/weekday-analysis"));
+    // 마케팅팀은 홈의 실시간매출 카드에서 매장별 달력·마감보고(/store/[id])를 본다
+    // (조회 권한은 RLS의 user_can_view_closings).
+    const isMarketingStoreView =
+      profile?.department === "marketing" && pathname.startsWith("/store/");
     const allowed =
       TEAM_ALLOWED_PREFIXES.some((p) => (p === "/" ? pathname === "/" : pathname.startsWith(p))) ||
       (isHrTeam && pathname.startsWith("/hr")) ||
       (isRnd && pathname.startsWith("/inventory")) ||
-      isRndViewOnly;
+      isRndViewOnly ||
+      isMarketingStoreView;
     if (!allowed) {
       redirect("/");
     }
