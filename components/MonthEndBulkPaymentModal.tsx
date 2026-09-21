@@ -10,6 +10,7 @@ type Row = {
   bank_name: string;
   account_number: string;
   amount: string;
+  is_payroll: boolean;
 };
 
 const BLANK_ROW_COUNT = 20;
@@ -21,7 +22,14 @@ function nextKey() {
 }
 
 function blankRow(): Row {
-  return { key: nextKey(), vendor_name: "", bank_name: "", account_number: "", amount: "" };
+  return {
+    key: nextKey(),
+    vendor_name: "",
+    bank_name: "",
+    account_number: "",
+    amount: "",
+    is_payroll: false,
+  };
 }
 
 export default function MonthEndBulkPaymentModal({ storeId }: { storeId: string }) {
@@ -55,6 +63,7 @@ export default function MonthEndBulkPaymentModal({ storeId }: { storeId: string 
         bank_name: r.bank_name,
         account_number: r.account_number,
         amount: Number(r.amount) || 0,
+        is_payroll: r.is_payroll,
       }));
       const res = await saveBulkPaymentRequests(storeId, items);
       setResult(res);
@@ -97,6 +106,7 @@ export default function MonthEndBulkPaymentModal({ storeId }: { storeId: string 
             </div>
             <p className="text-xs text-muted">
               업체별 금액을 입력하고 한번에 등록하세요. 금액이 비어있는 항목은 제외됩니다.
+              직원 급여는 <b>급여</b>에 체크하면 지점장과 대표님만 볼 수 있어요.
             </p>
 
             {rows.length === 0 ? (
@@ -138,12 +148,21 @@ export default function MonthEndBulkPaymentModal({ storeId }: { storeId: string 
                       </button>
                     </div>
                     <div className="flex items-center gap-1.5">
+                      <label className="flex shrink-0 items-center gap-1 text-xs font-medium text-muted">
+                        <input
+                          type="checkbox"
+                          checked={r.is_payroll}
+                          onChange={(e) => updateRow(r.key, { is_payroll: e.target.checked })}
+                          className="h-3.5 w-3.5 accent-brand"
+                        />
+                        급여
+                      </label>
                       <input
                         type="text"
                         value={r.bank_name}
                         onChange={(e) => updateRow(r.key, { bank_name: e.target.value })}
                         placeholder="은행명"
-                        className="w-24 shrink-0 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
+                        className="w-20 shrink-0 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
                       />
                       <input
                         type="text"

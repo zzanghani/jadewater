@@ -39,10 +39,13 @@ export async function savePaymentRequest(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("department")
+    .select("department, role")
     .eq("id", user.id)
     .maybeSingle();
   const department = profile?.department ?? null;
+  // 급여 요청은 지점장(owner)·마스터만 올릴 수 있다. 실제 차단은 RLS가 한다.
+  const isPayroll =
+    formData.get("is_payroll") === "on" && !department && profile?.role === "owner";
 
   const storeId = String(formData.get("store_id") ?? "");
   const vendorName = String(formData.get("vendor_name") ?? "").trim();
@@ -71,6 +74,7 @@ export async function savePaymentRequest(
       amount,
       bank_name: bankName,
       account_number: accountNumber,
+      is_payroll: isPayroll,
       created_by: user.id,
     })
     .select()
@@ -101,12 +105,10 @@ async function notifyMasterOfNewRequest(
     department: Department | null;
     vendor_name: string;
     amount: number;
+    is_payroll: boolean;
   }
 ) {
-  const { data: subs } = await supabase
-    .from("push_subscriptions")
-    .select("*")
-    .is("store_id", null);
+  const subs = await masterSubscriptions(supabase, inserted.is_payroll);
 
   console.log(
     `[savePaymentRequest] 마스터 구독 ${subs?.length ?? 0}건 발견`
@@ -128,7 +130,9 @@ async function notifyMasterOfNewRequest(
 
   const payload = {
     title: "새 입금요청",
-    body: `${sourceLabel} · ${inserted.vendor_name} · ${formatWon(inserted.amount)} 입금요청이 등록됐습니다.`,
+    body: inserted.is_payroll
+      ? `${sourceLabel} · 급여 입금요청이 등록됐습니다.`
+      : `${sourceLabel} · ${inserted.vendor_name} · ${formatWon(inserted.amount)} 입금요청이 등록됐습니다.`,
     url: "/payment?tab=confirm",
   };
 
@@ -148,11 +152,35 @@ async function notifyMasterOfNewRequest(
   }
 }
 
+// 새 요청을 본사에 알릴 때의 수신자. 매장 없는 구독(store_id null)에는 본사 팀
+// 계정(마케팅/디자인/운영/R&D)도 섞여 있어서, 급여가 낀 알림은 본사 마스터
+// (매장·부서 없는 owner) 계정 구독으로만 좁힌다.
+async function masterSubscriptions(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  payrollOnly: boolean
+) {
+  const { data: subs } = await supabase
+    .from("push_subscriptions")
+    .select("*")
+    .is("store_id", null);
+  if (!payrollOnly || !subs?.length) return subs ?? [];
+
+  const { data: masters } = await supabase
+    .from("profiles")
+    .select("id")
+    .is("store_id", null)
+    .is("department", null)
+    .eq("role", "owner");
+  const masterIds = new Set((masters ?? []).map((m) => m.id));
+  return subs.filter((s) => masterIds.has(s.user_id));
+}
+
 export type BulkPaymentItem = {
   vendor_name: string;
   bank_name: string;
   account_number: string;
   amount: number;
+  is_payroll?: boolean;
 };
 
 export type BulkPaymentState =
@@ -178,6 +206,13 @@ export async function saveBulkPaymentRequests(
     return { error: "매장 정보를 확인할 수 없습니다." };
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("department, role")
+    .eq("id", user.id)
+    .maybeSingle();
+  const canRequestPayroll = !profile?.department && profile?.role === "owner";
+
   const valid = items.filter(
     (i) => i.vendor_name.trim() && i.amount > 0 && !Number.isNaN(i.amount)
   );
@@ -194,6 +229,7 @@ export async function saveBulkPaymentRequests(
         amount: i.amount,
         bank_name: i.bank_name.trim() || null,
         account_number: i.account_number.trim() || null,
+        is_payroll: canRequestPayroll && !!i.is_payroll,
         created_by: user.id,
       }))
     )
@@ -206,7 +242,12 @@ export async function saveBulkPaymentRequests(
   revalidatePath("/payment");
 
   try {
-    await notifyMasterOfBulkRequest(supabase, storeId, inserted.length);
+    await notifyMasterOfBulkRequest(
+      supabase,
+      storeId,
+      inserted.length,
+      inserted.some((r) => r.is_payroll)
+    );
   } catch (err) {
     console.error("[saveBulkPaymentRequests] 알림 발송 중 오류", err);
   }
@@ -217,12 +258,10 @@ export async function saveBulkPaymentRequests(
 async function notifyMasterOfBulkRequest(
   supabase: Awaited<ReturnType<typeof createClient>>,
   storeId: string,
-  count: number
+  count: number,
+  hasPayroll: boolean
 ) {
-  const { data: subs } = await supabase
-    .from("push_subscriptions")
-    .select("*")
-    .is("store_id", null);
+  const subs = await masterSubscriptions(supabase, hasPayroll);
 
   if (!subs?.length) return;
 
@@ -303,6 +342,7 @@ async function notifyStoreOfCompletion(
     created_by: string;
     vendor_name: string;
     amount: number;
+    is_payroll: boolean;
   }
 ) {
   // 매장 요청은 그 매장 지점장(owner) 계정과 요청을 올린 본인에게만 알린다.
@@ -333,7 +373,9 @@ async function notifyStoreOfCompletion(
   const payload = {
     title: "입금요청 완료",
     // 잠금화면에 뜨는 글이라 금액은 빼고, 자세한 건 앱에서 확인하게 한다.
-    body: `${updated.vendor_name} 입금요청이 완료 처리됐습니다.`,
+    body: updated.is_payroll
+      ? "급여 입금요청이 완료 처리됐습니다."
+      : `${updated.vendor_name} 입금요청이 완료 처리됐습니다.`,
     url: "/payment?tab=confirm",
   };
 
