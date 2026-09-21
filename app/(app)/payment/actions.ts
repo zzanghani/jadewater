@@ -305,17 +305,24 @@ async function notifyStoreOfCompletion(
     amount: number;
   }
 ) {
-  // 본사 팀 계정(디자인/마케팅/운영/RnD) 요청은 매장이 없으므로, 매장 구독자
-  // 대신 요청을 올린 본인에게 바로 알린다.
-  const { data: subs } = updated.store_id
-    ? await supabase
-        .from("push_subscriptions")
-        .select("*")
-        .eq("store_id", updated.store_id)
-    : await supabase
-        .from("push_subscriptions")
-        .select("*")
-        .eq("user_id", updated.created_by);
+  // 매장 요청은 그 매장 지점장(owner) 계정과 요청을 올린 본인에게만 알린다.
+  // 예전엔 매장에 알림을 켠 모든 계정(직원 포함)에게 보내서, 급여 요청이
+  // 처리될 때 이름·금액이 직원들에게까지 나갔다.
+  // 본사 팀 계정 요청은 매장이 없으므로 요청을 올린 본인에게만 알린다.
+  let recipientIds: string[] = [updated.created_by];
+  if (updated.store_id) {
+    const { data: managers } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("store_id", updated.store_id)
+      .eq("role", "owner")
+      .is("department", null);
+    recipientIds = [...new Set([...recipientIds, ...(managers ?? []).map((m) => m.id)])];
+  }
+  const { data: subs } = await supabase
+    .from("push_subscriptions")
+    .select("*")
+    .in("user_id", recipientIds);
 
   console.log(
     `[completePaymentRequest] store_id=${updated.store_id} 구독 ${subs?.length ?? 0}건 발견`
@@ -325,7 +332,8 @@ async function notifyStoreOfCompletion(
 
   const payload = {
     title: "입금요청 완료",
-    body: `${updated.vendor_name} · ${formatWon(updated.amount)} 요청이 완료 처리됐습니다.`,
+    // 잠금화면에 뜨는 글이라 금액은 빼고, 자세한 건 앱에서 확인하게 한다.
+    body: `${updated.vendor_name} 입금요청이 완료 처리됐습니다.`,
     url: "/payment?tab=confirm",
   };
 
