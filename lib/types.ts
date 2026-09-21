@@ -111,6 +111,8 @@ export type PaymentRequest = {
   amount: number
   bank_name: string | null
   account_number: string | null
+  /** 급여 요청 — 그 매장 지점장과 본사 마스터만 등록·조회 (RLS) */
+  is_payroll: boolean
   completed_at: string | null
   created_by: string
   created_at: string

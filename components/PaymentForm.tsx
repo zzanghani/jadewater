@@ -28,6 +28,7 @@ export default function PaymentForm({
   const [amountRaw, setAmountRaw] = useState("");
   const [bankName, setBankName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
+  const [isPayroll, setIsPayroll] = useState(false);
 
   function handleSelectAccount(acc: FrequentAccount) {
     setVendorName(acc.vendor_name);
@@ -75,15 +76,33 @@ export default function PaymentForm({
         )}
       </label>
 
+      {!department && (
+        <label className="flex items-start gap-2.5 rounded-xl border border-border bg-card px-4 py-3 text-sm">
+          <input
+            type="checkbox"
+            name="is_payroll"
+            checked={isPayroll}
+            onChange={(e) => setIsPayroll(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-brand"
+          />
+          <span>
+            <span className="font-semibold">급여 요청</span>
+            <span className="mt-0.5 block text-xs text-muted">
+              체크하면 지점장과 대표님만 볼 수 있어요. 알림에도 이름·금액이 안 나갑니다.
+            </span>
+          </span>
+        </label>
+      )}
+
       <label className="flex flex-col gap-1.5 text-sm font-medium">
-        거래처명
+        {isPayroll ? "받는 사람 (직원 이름)" : "거래처명"}
         <input
           type="text"
           name="vendor_name"
           required
           value={vendorName}
           onChange={(e) => setVendorName(e.target.value)}
-          placeholder="예) 다올식자재"
+          placeholder={isPayroll ? "예) 홍길동" : "예) 다올식자재"}
           className="rounded-xl border border-border bg-card px-4 py-3 outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
         />
       </label>

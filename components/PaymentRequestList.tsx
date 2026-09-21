@@ -107,6 +107,11 @@ export default function PaymentRequestList({
                   }`}
                 >
                   {r.vendor_name}
+                  {r.is_payroll && (
+                    <span className="ml-1.5 rounded-md bg-brand-light px-1.5 py-0.5 align-middle text-[10px] font-semibold text-brand">
+                      급여
+                    </span>
+                  )}
                 </p>
                 <p className="text-xs text-muted">
                   {formatWon(r.amount)} · {requestDateLabel(r.created_at)}
