@@ -29,6 +29,14 @@ export async function login(
 
   if (error) {
     console.error("[login debug]", error.status, error.code, error.message); // TEMP-DEBUG
+    // 가입 확인 메일을 안 누른 계정은 비밀번호가 맞아도 여기로 떨어진다.
+    // "비밀번호가 틀렸다"고 하면 본인도 관리자도 원인을 못 찾는다.
+    if (error.code === "email_not_confirmed") {
+      return {
+        error:
+          "이메일 인증이 아직 안 됐어요. 가입할 때 받은 메일의 인증 링크를 눌러주세요. 메일이 없으면 관리자에게 문의해 주세요.",
+      };
+    }
     return { error: "이메일 또는 비밀번호가 올바르지 않습니다." };
   }
 
