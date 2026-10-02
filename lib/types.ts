@@ -317,6 +317,39 @@ export type LoanRepaymentEvent = {
   created_at: string
 }
 
+/** 매장 좌표·허용 반경 — GPS 출퇴근 판정 기준. 관리자가 매장 단위로 정한다. */
+export type StoreLocation = {
+  store_id: string
+  lat: number
+  lng: number
+  radius_m: number
+  address: string | null
+  updated_by: string | null
+  updated_at: string
+}
+
+export type AttendanceType = 'IN' | 'OUT'
+
+/** 출근/퇴근 기록 한 건. 판정 당시 매장 기준값(store_*)을 함께 보존한다. */
+export type AttendanceRecord = {
+  id: string
+  client_record_id: string
+  user_id: string
+  store_id: string
+  type: AttendanceType
+  recorded_at: string
+  server_received_at: string
+  lat: number
+  lng: number
+  accuracy_m: number
+  distance_m: number
+  store_lat: number
+  store_lng: number
+  store_radius_m: number
+  flagged: boolean
+  device_info: string | null
+}
+
 export type MonthlyPlanType = 'task' | 'vacation'
 
 export type MonthlyPlan = {
@@ -802,6 +835,20 @@ export type Database = {
           created_by: string
         }
         Update: Partial<LoanRepaymentEvent>
+        Relationships: []
+      }
+      store_locations: {
+        Row: StoreLocation
+        Insert: Partial<StoreLocation> & { store_id: string; lat: number; lng: number }
+        Update: Partial<StoreLocation>
+        Relationships: []
+      }
+      attendance_records: {
+        Row: AttendanceRecord
+        Insert: Omit<AttendanceRecord, 'id' | 'server_received_at' | 'flagged'> & {
+          flagged?: boolean
+        }
+        Update: Partial<AttendanceRecord>
         Relationships: []
       }
       payroll_entries: {

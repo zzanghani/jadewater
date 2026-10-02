@@ -28,6 +28,7 @@ const TEAM_ALLOWED_PREFIXES = ["/", "/board", "/weekly-report", "/expense", "/re
 const EMPLOYEE_ALLOWED_PREFIXES = [
   "/",
   "/board",
+  "/attendance",
   "/inventory",
   // 입금요청(/payment)은 급여 요청이 섞여 있어 직원 계정에는 열지 않는다.
   "/schedule",
