@@ -30,7 +30,9 @@ export default function StoreSwitcher({
     pathname.startsWith("/payment") ||
     pathname.startsWith("/weekday-analysis") ||
     pathname.startsWith("/schedule") ||
-    pathname.startsWith("/payroll");
+    pathname.startsWith("/payroll") ||
+    // 출퇴근: 마스터는 매장을 바꿔가며 출근 현황·근태 기록·위치 설정을 본다.
+    pathname.startsWith("/attendance");
   if (stores.length > 1 && !showsStoreSwitcher) {
     return null;
   }

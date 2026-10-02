@@ -85,7 +85,7 @@ export default async function AttendancePage({
             근태 기록 보기
           </Link>
           <Link
-            href={`/attendance/settings${adminStoreId ? `?store=${adminStoreId}` : ""}`}
+            href="/attendance/settings"
             className="rounded-2xl border border-border bg-card px-3 py-3 text-center text-sm font-semibold"
           >
             매장 위치 설정
