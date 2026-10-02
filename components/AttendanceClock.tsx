@@ -9,6 +9,7 @@ import {
   evaluateAttendance,
   type AttendanceBlockReason,
 } from "@/lib/geoAttendance";
+import { scheduleVerdict, verdictLabel } from "@/lib/attendanceSchedule";
 import type { AttendanceRecord, AttendanceType, StoreLocation } from "@/lib/types";
 
 const QUEUE_KEY = "attendance_queue_v1";
@@ -128,13 +129,17 @@ export default function AttendanceClock({
             showToast("error", res.error);
           } else if (res.duplicate) {
             // 이미 저장된 기록 — 조용히 넘어간다.
-          } else if (res.flagged) {
-            showToast(
-              "warn",
-              `${item.type === "IN" ? "출근" : "퇴근"} 기록됨 (매장에서 ${res.distance_m}m — 관리자 확인 표시)`
-            );
           } else {
-            showToast("ok", `${item.type === "IN" ? "출근" : "퇴근"} 기록 완료 (매장에서 ${res.distance_m}m)`);
+            const label = item.type === "IN" ? "출근" : "퇴근";
+            const v = scheduleVerdict(item.type, res.diff_minutes);
+            const suffix = v.kind === "none" ? "" : ` · ${verdictLabel(v)}`;
+            if (res.flagged) {
+              showToast("warn", `${label} 기록됨 (매장에서 ${res.distance_m}m — 관리자 확인 표시)${suffix}`);
+            } else if (v.kind === "late" || v.kind === "early_leave") {
+              showToast("warn", `${label} 기록 완료${suffix}`);
+            } else {
+              showToast("ok", `${label} 기록 완료${suffix}`);
+            }
           }
         } catch {
           // 오프라인 등 — 다음 기회에 다시 보낸다.
@@ -269,21 +274,25 @@ export default function AttendanceClock({
           <p className="text-xs text-muted">아직 기록이 없어요.</p>
         ) : (
           <ul className="flex flex-col gap-1.5">
-            {todayRecords.map((r) => (
-              <li key={r.id} className="flex items-center justify-between text-sm">
-                <span className="font-semibold">
-                  {r.type === "IN" ? "출근" : "퇴근"}
-                  {r.flagged && (
-                    <span className="ml-1.5 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
-                      반경 밖
-                    </span>
-                  )}
-                </span>
-                <span className="text-muted">
-                  {timeLabel(r.recorded_at)} · {r.distance_m}m
-                </span>
-              </li>
-            ))}
+            {todayRecords.map((r) => {
+              const v = scheduleVerdict(r.type, r.diff_minutes);
+              return (
+                <li key={r.id} className="flex items-center justify-between text-sm">
+                  <span className="font-semibold">
+                    {r.type === "IN" ? "출근" : "퇴근"}
+                    {r.flagged && (
+                      <span className="ml-1.5 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                        반경 밖
+                      </span>
+                    )}
+                    <VerdictBadge verdict={v} />
+                  </span>
+                  <span className="text-muted">
+                    {timeLabel(r.recorded_at)} · {r.distance_m}m
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
@@ -298,6 +307,21 @@ export default function AttendanceClock({
         </div>
       )}
     </div>
+  );
+}
+
+// 스케줄 대비 결과 — 지각·조퇴는 빨간 글씨로 바로 보이게.
+export function VerdictBadge({ verdict }: { verdict: ReturnType<typeof scheduleVerdict> }) {
+  if (verdict.kind === "none") return null;
+  const bad = verdict.kind === "late" || verdict.kind === "early_leave";
+  return (
+    <span
+      className={`ml-1.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+        bad ? "bg-red-50 text-red-600" : "bg-green-50 text-green-700"
+      }`}
+    >
+      {verdictLabel(verdict)}
+    </span>
   );
 }
 

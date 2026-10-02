@@ -7,6 +7,7 @@ import {
   distanceMeters,
   evaluateAttendance,
 } from "@/lib/geoAttendance";
+import { kstDateAndMinutes, kstDateTimeToIso, matchShift } from "@/lib/attendanceSchedule";
 import type { AttendanceType } from "@/lib/types";
 
 export type AttendanceInput = {
@@ -29,6 +30,8 @@ export type AttendanceResult =
       in_range: boolean;
       flagged: boolean;
       duplicate: boolean;
+      /** 스케줄 대비 분 차이 (출근 +면 지각, 퇴근 −면 조퇴). 스케줄 없으면 null */
+      diff_minutes: number | null;
     }
   | { ok: false; error: string };
 
@@ -67,7 +70,7 @@ export async function recordAttendance(input: AttendanceInput): Promise<Attendan
   // 멱등: 같은 client_record_id가 이미 있으면 그 기록을 그대로 돌려준다.
   const { data: existing } = await supabase
     .from("attendance_records")
-    .select("id, distance_m, flagged")
+    .select("id, distance_m, flagged, diff_minutes")
     .eq("client_record_id", input.client_record_id)
     .maybeSingle();
   if (existing) {
@@ -78,12 +81,13 @@ export async function recordAttendance(input: AttendanceInput): Promise<Attendan
       in_range: !existing.flagged,
       flagged: existing.flagged,
       duplicate: true,
+      diff_minutes: existing.diff_minutes,
     };
   }
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("store_id, status")
+    .select("store_id, status, name")
     .eq("id", user.id)
     .single();
   if (!profile?.store_id || profile.status !== "approved") {
@@ -106,6 +110,23 @@ export async function recordAttendance(input: AttendanceInput): Promise<Attendan
     radiusM: loc.radius_m,
   });
 
+  // 그날 스케줄과 비교해 지각/조퇴를 계산한다. 스케줄은 이름 글자로만 사람을
+  // 구분하므로 프로필 이름과, 지점장이 연결해 둔 직원 리스트 이름을 둘 다 본다.
+  const { date: kstDate, minutes: recordedMinutes } = kstDateAndMinutes(recordedAt.toISOString());
+  const [{ data: shifts }, { data: linkedEmployees }] = await Promise.all([
+    supabase
+      .from("schedule_shifts")
+      .select("id, date, employee_name, start_time, end_time")
+      .eq("store_id", profile.store_id)
+      .eq("date", kstDate),
+    supabase.from("employees").select("name").eq("user_id", user.id),
+  ]);
+  const names = [profile.name, ...(linkedEmployees ?? []).map((e) => e.name)];
+  const matched = matchShift(shifts ?? [], names, input.type, recordedMinutes);
+  const scheduledAt = matched
+    ? kstDateTimeToIso(kstDate, input.type === "IN" ? matched.shift.start_time : matched.shift.end_time)
+    : null;
+
   const { data: inserted, error } = await supabase
     .from("attendance_records")
     .insert({
@@ -123,6 +144,9 @@ export async function recordAttendance(input: AttendanceInput): Promise<Attendan
       store_radius_m: loc.radius_m,
       flagged: !inRange,
       device_info: (input.device_info ?? "").slice(0, 200) || null,
+      scheduled_at: scheduledAt,
+      diff_minutes: matched ? matched.diffMinutes : null,
+      shift_id: matched ? matched.shift.id : null,
     })
     .select("id")
     .single();
@@ -132,7 +156,7 @@ export async function recordAttendance(input: AttendanceInput): Promise<Attendan
     if (error.code === "23505") {
       const { data: dup } = await supabase
         .from("attendance_records")
-        .select("id, distance_m, flagged")
+        .select("id, distance_m, flagged, diff_minutes")
         .eq("client_record_id", input.client_record_id)
         .maybeSingle();
       if (dup) {
@@ -143,6 +167,7 @@ export async function recordAttendance(input: AttendanceInput): Promise<Attendan
           in_range: !dup.flagged,
           flagged: dup.flagged,
           duplicate: true,
+          diff_minutes: dup.diff_minutes,
         };
       }
     }
@@ -158,6 +183,7 @@ export async function recordAttendance(input: AttendanceInput): Promise<Attendan
     in_range: inRange,
     flagged: !inRange,
     duplicate: false,
+    diff_minutes: matched ? matched.diffMinutes : null,
   };
 }
 

@@ -348,6 +348,10 @@ export type AttendanceRecord = {
   store_radius_m: number
   flagged: boolean
   device_info: string | null
+  // 스케줄 대비: 비교한 예정 시각(출근=시작, 퇴근=종료)과 분 차이(출근 +는 지각, 퇴근 −는 조퇴)
+  scheduled_at: string | null
+  diff_minutes: number | null
+  shift_id: string | null
 }
 
 export type MonthlyPlanType = 'task' | 'vacation'
@@ -845,8 +849,11 @@ export type Database = {
       }
       attendance_records: {
         Row: AttendanceRecord
-        Insert: Omit<AttendanceRecord, 'id' | 'server_received_at' | 'flagged'> & {
+        Insert: Omit<AttendanceRecord, 'id' | 'server_received_at' | 'flagged' | 'scheduled_at' | 'diff_minutes' | 'shift_id'> & {
           flagged?: boolean
+          scheduled_at?: string | null
+          diff_minutes?: number | null
+          shift_id?: string | null
         }
         Update: Partial<AttendanceRecord>
         Relationships: []

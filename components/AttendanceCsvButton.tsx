@@ -5,9 +5,11 @@ export type AttendanceCsvRow = {
   time: string;
   name: string;
   type: string;
-  distance_m: number;
-  accuracy_m: number;
-  radius_m: number;
+  scheduled: string;
+  verdict: string;
+  distance_m: number | null;
+  accuracy_m: number | null;
+  radius_m: number | null;
   flagged: boolean;
 };
 
@@ -20,13 +22,13 @@ export default function AttendanceCsvButton({
   filename: string;
 }) {
   function download() {
-    const header = ["날짜", "시각", "이름", "구분", "매장까지(m)", "GPS오차(m)", "허용반경(m)", "반경밖"];
+    const header = ["날짜", "시각", "이름", "구분", "예정", "지각/조퇴", "매장까지(m)", "GPS오차(m)", "허용반경(m)", "반경밖"];
     const lines = rows.map((r) =>
-      [r.date, r.time, r.name, r.type, r.distance_m, r.accuracy_m, r.radius_m, r.flagged ? "Y" : ""]
+      [r.date, r.time, r.name, r.type, r.scheduled, r.verdict, r.distance_m ?? "", r.accuracy_m ?? "", r.radius_m ?? "", r.flagged ? "Y" : ""]
         .map((v) => `"${String(v).replace(/"/g, '""')}"`)
         .join(",")
     );
-    const blob = new Blob(["﻿" + [header.join(","), ...lines].join("\n")], {
+    const blob = new Blob(["\uFEFF" + [header.join(","), ...lines].join("\n")], {
       type: "text/csv;charset=utf-8",
     });
     const url = URL.createObjectURL(blob);

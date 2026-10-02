@@ -3,6 +3,14 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
 import { kstDateString, kstShortDateLabel, kstWeekdayShortLabel } from "@/lib/date";
+import {
+  kstDateAndMinutes,
+  normalizeName,
+  scheduleVerdict,
+  timeToMinutes,
+  verdictLabel,
+  type ScheduleVerdict,
+} from "@/lib/attendanceSchedule";
 import AttendanceCsvButton, { type AttendanceCsvRow } from "@/components/AttendanceCsvButton";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -18,11 +26,27 @@ function kstParts(iso: string) {
     hour12: false,
   }).formatToParts(new Date(iso));
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-  return { date: `${get("year")}-${get("month")}-${get("day")}`, time: `${get("hour")}:${get("minute")}` };
+  const hour = String(Number(get("hour")) % 24).padStart(2, "0");
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, time: `${hour}:${get("minute")}` };
 }
 
+type Row = {
+  date: string;
+  time: string;
+  name: string;
+  type: "출근" | "퇴근" | "결근" | "미출근";
+  distance_m: number | null;
+  accuracy_m: number | null;
+  radius_m: number | null;
+  flagged: boolean;
+  verdict: ScheduleVerdict;
+  scheduled: string; // "08:00" 등, 없으면 ""
+  sortMinutes: number;
+};
+
 // 매장별·기간별 근태 조회 (사양서 8장). 지점장은 자기 매장, 마스터는
-// 상단 매장 선택(쿠키)에 따른 매장을 본다.
+// 상단 매장 선택(쿠키)에 따른 매장을 본다. 스케줄러에 근무가 있는데 출근
+// 기록이 없는 사람은 "결근"(지난 날) / "미출근"(오늘, 시작 시각 지남)으로 같이 보여준다.
 export default async function AttendanceRecordsPage({
   searchParams,
 }: {
@@ -42,7 +66,8 @@ export default async function AttendanceRecordsPage({
   const isManager = !profile?.department && (profile?.role === "owner" || !profile?.store_id);
   if (!isManager) redirect("/attendance");
 
-  const to = params.to && DATE_RE.test(params.to) ? params.to : kstDateString(0);
+  const today = kstDateString(0);
+  const to = params.to && DATE_RE.test(params.to) ? params.to : today;
   const from = params.from && DATE_RE.test(params.from) ? params.from : kstDateString(6);
   const flaggedOnly = params.flagged === "1";
 
@@ -57,7 +82,16 @@ export default async function AttendanceRecordsPage({
     .lt("recorded_at", end)
     .order("recorded_at", { ascending: false });
   if (flaggedOnly) query = query.eq("flagged", true);
-  const { data: records } = await query;
+
+  const [{ data: records }, { data: shifts }] = await Promise.all([
+    query,
+    supabase
+      .from("schedule_shifts")
+      .select("id, date, employee_name, start_time, end_time")
+      .eq("store_id", storeId)
+      .gte("date", from)
+      .lte("date", to),
+  ]);
 
   const userIds = Array.from(new Set((records ?? []).map((r) => r.user_id)));
   const { data: people } = userIds.length
@@ -65,7 +99,7 @@ export default async function AttendanceRecordsPage({
     : { data: [] };
   const nameById = new Map((people ?? []).map((p) => [p.id, p.name ?? ""]));
 
-  const rows: AttendanceCsvRow[] = (records ?? []).map((r) => {
+  const rows: Row[] = (records ?? []).map((r) => {
     const { date, time } = kstParts(r.recorded_at);
     return {
       date,
@@ -76,11 +110,58 @@ export default async function AttendanceRecordsPage({
       accuracy_m: r.accuracy_m,
       radius_m: r.store_radius_m,
       flagged: r.flagged,
+      verdict: scheduleVerdict(r.type, r.diff_minutes),
+      scheduled: r.scheduled_at ? kstParts(r.scheduled_at).time : "",
+      sortMinutes: kstDateAndMinutes(r.recorded_at).minutes,
     };
   });
 
+  // 스케줄은 있는데 출근 기록이 없는 근무 → 결근/미출근.
+  // (반경 밖 필터 중에는 섞이지 않게 뺀다)
+  if (!flaggedOnly) {
+    const checkedIn = new Set(
+      rows.filter((r) => r.type === "출근").map((r) => `${r.date}|${normalizeName(r.name)}`)
+    );
+    const nowMinutes = kstDateAndMinutes(new Date().toISOString()).minutes;
+    for (const s of shifts ?? []) {
+      const key = `${s.date}|${normalizeName(s.employee_name)}`;
+      if (checkedIn.has(key)) continue;
+      const startMin = timeToMinutes(s.start_time);
+      const isPast = s.date < today || (s.date === today && nowMinutes > startMin);
+      if (!isPast) continue;
+      rows.push({
+        date: s.date,
+        time: "",
+        name: s.employee_name,
+        type: s.date < today ? "결근" : "미출근",
+        distance_m: null,
+        accuracy_m: null,
+        radius_m: null,
+        flagged: false,
+        verdict: { kind: "none" },
+        scheduled: s.start_time.slice(0, 5),
+        sortMinutes: startMin,
+      });
+    }
+  }
+
+  rows.sort((a, b) => (a.date !== b.date ? (a.date < b.date ? 1 : -1) : b.sortMinutes - a.sortMinutes));
+
+  const csvRows: AttendanceCsvRow[] = rows.map((r) => ({
+    date: r.date,
+    time: r.time,
+    name: r.name,
+    type: r.type,
+    scheduled: r.scheduled,
+    verdict: verdictLabel(r.verdict),
+    distance_m: r.distance_m,
+    accuracy_m: r.accuracy_m,
+    radius_m: r.radius_m,
+    flagged: r.flagged,
+  }));
+
   // 날짜별로 묶어서 보여준다.
-  const byDate = new Map<string, AttendanceCsvRow[]>();
+  const byDate = new Map<string, Row[]>();
   for (const row of rows) {
     const list = byDate.get(row.date) ?? [];
     list.push(row);
@@ -96,7 +177,7 @@ export default async function AttendanceRecordsPage({
           ‹ 출퇴근
         </Link>
         <h1 className="mt-1 text-lg font-bold">근태 기록</h1>
-        <p className="mt-1 text-xs text-muted">{storeName}</p>
+        <p className="mt-1 text-xs text-muted">{storeName} · 스케줄러와 비교해 지각·조퇴·결근을 표시해요</p>
       </div>
 
       <form className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-3">
@@ -128,7 +209,7 @@ export default async function AttendanceRecordsPage({
           >
             반경 밖 기록만
           </Link>
-          <AttendanceCsvButton rows={rows} filename={`근태_${storeName}_${from}_${to}.csv`} />
+          <AttendanceCsvButton rows={csvRows} filename={`근태_${storeName}_${from}_${to}.csv`} />
         </div>
       </form>
 
@@ -141,24 +222,50 @@ export default async function AttendanceRecordsPage({
               {kstShortDateLabel(date)} ({kstWeekdayShortLabel(date)})
             </h2>
             <ul className="flex flex-col gap-1.5">
-              {list.map((r, i) => (
-                <li key={i} className="flex items-center justify-between text-sm">
-                  <span>
-                    <span className="font-semibold">{r.name || "(이름 없음)"}</span>
-                    <span className={`ml-2 text-xs ${r.type === "출근" ? "text-green-700" : "text-blue-700"}`}>
-                      {r.type}
-                    </span>
-                    {r.flagged && (
-                      <span className="ml-1.5 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
-                        반경 밖
+              {list.map((r, i) => {
+                const absent = r.type === "결근" || r.type === "미출근";
+                const bad = r.verdict.kind === "late" || r.verdict.kind === "early_leave";
+                return (
+                  <li key={i} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="min-w-0">
+                      <span className="font-semibold">{r.name || "(이름 없음)"}</span>
+                      <span
+                        className={`ml-2 text-xs font-semibold ${
+                          absent ? "text-red-600" : r.type === "출근" ? "text-green-700" : "text-blue-700"
+                        }`}
+                      >
+                        {r.type}
                       </span>
-                    )}
-                  </span>
-                  <span className="text-xs text-muted tabular-nums">
-                    {r.time} · {r.distance_m}m (±{r.accuracy_m})
-                  </span>
-                </li>
-              ))}
+                      {r.verdict.kind !== "none" && (
+                        <span
+                          className={`ml-1.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                            bad ? "bg-red-50 text-red-600" : "bg-green-50 text-green-700"
+                          }`}
+                        >
+                          {verdictLabel(r.verdict)}
+                        </span>
+                      )}
+                      {r.flagged && (
+                        <span className="ml-1.5 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                          반경 밖
+                        </span>
+                      )}
+                    </span>
+                    <span className="shrink-0 text-right text-xs text-muted tabular-nums">
+                      {absent ? (
+                        <>예정 {r.scheduled}</>
+                      ) : (
+                        <>
+                          {r.time}
+                          {r.scheduled && <span className="text-[10px]"> (예정 {r.scheduled})</span>}
+                          <br />
+                          {r.distance_m}m (±{r.accuracy_m})
+                        </>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </section>
         ))
