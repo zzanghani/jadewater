@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
 import { kstDateString } from "@/lib/date";
 import AttendanceClock from "@/components/AttendanceClock";
+import AttendanceDayBoard from "@/components/AttendanceDayBoard";
 
 // KST 기준 하루의 시작/끝(UTC ISO). recorded_at 비교에 쓴다.
 function kstDayBounds(dateStr: string) {
@@ -11,7 +12,12 @@ function kstDayBounds(dateStr: string) {
   return { start: start.toISOString(), end: end.toISOString() };
 }
 
-export default async function AttendancePage() {
+export default async function AttendancePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>;
+}) {
+  const { date: dateParam } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -45,6 +51,7 @@ export default async function AttendancePage() {
 
   const myStoreName = stores.find((s) => s.id === myStoreId)?.name ?? "";
   const adminStoreId = myStoreId ?? contextStoreId;
+  const boardDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) && dateParam <= today ? dateParam : today;
 
   return (
     <div className="flex flex-col gap-4">
@@ -63,6 +70,10 @@ export default async function AttendancePage() {
         <p className="rounded-2xl border border-border bg-card p-4 text-sm text-muted">
           본사 계정은 출퇴근을 찍지 않아요. 아래에서 매장별 기록을 보거나 매장 위치를 설정할 수 있어요.
         </p>
+      )}
+
+      {isManager && adminStoreId && (
+        <AttendanceDayBoard supabase={supabase} storeId={adminStoreId} date={boardDate} />
       )}
 
       {isManager && (
