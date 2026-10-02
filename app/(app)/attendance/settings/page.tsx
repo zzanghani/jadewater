@@ -4,13 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
 import StoreLocationForm from "@/components/StoreLocationForm";
 
-// 매장 좌표·반경 설정 — 본사 마스터(매장 선택 가능)와 그 매장 지점장만.
-export default async function AttendanceSettingsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ store?: string }>;
-}) {
-  const { store: storeParam } = await searchParams;
+// 매장 좌표·반경 설정 — 본사 마스터(상단 매장 선택으로 매장 전환)와 그 매장 지점장만.
+export default async function AttendanceSettingsPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -26,12 +21,8 @@ export default async function AttendanceSettingsPage({
   const isStoreManager = !profile?.department && profile?.role === "owner" && !!profile.store_id;
   if (!isMaster && !isStoreManager) redirect("/attendance");
 
-  // 지점장은 자기 매장만, 마스터는 선택한 매장.
-  const storeId = isStoreManager
-    ? profile!.store_id!
-    : stores.some((s) => s.id === storeParam)
-      ? storeParam!
-      : contextStoreId;
+  // 지점장은 자기 매장만, 마스터는 상단 매장 선택(쿠키)에 따른 매장.
+  const storeId = isStoreManager ? profile!.store_id! : contextStoreId;
   const store = stores.find((s) => s.id === storeId);
   if (!store) redirect("/attendance");
 
@@ -52,22 +43,6 @@ export default async function AttendanceSettingsPage({
           이 좌표를 기준으로 반경 안에서만 출퇴근이 기록돼요. 매장 입구에서 한 번 잡아두면 됩니다.
         </p>
       </div>
-
-      {isMaster && stores.length > 1 && (
-        <div className="flex flex-wrap gap-1.5">
-          {stores.map((s) => (
-            <Link
-              key={s.id}
-              href={`/attendance/settings?store=${s.id}`}
-              className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                s.id === storeId ? "border-brand bg-brand text-white" : "border-border bg-card text-foreground"
-              }`}
-            >
-              {s.short_label ?? s.name}
-            </Link>
-          ))}
-        </div>
-      )}
 
       <StoreLocationForm key={storeId} storeId={storeId} storeName={store.name} location={location ?? null} />
     </div>
