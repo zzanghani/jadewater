@@ -39,7 +39,11 @@ const REVIEW_REPORT_ITEM = { href: "/review-report", label: "리뷰리포트", i
 // 직원(staff) 계정 — 입고입력·마감입력(마감보고)·메시지는 하단 메뉴로
 // 옮기고, 스케줄러는 홈 화면 미리보기로 대체, 리뷰리포트·주간/월간
 // 분석은 뺐다.
+// GPS 출퇴근 — 소속 매장이 있는 계정(직원·지점장)이 찍고, 마스터는 기록 조회·위치 설정만.
+const ATTENDANCE_ITEM = { href: "/attendance", label: "출퇴근", icon: ClockPinIcon } as const;
+
 const EMPLOYEE_ITEMS = [
+  ATTENDANCE_ITEM,
   { href: "/board?category=공지사항", label: "공지사항", icon: BoardIcon },
   { href: "/expense", label: "현장지출", icon: ReceiptIcon },
   { href: "/cost", label: "실시간 코스트", icon: GaugeIcon },
@@ -77,8 +81,8 @@ export default function QuickMenu({
     : employeeOnly
       ? EMPLOYEE_ITEMS
       : isMaster
-        ? [...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), HR_ITEM, ACCOUNTS_ITEM, LOAN_ITEM]
-        : [...ALL_ITEMS, REVIEW_REPORT_ITEM, HR_ITEM, MY_REVIEW_ITEM];
+        ? [...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), ATTENDANCE_ITEM, HR_ITEM, ACCOUNTS_ITEM, LOAN_ITEM]
+        : [ATTENDANCE_ITEM, ...ALL_ITEMS, REVIEW_REPORT_ITEM, HR_ITEM, MY_REVIEW_ITEM];
 
   return (
     <section>
@@ -216,6 +220,15 @@ function HrIcon() {
       <circle cx="9" cy="8" r="3" />
       <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
       <path d="M17 8h4M19 6v4" />
+    </svg>
+  );
+}
+
+function ClockPinIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 8v4l2.5 2" />
     </svg>
   );
 }
