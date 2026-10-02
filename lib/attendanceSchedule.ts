@@ -84,12 +84,20 @@ export function scheduleVerdict(type: AttendanceType, diffMinutes: number | null
   return diffMinutes < 0 ? { kind: "early_leave", minutes: -diffMinutes } : { kind: "on_time" };
 }
 
+// 60분 넘으면 "1시간 20분"처럼 읽기 쉽게.
+function minutesLabel(m: number): string {
+  const h = Math.floor(m / 60);
+  const rest = m % 60;
+  if (h === 0) return `${m}분`;
+  return rest === 0 ? `${h}시간` : `${h}시간 ${rest}분`;
+}
+
 export function verdictLabel(v: ScheduleVerdict): string {
   switch (v.kind) {
     case "late":
-      return `${v.minutes}분 지각`;
+      return `${minutesLabel(v.minutes)} 지각`;
     case "early_leave":
-      return `${v.minutes}분 조퇴`;
+      return `${minutesLabel(v.minutes)} 조퇴`;
     case "on_time":
       return "정시";
     default:
