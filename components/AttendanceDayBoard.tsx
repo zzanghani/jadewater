@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { kstDateString, kstShortDateLabel, kstWeekdayShortLabel, shiftDateString } from "@/lib/date";
 import {
   kstDateAndMinutes,
+  nameMatches,
   normalizeName,
   scheduleVerdict,
   timeToMinutes,
@@ -94,10 +95,17 @@ export default async function AttendanceDayBoard({
   const isPastDay = date < today;
   const isFuture = date > today;
 
+  // 스케줄 이름과 "같은 사람"인 키를 찾는다 (정확히 같은 것 우선, 없으면 포함 관계).
+  function findKey<T>(map: Map<string, T>, shiftName: string): T | undefined {
+    const exact = map.get(normalizeName(shiftName));
+    if (exact) return exact;
+    for (const [k, v] of map) if (nameMatches(k, shiftName)) return v;
+    return undefined;
+  }
+
   const rows = (shifts ?? []).map((s) => {
-    const key = normalizeName(s.employee_name);
-    const inRec = firstIn.get(key);
-    const outRec = lastOut.get(key);
+    const inRec = findKey(firstIn, s.employee_name);
+    const outRec = findKey(lastOut, s.employee_name);
     let status: Status;
     if (inRec && outRec) {
       status = {
@@ -120,12 +128,12 @@ export default async function AttendanceDayBoard({
 
   // 스케줄엔 없는데 출근을 찍은 사람(지원 근무 등)도 아래 따로 보여준다.
   // 한 계정의 여러 이름 키 중 하나라도 스케줄에 맞으면 "스케줄 없음"이 아니다.
-  const scheduledNames = new Set(rows.map((r) => normalizeName(r.shift.employee_name)));
+  const scheduledNames = rows.map((r) => r.shift.employee_name);
   const seenDisplay = new Set<string>();
   const extras: { name: string; rec: { time: string }; out?: { time: string } }[] = [];
   for (const [, who] of resolved) {
     const keys = Array.from(who.keys);
-    if (keys.some((k) => scheduledNames.has(k))) continue;
+    if (keys.some((k) => scheduledNames.some((n) => nameMatches(k, n)))) continue;
     const key = keys.find((k) => firstIn.has(k));
     if (!key || seenDisplay.has(who.display)) continue;
     seenDisplay.add(who.display);
