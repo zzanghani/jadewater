@@ -5,7 +5,7 @@ import { getStoreContext } from "@/lib/store";
 import { kstDateString, kstShortDateLabel, kstWeekdayShortLabel } from "@/lib/date";
 import {
   kstDateAndMinutes,
-  normalizeName,
+  nameMatches,
   scheduleVerdict,
   timeToMinutes,
   verdictLabel,
@@ -117,17 +117,18 @@ export default async function AttendanceRecordsPage({
   // 스케줄은 있는데 출근 기록이 없는 근무 → 결근/미출근.
   // (반경 밖 필터 중에는 섞이지 않게 뺀다)
   if (!flaggedOnly) {
-    // 계정의 모든 이름 키(매장명 + 점장 이름)로 "출근함"을 표시한다.
-    const checkedIn = new Set<string>();
+    // 날짜별로 "출근 찍은 사람"의 이름 키들(매장명 + 점장 이름 등)을 모은다.
+    const checkedIn = new Map<string, string[]>();
     for (const r of records ?? []) {
       if (r.type !== "IN") continue;
       const { date } = kstParts(r.recorded_at);
-      for (const key of resolved.get(r.user_id)?.keys ?? []) checkedIn.add(`${date}|${key}`);
+      const list = checkedIn.get(date) ?? [];
+      list.push(...(resolved.get(r.user_id)?.keys ?? []));
+      checkedIn.set(date, list);
     }
     const nowMinutes = kstDateAndMinutes(new Date().toISOString()).minutes;
     for (const s of shifts ?? []) {
-      const key = `${s.date}|${normalizeName(s.employee_name)}`;
-      if (checkedIn.has(key)) continue;
+      if ((checkedIn.get(s.date) ?? []).some((k) => nameMatches(k, s.employee_name))) continue;
       const startMin = timeToMinutes(s.start_time);
       const isPast = s.date < today || (s.date === today && nowMinutes > startMin);
       if (!isPast) continue;

@@ -12,7 +12,20 @@ export type ShiftLike = {
 };
 
 export function normalizeName(name: string | null | undefined): string {
-  return (name ?? "").replace(/\s+/g, "").trim();
+  return (name ?? "").replace(/\s+/g, "").trim().toLowerCase();
+}
+
+/**
+ * 스케줄 이름 ↔ 계정/직원 이름이 같은 사람인지.
+ * 지점장이 스케줄엔 "수잘"로 짧게 적고 직원 리스트엔 "라미찬네수잘"로 적는
+ * 식이라, 정확히 같거나 한쪽이 다른 쪽에 통째로 들어가면(2글자 이상) 같은 사람으로 본다.
+ */
+export function nameMatches(a: string, b: string): boolean {
+  const x = normalizeName(a);
+  const y = normalizeName(b);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  return (x.length >= 2 && y.includes(x)) || (y.length >= 2 && x.includes(y));
 }
 
 // "08:30:00" → 510 (자정 기준 분)
@@ -55,11 +68,13 @@ export function matchShift(
   type: AttendanceType,
   recordedMinutes: number
 ): { shift: ShiftLike; scheduledMinutes: number; diffMinutes: number } | null {
-  const wanted = new Set(names.map(normalizeName).filter(Boolean));
-  if (wanted.size === 0) return null;
+  const wanted = names.map(normalizeName).filter(Boolean);
+  if (wanted.length === 0) return null;
   let best: { shift: ShiftLike; scheduledMinutes: number; diffMinutes: number } | null = null;
   for (const s of shifts) {
-    if (!wanted.has(normalizeName(s.employee_name))) continue;
+    // 정확히 같은 이름을 우선, 없으면 포함 관계로.
+    const exact = wanted.includes(normalizeName(s.employee_name));
+    if (!exact && !wanted.some((w) => nameMatches(w, s.employee_name))) continue;
     const scheduled = timeToMinutes(type === "IN" ? s.start_time : s.end_time);
     const diff = recordedMinutes - scheduled;
     if (!best || Math.abs(diff) < Math.abs(best.diffMinutes)) {
