@@ -11,6 +11,7 @@ import {
   verdictLabel,
   type ScheduleVerdict,
 } from "@/lib/attendanceSchedule";
+import { resolveAttendanceNames } from "@/lib/attendanceNames";
 import AttendanceCsvButton, { type AttendanceCsvRow } from "@/components/AttendanceCsvButton";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -94,17 +95,14 @@ export default async function AttendanceRecordsPage({
   ]);
 
   const userIds = Array.from(new Set((records ?? []).map((r) => r.user_id)));
-  const { data: people } = userIds.length
-    ? await supabase.from("profiles").select("id, name").in("id", userIds)
-    : { data: [] };
-  const nameById = new Map((people ?? []).map((p) => [p.id, p.name ?? ""]));
+  const resolved = await resolveAttendanceNames(supabase, storeId, userIds);
 
   const rows: Row[] = (records ?? []).map((r) => {
     const { date, time } = kstParts(r.recorded_at);
     return {
       date,
       time,
-      name: nameById.get(r.user_id) ?? "",
+      name: resolved.get(r.user_id)?.display ?? "",
       type: r.type === "IN" ? "출근" : "퇴근",
       distance_m: r.distance_m,
       accuracy_m: r.accuracy_m,
@@ -119,9 +117,13 @@ export default async function AttendanceRecordsPage({
   // 스케줄은 있는데 출근 기록이 없는 근무 → 결근/미출근.
   // (반경 밖 필터 중에는 섞이지 않게 뺀다)
   if (!flaggedOnly) {
-    const checkedIn = new Set(
-      rows.filter((r) => r.type === "출근").map((r) => `${r.date}|${normalizeName(r.name)}`)
-    );
+    // 계정의 모든 이름 키(매장명 + 점장 이름)로 "출근함"을 표시한다.
+    const checkedIn = new Set<string>();
+    for (const r of records ?? []) {
+      if (r.type !== "IN") continue;
+      const { date } = kstParts(r.recorded_at);
+      for (const key of resolved.get(r.user_id)?.keys ?? []) checkedIn.add(`${date}|${key}`);
+    }
     const nowMinutes = kstDateAndMinutes(new Date().toISOString()).minutes;
     for (const s of shifts ?? []) {
       const key = `${s.date}|${normalizeName(s.employee_name)}`;

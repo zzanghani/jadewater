@@ -8,6 +8,7 @@ import {
   timeToMinutes,
   verdictLabel,
 } from "@/lib/attendanceSchedule";
+import { resolveAttendanceNames } from "@/lib/attendanceNames";
 import type { Database } from "@/lib/types";
 
 // 시각 "HH:MM:SS" → "HH:MM"
@@ -63,27 +64,29 @@ export default async function AttendanceDayBoard({
   ]);
 
   const userIds = Array.from(new Set((records ?? []).map((r) => r.user_id)));
-  const { data: people } = userIds.length
-    ? await supabase.from("profiles").select("id, name").in("id", userIds)
-    : { data: [] };
-  const nameById = new Map((people ?? []).map((p) => [p.id, normalizeName(p.name)]));
+  const resolved = await resolveAttendanceNames(supabase, storeId, userIds);
 
-  // 이름별 첫 출근·마지막 퇴근
+  // 이름(키)별 첫 출근·마지막 퇴근. 한 계정이 여러 이름 키를 가질 수 있어
+  // (지점장 계정 = 매장명 + 직원 리스트의 점장 이름) 키마다 같은 기록을 건다.
   const firstIn = new Map<string, { time: string; late: number | null; flagged: boolean }>();
   const lastOut = new Map<string, { time: string; early: number | null; flagged: boolean }>();
+  const displayByKey = new Map<string, string>();
   for (const r of records ?? []) {
-    const name = nameById.get(r.user_id) ?? "";
-    if (!name) continue;
-    if (r.type === "IN") {
-      if (!firstIn.has(name)) {
-        firstIn.set(name, { time: kstTime(r.recorded_at), late: r.diff_minutes, flagged: r.flagged });
+    const who = resolved.get(r.user_id);
+    if (!who) continue;
+    for (const key of who.keys) {
+      displayByKey.set(key, who.display);
+      if (r.type === "IN") {
+        if (!firstIn.has(key)) {
+          firstIn.set(key, { time: kstTime(r.recorded_at), late: r.diff_minutes, flagged: r.flagged });
+        }
+      } else {
+        lastOut.set(key, {
+          time: kstTime(r.recorded_at),
+          early: r.diff_minutes === null ? null : -r.diff_minutes,
+          flagged: r.flagged,
+        });
       }
-    } else {
-      lastOut.set(name, {
-        time: kstTime(r.recorded_at),
-        early: r.diff_minutes === null ? null : -r.diff_minutes,
-        flagged: r.flagged,
-      });
     }
   }
 
@@ -116,10 +119,18 @@ export default async function AttendanceDayBoard({
   });
 
   // 스케줄엔 없는데 출근을 찍은 사람(지원 근무 등)도 아래 따로 보여준다.
+  // 한 계정의 여러 이름 키 중 하나라도 스케줄에 맞으면 "스케줄 없음"이 아니다.
   const scheduledNames = new Set(rows.map((r) => normalizeName(r.shift.employee_name)));
-  const extras = Array.from(firstIn.entries())
-    .filter(([name]) => !scheduledNames.has(name))
-    .map(([name, rec]) => ({ name, rec, out: lastOut.get(name) }));
+  const seenDisplay = new Set<string>();
+  const extras: { name: string; rec: { time: string }; out?: { time: string } }[] = [];
+  for (const [, who] of resolved) {
+    const keys = Array.from(who.keys);
+    if (keys.some((k) => scheduledNames.has(k))) continue;
+    const key = keys.find((k) => firstIn.has(k));
+    if (!key || seenDisplay.has(who.display)) continue;
+    seenDisplay.add(who.display);
+    extras.push({ name: who.display, rec: firstIn.get(key)!, out: lastOut.get(key) });
+  }
 
   const total = rows.length;
   const arrived = rows.filter((r) => r.status.kind === "in" || r.status.kind === "out").length;
@@ -183,7 +194,7 @@ export default async function AttendanceDayBoard({
           <ul className="flex flex-col gap-1.5">
             {extras.map(({ name, rec, out }) => (
               <li key={name} className="flex items-center justify-between text-sm">
-                <span className="font-semibold">{name}</span>
+                <span className="font-semibold">{displayByKey.get(normalizeName(name)) ?? name}</span>
                 <span className="text-xs text-muted tabular-nums">
                   출근 {rec.time}
                   {out && ` · 퇴근 ${out.time}`}

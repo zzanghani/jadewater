@@ -8,6 +8,7 @@ import {
   evaluateAttendance,
 } from "@/lib/geoAttendance";
 import { kstDateAndMinutes, kstDateTimeToIso, matchShift } from "@/lib/attendanceSchedule";
+import { resolveAttendanceNames } from "@/lib/attendanceNames";
 import type { AttendanceType } from "@/lib/types";
 
 export type AttendanceInput = {
@@ -111,17 +112,17 @@ export async function recordAttendance(input: AttendanceInput): Promise<Attendan
   });
 
   // 그날 스케줄과 비교해 지각/조퇴를 계산한다. 스케줄은 이름 글자로만 사람을
-  // 구분하므로 프로필 이름과, 지점장이 연결해 둔 직원 리스트 이름을 둘 다 본다.
+  // 구분하므로 계정 → 직원 이름 변환(resolveAttendanceNames)을 거친다.
   const { date: kstDate, minutes: recordedMinutes } = kstDateAndMinutes(recordedAt.toISOString());
-  const [{ data: shifts }, { data: linkedEmployees }] = await Promise.all([
+  const [{ data: shifts }, resolved] = await Promise.all([
     supabase
       .from("schedule_shifts")
       .select("id, date, employee_name, start_time, end_time")
       .eq("store_id", profile.store_id)
       .eq("date", kstDate),
-    supabase.from("employees").select("name").eq("user_id", user.id),
+    resolveAttendanceNames(supabase, profile.store_id, [user.id]),
   ]);
-  const names = [profile.name, ...(linkedEmployees ?? []).map((e) => e.name)];
+  const names = Array.from(resolved.get(user.id)?.keys ?? [profile.name ?? ""]);
   const matched = matchShift(shifts ?? [], names, input.type, recordedMinutes);
   const scheduledAt = matched
     ? kstDateTimeToIso(kstDate, input.type === "IN" ? matched.shift.start_time : matched.shift.end_time)
