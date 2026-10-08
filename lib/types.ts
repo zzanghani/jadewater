@@ -306,12 +306,16 @@ export type LoanRepayment = {
   updated_at: string
 }
 
-/** 상환 기록 한 건 — 합계가 트리거로 loan_repayments.repaid에 반영된다 */
+export type LoanEventKind = 'repay' | 'invest'
+
+/** 상환/투자 기록 한 건 — 상환 합계는 repaid에, 투자 증감은 principal에 트리거로 반영된다 */
 export type LoanRepaymentEvent = {
   id: string
   loan_id: string
   paid_on: string
   amount: number
+  // 'repay' 상환(기본) | 'invest' 투자금 추가
+  kind: LoanEventKind
   notes: string | null
   created_by: string
   created_at: string
@@ -837,6 +841,7 @@ export type Database = {
           paid_on: string
           amount: number
           created_by: string
+          kind?: LoanEventKind
         }
         Update: Partial<LoanRepaymentEvent>
         Relationships: []

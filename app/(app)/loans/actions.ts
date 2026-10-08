@@ -110,16 +110,19 @@ export async function addLoanRepaymentEvent(
   const paidOn = String(formData.get("paid_on") ?? "");
   const amount = readAmount(formData, "amount");
   const notes = String(formData.get("notes") ?? "").trim() || null;
+  // 'invest'면 투자금에 더해지고, 아니면 상환으로 들어간다 (트리거).
+  const kind = formData.get("kind") === "invest" ? "invest" : "repay";
 
   if (!loanId) return { error: "대상을 찾을 수 없습니다." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(paidOn)) return { error: "날짜를 선택해 주세요." };
-  if (amount <= 0) return { error: "상환 금액을 입력해 주세요." };
+  if (amount <= 0) return { error: kind === "invest" ? "추가 투자 금액을 입력해 주세요." : "상환 금액을 입력해 주세요." };
 
   const { error } = await supabase.from("loan_repayment_events").insert({
     loan_id: loanId,
     paid_on: paidOn,
     amount,
     notes,
+    kind,
     created_by: user.id,
   });
   if (error) return { error: "저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
