@@ -10,7 +10,7 @@ import {
 } from "@/app/(app)/loans/actions";
 import { kstDateString, kstShortDateLabel } from "@/lib/date";
 import { formatWon } from "@/lib/format";
-import type { LoanRepayment, LoanRepaymentEvent } from "@/lib/types";
+import type { LoanEventKind, LoanRepayment, LoanRepaymentEvent } from "@/lib/types";
 
 function ratio(repaid: number, principal: number): string {
   if (!principal) return "-";
@@ -123,8 +123,9 @@ export default function LoanRepaymentTable({
               <tbody>
                 {g.items.map((r) => {
                   const pct = r.principal ? Math.min(100, (r.repaid / r.principal) * 100) : 0;
-                  const latest = eventsByLoan.get(r.id)?.[0];
-                  const count = eventsByLoan.get(r.id)?.length ?? 0;
+                  const repayEvents = (eventsByLoan.get(r.id) ?? []).filter((e) => e.kind !== "invest");
+                  const latest = repayEvents[0];
+                  const count = repayEvents.length;
                   return (
                     <tr
                       key={r.id}
@@ -170,7 +171,7 @@ export default function LoanRepaymentTable({
       >
         + 새 매장·투자자 추가
       </button>
-      <p className="text-center text-[11px] text-muted">줄을 누르면 상환 기록을 추가하거나 수정·삭제할 수 있어요</p>
+      <p className="text-center text-[11px] text-muted">줄을 누르면 상환·투자금 추가 기록을 남기거나 수정·삭제할 수 있어요</p>
     </div>
   );
 }
@@ -188,6 +189,8 @@ function LoanDetail({
   onDone: () => void;
 }) {
   const [editingInfo, setEditingInfo] = useState(false);
+  // 상환 / 투자금 추가 — 같은 폼, kind만 다르다.
+  const [kind, setKind] = useState<LoanEventKind>("repay");
   // 금액 칸은 비제어 입력 — 저장이 끝나면 React가 폼을 자동으로 비워준다.
   const [state, formAction, pending] = useActionState(addLoanRepaymentEvent, undefined);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -243,7 +246,29 @@ function LoanDetail({
 
       <form action={formAction} className="flex flex-col gap-2 rounded-2xl border border-brand bg-card p-4">
         <input type="hidden" name="loan_id" value={entry.id} />
-        <p className="text-sm font-semibold">상환 기록 추가</p>
+        <input type="hidden" name="kind" value={kind} />
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold">{kind === "invest" ? "투자금 추가" : "상환 기록 추가"}</p>
+          <div className="flex rounded-full border border-border bg-background p-0.5 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setKind("repay")}
+              className={`rounded-full px-3 py-1 ${kind === "repay" ? "bg-brand text-white" : "text-muted"}`}
+            >
+              상환
+            </button>
+            <button
+              type="button"
+              onClick={() => setKind("invest")}
+              className={`rounded-full px-3 py-1 ${kind === "invest" ? "bg-blue-600 text-white" : "text-muted"}`}
+            >
+              투자금 추가
+            </button>
+          </div>
+        </div>
+        {kind === "invest" && (
+          <p className="text-[11px] text-blue-700">저장하면 이 금액만큼 투자금에 자동으로 더해져요.</p>
+        )}
         <div className="grid grid-cols-2 gap-2">
           <label className="flex flex-col gap-1 text-xs font-medium text-muted">
             날짜
@@ -277,7 +302,7 @@ function LoanDetail({
         <input
           type="text"
           name="notes"
-          placeholder="메모 (선택) 예: 9월 상환"
+          placeholder={kind === "invest" ? "메모 (선택) 예: 2차 투자금" : "메모 (선택) 예: 9월 상환"}
           className={inputClass}
         />
         {state?.error && (
@@ -286,16 +311,22 @@ function LoanDetail({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-xl bg-brand py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          className={`rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-60 ${
+            kind === "invest" ? "bg-blue-600" : "bg-brand"
+          }`}
         >
-          {pending ? "저장 중..." : "상환 기록 저장"}
+          {pending ? "저장 중..." : kind === "invest" ? "투자금 추가 저장" : "상환 기록 저장"}
         </button>
       </form>
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <p className="text-sm font-bold">상환 기록</p>
-          <p className="text-xs text-muted">{events.length}회</p>
+          <p className="text-sm font-bold">상환·투자 기록</p>
+          <p className="text-xs text-muted">
+            상환 {events.filter((e) => e.kind !== "invest").length}회
+            {events.some((e) => e.kind === "invest") &&
+              ` · 투자 ${events.filter((e) => e.kind === "invest").length}회`}
+          </p>
         </div>
         {events.length === 0 ? (
           <p className="px-4 py-4 text-sm text-muted">아직 상환 기록이 없어요.</p>
@@ -304,13 +335,30 @@ function LoanDetail({
             {events.map((e) => (
               <li key={e.id} className="flex items-center gap-3 border-t border-border px-4 py-3 text-sm">
                 <span className="w-24 shrink-0 tabular-nums text-muted">{e.paid_on}</span>
-                <span className="flex-1 truncate text-xs text-muted">{e.notes ?? ""}</span>
-                <span className="font-semibold tabular-nums">{formatWon(e.amount)}</span>
+                <span className="flex-1 truncate text-xs text-muted">
+                  {e.kind === "invest" && (
+                    <span className="mr-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
+                      투자
+                    </span>
+                  )}
+                  {e.notes ?? ""}
+                </span>
+                <span className={`font-semibold tabular-nums ${e.kind === "invest" ? "text-blue-700" : ""}`}>
+                  {e.kind === "invest" ? "+" : ""}
+                  {formatWon(e.amount)}
+                </span>
                 <button
                   type="button"
                   disabled={deletingId === e.id}
                   onClick={() => {
-                    if (!confirm(`${e.paid_on} ${formatWon(e.amount)} 기록을 삭제할까요?`)) return;
+                    if (
+                      !confirm(
+                        `${e.paid_on} ${formatWon(e.amount)} ${e.kind === "invest" ? "투자" : "상환"} 기록을 삭제할까요?${
+                          e.kind === "invest" ? " 투자금에서 그만큼 빠져요." : ""
+                        }`
+                      )
+                    )
+                      return;
                     setDeletingId(e.id);
                     startDelete(async () => {
                       await deleteLoanRepaymentEvent(e.id);
@@ -402,7 +450,7 @@ function LoanForm({
         </div>
       </label>
       {!entry && (
-        <p className="text-[11px] text-muted">상환액은 저장 후 상세 화면에서 날짜별 기록으로 추가해요.</p>
+        <p className="text-[11px] text-muted">상환액·추가 투자는 저장 후 상세 화면에서 날짜별 기록으로 남겨요.</p>
       )}
 
       <label className="flex flex-col gap-1 text-xs font-medium text-muted">
