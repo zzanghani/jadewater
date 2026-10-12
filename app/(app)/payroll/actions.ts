@@ -10,7 +10,17 @@ import type { PayrollEntry, PayrollPosition } from "@/lib/types";
 export type PayrollFormState = { error?: string; success?: boolean } | undefined;
 
 const POSITIONS: PayrollPosition[] = ["점장", "부점장", "팀장", "사원", "파트타이머", "프리랜서"];
+// 지점장 급여신고는 노무법인(리드HR), 본사 마스터 급여신고는 정앤리 세무사사무실로 간다.
 const PAYROLL_REPORT_TO = "do@leadhr.kr";
+const HQ_PAYROLL_REPORT_TO = "tstax3@daum.net";
+
+/** 보내는 사람이 본사 마스터(매장·부서 없는 owner)면 세무사사무실, 아니면 노무법인. */
+export async function payrollReportRecipient(
+  profile: { store_id: string | null; department: string | null; role: string } | null
+): Promise<string> {
+  const isHqMaster = !!profile && profile.role === "owner" && !profile.store_id && !profile.department;
+  return isHqMaster ? HQ_PAYROLL_REPORT_TO : PAYROLL_REPORT_TO;
+}
 const FREELANCER_WITHHOLDING_RATE = 0.033;
 
 function readAmount(formData: FormData, key: string): number {
@@ -222,10 +232,11 @@ export async function sendPayrollReport(
       .eq("month", `${month}-01`)
       .order("created_at"),
     supabase.from("stores").select("name").eq("id", storeId).maybeSingle(),
-    supabase.from("profiles").select("name").eq("id", user.id).maybeSingle(),
+    supabase.from("profiles").select("name, store_id, department, role").eq("id", user.id).maybeSingle(),
   ]);
 
   if (!rows?.length) return { error: "보낼 내역이 없어요. 먼저 직원을 추가해 주세요." };
+  const to = await payrollReportRecipient(sender);
 
   const { label } = monthRangeFromMonthString(month);
   const storeName = store?.name ?? "매장";
@@ -279,7 +290,7 @@ export async function sendPayrollReport(
 </div>`;
 
   const { error } = await sendEmail({
-    to: PAYROLL_REPORT_TO,
+    to,
     subject: `[급여신고] ${storeName} ${label} (${rows.length}명, ${formatWon(grand)})`,
     html,
   });

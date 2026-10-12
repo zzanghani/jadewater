@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
 import { kstDateString, monthRangeFromMonthString, shiftMonthString } from "@/lib/date";
 import PayrollEditor from "@/components/PayrollEditor";
+import { payrollReportRecipient } from "@/app/(app)/payroll/actions";
 
 export default async function PayrollPage({
   searchParams,
@@ -11,7 +12,16 @@ export default async function PayrollPage({
 }) {
   const { month: monthParam } = await searchParams;
   const supabase = await createClient();
-  const { storeId, storeName } = await getStoreContext(supabase);
+  const [{ storeId, storeName }, { data: { user } }] = await Promise.all([
+    getStoreContext(supabase),
+    supabase.auth.getUser(),
+  ]);
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("store_id, department, role").eq("id", user.id).maybeSingle()
+    : { data: null };
+  // 본사 마스터는 정앤리 세무사사무실, 지점장은 노무법인으로.
+  const reportTo = await payrollReportRecipient(profile);
+  const reportToLabel = reportTo === "do@leadhr.kr" ? "노무법인" : "세무사사무실";
 
   const currentMonth = kstDateString(0).slice(0, 7);
   const month = monthParam && /^\d{4}-\d{2}$/.test(monthParam) ? monthParam : currentMonth;
@@ -68,6 +78,8 @@ export default async function PayrollPage({
         month={month}
         rows={rows ?? []}
         hasPreviousMonth={(prevCount ?? 0) > 0}
+        reportTo={reportTo}
+        reportToLabel={reportToLabel}
       />
     </div>
   );
