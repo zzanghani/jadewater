@@ -32,12 +32,17 @@ export default function PayrollEditor({
   month,
   rows,
   hasPreviousMonth,
+  reportTo,
+  reportToLabel,
 }: {
   storeId: string;
   /** YYYY-MM */
   month: string;
   rows: PayrollEntry[];
   hasPreviousMonth: boolean;
+  /** 메일 받는 곳 — 지점장은 노무법인, 본사 마스터는 세무사사무실 */
+  reportTo: string;
+  reportToLabel: string;
 }) {
   const [editing, setEditing] = useState<PayrollEntry | null>(null);
   const [adding, setAdding] = useState(false);
@@ -175,8 +180,8 @@ export default function PayrollEditor({
 
       {rows.length > 0 && !adding && (
         <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4">
-          <p className="text-sm font-semibold">작성 완료했으면 노무법인으로 보내기</p>
-          <p className="text-xs text-muted">이번 달 내역 전체가 do@leadhr.kr 로 발송돼요.</p>
+          <p className="text-sm font-semibold">작성 완료했으면 {reportToLabel}으로 보내기</p>
+          <p className="text-xs text-muted">이번 달 내역 전체가 {reportTo} 로 발송돼요.</p>
           <button
             type="button"
             disabled={mailing}
