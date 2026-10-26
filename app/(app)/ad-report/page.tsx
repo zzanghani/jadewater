@@ -46,6 +46,9 @@ export default async function AdReportPage() {
           </p>
         </div>
         <div className="flex shrink-0 gap-1.5">
+          <Link href="/ad-report/manage" className="rounded-full border border-brand px-3 py-1.5 text-xs font-semibold text-brand">
+            광고 관리
+          </Link>
           <Link href="/ad-report/insight" className="rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white">
             효율 분석
           </Link>

@@ -115,3 +115,91 @@ export async function pool<T, R>(items: T[], n: number, fn: (item: T, i: number)
   );
   return out;
 }
+
+/* ---------- 캠페인 읽기·쓰기 (3순위: 앱에서 켜고 끄기·하루 예산) ---------- */
+export type NaverCampaign = {
+  nccCampaignId: string;
+  name: string;
+  campaignTp?: string; // WEB_SITE(파워링크) | PLACE(플레이스) ...
+  status?: string; // ELIGIBLE | PAUSED | DELETED ...
+  statusReason?: string;
+  userLock?: boolean; // true = 꺼짐(사용자 중지)
+  dailyBudget?: number;
+  useDailyBudget?: boolean;
+};
+
+export const CAMPAIGN_TP_LABEL: Record<string, string> = {
+  WEB_SITE: "파워링크",
+  PLACE: "플레이스",
+  SHOPPING: "쇼핑",
+  POWER_CONTENTS: "파워컨텐츠",
+  BRAND_SEARCH: "브랜드검색",
+};
+
+/** 쓰기 호출. 서명은 GET과 같은 규칙에 메서드만 바뀐다. 쿼리스트링은 서명에 안 들어간다. */
+export async function callNaverWrite<T = unknown>(
+  acct: NaverAcct,
+  method: "PUT" | "POST" | "DELETE",
+  path: string,
+  body: unknown,
+  query: Record<string, string | undefined> = {}
+): Promise<T> {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== "") qs.append(k, v);
+  const url = BASE + path + (qs.toString() ? `?${qs}` : "");
+  const ts = String(Date.now());
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json; charset=UTF-8",
+        "X-Timestamp": ts,
+        "X-API-KEY": acct.apiKey,
+        "X-Customer": acct.customerId,
+        "X-Signature": sign(ts, method, path, acct.secretKey),
+      },
+      body: body == null ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(9000),
+      cache: "no-store",
+    });
+  } catch (e) {
+    const err = e as Error;
+    if (err.name === "TimeoutError" || err.name === "AbortError") throw new NaverApiError("네이버 응답이 9초 넘게 없습니다. 잠시 후 다시 시도해 주세요.", 0);
+    throw new NaverApiError(err.message, 0);
+  }
+  const text = await res.text();
+  let data: unknown = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = { raw: text };
+  }
+  if (res.status >= 400) {
+    const d = (data ?? {}) as { title?: string; message?: string; raw?: string };
+    throw new NaverApiError(d.title || d.message || d.raw || `네이버 API 오류 (${res.status})`, res.status);
+  }
+  return data as T;
+}
+
+export async function listCampaigns(acct: NaverAcct): Promise<NaverCampaign[]> {
+  const rows = (await callNaver<NaverCampaign[]>(acct, "/ncc/campaigns")) ?? [];
+  return rows.filter((c) => c.status !== "DELETED");
+}
+
+/** 캠페인 켜기/끄기. userLock=true 가 '꺼짐'. */
+export async function setCampaignLock(acct: NaverAcct, campaignId: string, lock: boolean): Promise<NaverCampaign> {
+  return callNaverWrite<NaverCampaign>(acct, "PUT", `/ncc/campaigns/${campaignId}`, { nccCampaignId: campaignId, userLock: lock }, { fields: "userLock" });
+}
+
+/** 하루 예산(원). 0이면 예산 제한 없음. 네이버는 10원 단위만 받는다. */
+export async function setCampaignBudget(acct: NaverAcct, campaignId: string, dailyBudget: number): Promise<NaverCampaign> {
+  const budget = Math.max(0, Math.round(dailyBudget / 10) * 10);
+  return callNaverWrite<NaverCampaign>(
+    acct,
+    "PUT",
+    `/ncc/campaigns/${campaignId}`,
+    { nccCampaignId: campaignId, dailyBudget: budget, useDailyBudget: budget > 0 },
+    { fields: "budget" }
+  );
+}

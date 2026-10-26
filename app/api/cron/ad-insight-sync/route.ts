@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { addYmd, kstYmd } from "@/lib/adReport";
 import { syncAdDaily, syncTossDaily } from "@/lib/adInsight";
+import { syncWeather } from "@/lib/weather";
 
 // Vercel Cron이 매일 23:50 KST(14:50 UTC)에 호출한다. 광고 계정이 연결된 매장마다
 // 최근 7일 네이버 성과와 토스 매출을 쌓아 둔다 (화면은 이 테이블을 읽는다).
@@ -43,6 +44,12 @@ export async function GET(request: Request) {
     } catch (e) {
       results[m.store_id] = `실패: ${(e as Error).message}`;
     }
+  }
+  // 날씨(서울 공용) — 지난 1년치는 처음 한 번만 받고, 이후엔 최근 1주만 갱신된다.
+  try {
+    results.weather = `${await syncWeather(service, addYmd(today, -370), today)}일`;
+  } catch (e) {
+    results.weather = `실패: ${(e as Error).message}`;
   }
   console.log("[ad-insight-sync]", results);
   return NextResponse.json({ ok: true, results });

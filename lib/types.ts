@@ -776,6 +776,20 @@ export type ChatMessage = {
   created_at: string
 }
 
+export type AdChangeLog = {
+  id: string;
+  store_id: string;
+  user_id: string | null;
+  user_name: string | null;
+  target_type: string;
+  target_id: string;
+  target_name: string | null;
+  field: string;
+  before_value: string | null;
+  after_value: string | null;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -935,6 +949,30 @@ export type Database = {
         Row: AdDailyStats
         Insert: Partial<AdDailyStats> & { store_id: string; date: string }
         Update: Partial<AdDailyStats>
+        Relationships: []
+      }
+      ad_store_settings: {
+        Row: { store_id: string; cost_rate: number; updated_by: string | null; updated_at: string }
+        Insert: { store_id: string; cost_rate?: number; updated_by?: string | null; updated_at?: string }
+        Update: Partial<{ store_id: string; cost_rate: number; updated_by: string | null; updated_at: string }>
+        Relationships: []
+      }
+      weather_daily: {
+        Row: { date: string; precip_mm: number; tmax: number | null; tmin: number | null; synced_at: string }
+        Insert: { date: string; precip_mm?: number; tmax?: number | null; tmin?: number | null; synced_at?: string }
+        Update: Partial<{ date: string; precip_mm: number; tmax: number | null; tmin: number | null; synced_at: string }>
+        Relationships: []
+      }
+      ad_special_days: {
+        Row: { store_id: string; date: string; note: string; created_by: string | null; created_at: string }
+        Insert: { store_id: string; date: string; note?: string; created_by?: string | null; created_at?: string }
+        Update: Partial<{ store_id: string; date: string; note: string; created_by: string | null; created_at: string }>
+        Relationships: []
+      }
+      ad_change_logs: {
+        Row: AdChangeLog
+        Insert: Omit<AdChangeLog, 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: Partial<AdChangeLog>
         Relationships: []
       }
       ad_insight_memos: {
