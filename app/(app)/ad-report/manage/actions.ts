@@ -1,8 +1,7 @@
 "use server";
 
 // 광고 관리(3순위): 앱에서 캠페인을 켜고 끄고 하루 예산을 바꾼다. 바꾼 건 모두 기록하고,
-// 7일이 지나면 전후 7일을 비교해 효과를 판정한다 (변동 ±34% 안이면 '판단 보류').
-export const maxDuration = 60;
+// 7일이 지나면 전후 7일을 비교해 효과를 판정한다 (변동 ±34% 안이면 '판단 보류'). 실행 시간 제한은 page.tsx의 maxDuration을 따른다.
 
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
