@@ -107,7 +107,6 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
       <section className="rounded-2xl border border-border bg-card p-4">
         <h2 className="mb-2 text-sm font-bold">최근 4주 매출 vs 광고비</h2>
         <AdInsightChart rows={x.series} />
-        {x.weather.hasWeather && <p className="mt-1 text-[10px] text-muted">연한 막대 = 비 온 날(1mm↑) · 회색 = 공휴일·특이일. 평소 대비 계산에서 큰비·공휴일·특이일은 뺐어요.</p>}
       </section>
 
       {/* 손익분기 · 날씨 보정 */}
