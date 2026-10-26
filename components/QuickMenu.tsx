@@ -41,6 +41,8 @@ const REVIEW_REPORT_ITEM = { href: "/review-report", label: "리뷰리포트", i
 // 분석은 뺐다.
 // GPS 출퇴근 — 소속 매장이 있는 계정(직원·지점장)이 찍고, 마스터는 기록 조회·위치 설정만.
 const ATTENDANCE_ITEM = { href: "/attendance", label: "출퇴근", icon: ClockPinIcon } as const;
+// 네이버 검색광고 주간 리포트 — 지점장(자기 매장)·마스터(전 매장).
+const AD_REPORT_ITEM = { href: "/ad-report", label: "광고 리포트", icon: MegaphoneIcon } as const;
 
 const EMPLOYEE_ITEMS = [
   ATTENDANCE_ITEM,
@@ -81,8 +83,8 @@ export default function QuickMenu({
     : employeeOnly
       ? EMPLOYEE_ITEMS
       : isMaster
-        ? [...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), ATTENDANCE_ITEM, HR_ITEM, ACCOUNTS_ITEM, LOAN_ITEM]
-        : [ATTENDANCE_ITEM, ...ALL_ITEMS, REVIEW_REPORT_ITEM, HR_ITEM, MY_REVIEW_ITEM];
+        ? [...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), ATTENDANCE_ITEM, AD_REPORT_ITEM, HR_ITEM, ACCOUNTS_ITEM, LOAN_ITEM]
+        : [ATTENDANCE_ITEM, ...ALL_ITEMS, REVIEW_REPORT_ITEM, AD_REPORT_ITEM, HR_ITEM, MY_REVIEW_ITEM];
 
   return (
     <section>
@@ -220,6 +222,15 @@ function HrIcon() {
       <circle cx="9" cy="8" r="3" />
       <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
       <path d="M17 8h4M19 6v4" />
+    </svg>
+  );
+}
+
+function MegaphoneIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 10v4a1 1 0 0 0 1 1h3l7 4V5L7 9H4a1 1 0 0 0-1 1Z" />
+      <path d="M17 9a4 4 0 0 1 0 6" />
     </svg>
   );
 }

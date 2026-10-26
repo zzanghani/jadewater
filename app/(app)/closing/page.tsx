@@ -19,7 +19,7 @@ export default async function ClosingPage({
   const targetDate = isValidDate ? dateParam : today;
   const isEditingPast = targetDate !== today;
 
-  const [{ data: targetClosing }, { data: history }] = await Promise.all([
+  const [{ data: targetClosing }, { data: history }, { data: tossMerchant }] = await Promise.all([
     supabase
       .from("daily_closings")
       .select("*")
@@ -32,6 +32,8 @@ export default async function ClosingPage({
       .eq("store_id", storeId)
       .order("date", { ascending: false })
       .limit(14),
+    // 토스포스가 연결된 매장이면 마감 폼에 "토스에서 불러오기"가 생긴다.
+    supabase.from("store_toss_merchants").select("merchant_id").eq("store_id", storeId).maybeSingle(),
   ]);
 
   // 최근 7일 중 오늘을 뺀, 아직 마감보고가 없는 날.
@@ -79,6 +81,7 @@ export default async function ClosingPage({
           existing={targetClosing ?? undefined}
           defaultDate={targetDate}
           isHanam={isHanam}
+          tossLinked={!!tossMerchant}
         />
       </section>
 

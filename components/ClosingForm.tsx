@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
-import { saveClosing } from "@/app/(app)/closing/actions";
+import { useActionState, useState, useTransition } from "react";
+import { loadTossClosing, saveClosing, type TossClosingResult } from "@/app/(app)/closing/actions";
 import { formatWon } from "@/lib/format";
 import { kstDateString } from "@/lib/date";
 import type { DailyClosing } from "@/lib/types";
@@ -11,13 +11,35 @@ export default function ClosingForm({
   existing,
   defaultDate,
   isHanam = false,
+  tossLinked = false,
 }: {
   storeId: string;
   existing?: DailyClosing;
   defaultDate?: string;
   isHanam?: boolean;
+  /** 이 매장이 토스포스와 연결돼 있으면 "토스에서 불러오기" 버튼을 보여준다 */
+  tossLinked?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(saveClosing, undefined);
+  const [date, setDate] = useState(existing?.date ?? defaultDate ?? kstDateString(0));
+  const [tossLoading, startToss] = useTransition();
+  const [toss, setToss] = useState<TossClosingResult | null>(null);
+
+  // 토스 결제 자료로 매출 칸을 채운다. 객수·카테고리는 손대지 않는다.
+  function fillFromToss() {
+    setToss(null);
+    startToss(async () => {
+      const r = await loadTossClosing(storeId, date);
+      setToss(r);
+      if (!r.ok) return;
+      setCardSales(r.fields.card_sales);
+      setCashSales(r.fields.cash_sales);
+      setEasypaySales(r.fields.easypay_sales);
+      setDiscountAmount(r.fields.discount_amount);
+      setCoupangEatsSales(r.fields.coupang_eats_sales);
+      setBaeminSales(r.fields.baemin_sales);
+    });
+  }
 
   const [lunchGuests, setLunchGuests] = useState(existing?.lunch_guests ?? 0);
   const [dinnerGuests, setDinnerGuests] = useState(existing?.dinner_guests ?? 0);
@@ -56,7 +78,8 @@ export default function ClosingForm({
           type="date"
           name="date"
           required
-          defaultValue={existing?.date ?? defaultDate ?? kstDateString(0)}
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
           max={kstDateString(0)}
           className="rounded-xl border border-border bg-card px-4 py-3 outline-none ring-brand/30 focus:ring-2"
         />
@@ -106,6 +129,34 @@ export default function ClosingForm({
             onValueChange={setDinnerGuests}
           />
         </FieldGroup>
+      )}
+
+      {tossLinked && (
+        <div className="flex flex-col gap-2 rounded-2xl border border-blue-200 bg-blue-50/60 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-blue-800">토스포스 결제 자료로 채우기</p>
+            <button
+              type="button"
+              onClick={fillFromToss}
+              disabled={tossLoading}
+              className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+            >
+              {tossLoading ? "불러오는 중..." : "토스에서 불러오기"}
+            </button>
+          </div>
+          {toss && !toss.ok && <p className="text-xs text-red-600">{toss.error}</p>}
+          {toss?.ok && (
+            <p className="text-[11px] leading-relaxed text-blue-900">
+              {toss.isTest && <span className="mr-1 rounded bg-amber-100 px-1 py-0.5 font-semibold text-amber-800">테스트 가맹점</span>}
+              {toss.summary.day} 결제 {toss.summary.orders}건 · 합계 {formatWon(toss.summary.paid)}
+              {toss.summary.delivery.amount > 0 && ` (배달 ${formatWon(toss.summary.delivery.amount)})`}
+              {toss.summary.cancelled.n > 0 && ` · 취소 ${toss.summary.cancelled.n}건`}
+              {toss.summary.lastPayAt && ` · 마지막 결제 ${toss.summary.lastPayAt}`}
+              <br />
+              카드·현금·간편결제·할인·배달 칸을 채웠어요. 객수와 카테고리 매출은 직접 입력하세요.
+            </p>
+          )}
+        </div>
       )}
 
       <FieldGroup title="총매출" total={formatWon(paymentTotal)}>
@@ -244,11 +295,12 @@ function NumberField({
   suffix?: string;
 }) {
   const [raw, setRaw] = useState(value ? String(value) : "");
-
-  useEffect(() => {
+  // 토스 불러오기처럼 바깥에서 값이 바뀌면 표시 숫자도 따라간다 (렌더 중 파생 상태).
+  const [lastValue, setLastValue] = useState(value);
+  if (value !== lastValue) {
+    setLastValue(value);
     setRaw(value ? String(value) : "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }
 
   return (
     <label className="flex flex-col gap-1.5 text-sm font-medium">

@@ -358,6 +358,79 @@ export type AttendanceRecord = {
   shift_id: string | null
 }
 
+/** 매장별 네이버 검색광고 API 키·예산 (본사 마스터만 읽고 쓴다) */
+export type StoreAdAccount = {
+  store_id: string
+  naver_customer_id: string
+  naver_api_key: string
+  naver_secret_key: string
+  monthly_budget: number | null
+  target_cpa: number | null
+  enabled: boolean
+  updated_by: string | null
+  updated_at: string
+}
+
+/** 매장·날짜별 토스 결제 집계 (광고 효율 분석용) */
+export type TossDailySales = {
+  store_id: string
+  date: string
+  sales: number
+  orders: number
+  card: number
+  cash: number
+  easypay: number
+  external: number
+  delivery: number
+  discount: number
+  by_hour: Record<string, number> | null
+  synced_at: string
+}
+
+/** 매장·날짜별 네이버 검색광고 성과 */
+export type AdDailyStats = {
+  store_id: string
+  date: string
+  imp: number
+  clk: number
+  cost: number
+  conv: number
+  synced_at: string
+}
+
+/** 토스플레이스 앱 인증 키 (단일 행, 본사 마스터만) */
+export type TossSettings = {
+  id: number
+  access_key: string
+  access_secret: string
+  /** 웹훅 서명 검증 키 (개발자센터 웹훅에 넣은 값과 같아야 한다) */
+  webhook_secret: string | null
+  updated_by: string | null
+  updated_at: string
+}
+
+/** 토스 앱이 설치된 매장 (웹훅 app.installation.created.v1로 들어온다) */
+export type TossInstallation = {
+  merchant_id: string
+  merchant_name: string | null
+  business_number: string | null
+  installed_at: string
+  removed_at: string | null
+}
+
+/** 매장 ↔ 토스 가맹점 ID */
+export type StoreTossMerchant = {
+  store_id: string
+  merchant_id: string
+  merchant_name: string | null
+  is_test: boolean
+  updated_by: string | null
+  updated_at: string
+}
+
+/** ad_weekly_reports.report 컬럼 — lib/adReport의 AdStoreReport를 JSON으로 저장한 것 */
+export type AdStoreReportJson = Record<string, unknown>
+
 export type MonthlyPlanType = 'task' | 'vacation'
 
 export type MonthlyPlan = {
@@ -852,6 +925,60 @@ export type Database = {
         Update: Partial<StoreLocation>
         Relationships: []
       }
+      toss_daily_sales: {
+        Row: TossDailySales
+        Insert: Partial<TossDailySales> & { store_id: string; date: string }
+        Update: Partial<TossDailySales>
+        Relationships: []
+      }
+      ad_daily_stats: {
+        Row: AdDailyStats
+        Insert: Partial<AdDailyStats> & { store_id: string; date: string }
+        Update: Partial<AdDailyStats>
+        Relationships: []
+      }
+      ad_insight_memos: {
+        Row: { store_id: string; date: string; memo: string; generated_at: string }
+        Insert: { store_id: string; date: string; memo: string; generated_at?: string }
+        Update: Partial<{ store_id: string; date: string; memo: string; generated_at: string }>
+        Relationships: []
+      }
+      toss_webhook_events: {
+        Row: { id: string; type: string; merchant_id: string | null; created_at: string | null; received_at: string; payload: Record<string, unknown> }
+        Insert: { id: string; type: string; merchant_id?: string | null; created_at?: string | null; received_at?: string; payload: Record<string, unknown> }
+        Update: Partial<{ id: string; type: string; merchant_id: string | null; created_at: string | null; received_at: string; payload: Record<string, unknown> }>
+        Relationships: []
+      }
+      toss_installations: {
+        Row: TossInstallation
+        Insert: Omit<TossInstallation, 'installed_at' | 'removed_at' | 'merchant_name' | 'business_number'> & { merchant_name?: string | null; business_number?: string | null; installed_at?: string; removed_at?: string | null }
+        Update: Partial<TossInstallation>
+        Relationships: []
+      }
+      toss_settings: {
+        Row: TossSettings
+        Insert: Omit<TossSettings, 'updated_at' | 'updated_by' | 'webhook_secret'> & { webhook_secret?: string | null; updated_by?: string | null; updated_at?: string }
+        Update: Partial<TossSettings>
+        Relationships: []
+      }
+      store_toss_merchants: {
+        Row: StoreTossMerchant
+        Insert: Omit<StoreTossMerchant, 'updated_at' | 'updated_by' | 'merchant_name' | 'is_test'> & { merchant_name?: string | null; is_test?: boolean; updated_by?: string | null; updated_at?: string }
+        Update: Partial<StoreTossMerchant>
+        Relationships: []
+      }
+      store_ad_accounts: {
+        Row: StoreAdAccount
+        Insert: Omit<StoreAdAccount, 'updated_at' | 'updated_by'> & { updated_by?: string | null; updated_at?: string }
+        Update: Partial<StoreAdAccount>
+        Relationships: []
+      }
+      ad_weekly_reports: {
+        Row: { id: string; store_id: string; week_start: string; report: AdStoreReportJson; generated_at: string }
+        Insert: { store_id: string; week_start: string; report: AdStoreReportJson; generated_at?: string }
+        Update: Partial<{ store_id: string; week_start: string; report: AdStoreReportJson; generated_at: string }>
+        Relationships: []
+      }
       attendance_reminders: {
         Row: { id: string; shift_id: string; user_id: string; kind: 'start' | 'end'; sent_at: string }
         Insert: { shift_id: string; user_id: string; kind: 'start' | 'end'; sent_at?: string }
@@ -1101,6 +1228,10 @@ export type Database = {
     Views: Record<string, never>
     Functions: {
       attendance_cron_token: { Args: Record<string, never>; Returns: string | null }
+      store_ad_account_status: {
+        Args: { target_store_id: string }
+        Returns: { connected: boolean; monthly_budget: number | null; target_cpa: number | null; naver_customer_id: string }[]
+      }
       upsert_push_subscription: {
         Args: {
           p_store_id: string | null

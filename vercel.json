@@ -19,6 +19,14 @@
     {
       "path": "/api/cron/monthly-plan-reminder",
       "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/ad-weekly-report",
+      "schedule": "47 23 * * 0"
+    },
+    {
+      "path": "/api/cron/ad-insight-sync",
+      "schedule": "50 14 * * *"
     }
   ]
 }

@@ -122,3 +122,35 @@ ${items.map((i) => `- ${i}`).join("\n")}
   if (!text || text === "없음") return null;
   return text;
 }
+
+// 광고 효율 숫자(토스 매출 × 네이버 광고)를 읽고 이번 주 전략 메모를 쓴다.
+// 숫자에 없는 건 지어내지 않게 하고, 실행 가능한 문장으로만 쓰게 한다.
+export async function generateAdStrategy(dataText: string, apiKey: string): Promise<string | null> {
+  const prompt = `너는 레스토랑 체인의 네이버 검색광고를 운영하는 퍼포먼스 마케터야. 아래는 한 매장의 토스포스 매출과 네이버 검색광고 성과야.
+
+${dataText}
+
+위 숫자만 근거로 한국어로 써줘. 데이터에 없는 건 추측하지 말고, 숫자를 인용하면서 써. 마크다운 기호(#, **, 표)는 쓰지 말고 아래 형식 그대로 일반 텍스트로:
+
+1) 한 줄 진단
+(광고가 매출로 이어지고 있는지 한 문장)
+
+2) 지금 상태
+– 좋은 점 1~2개
+– 문제 1~2개
+
+3) 이번 주 전략 (3개, 각각 "무엇을 / 얼마나 / 왜")
+– ...
+
+4) 예산 제안
+(현재 광고비 비중과 ROAS를 근거로 유지·증액·감액 중 하나와 금액 범위)`;
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 1200, thinking: { type: "disabled" }, messages: [{ role: "user", content: prompt }] }),
+  });
+  if (!res.ok) return null;
+  const data = (await res.json()) as { content?: { type: string; text?: string }[] };
+  return data.content?.find((c) => c.type === "text")?.text?.trim() || null;
+}

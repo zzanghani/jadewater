@@ -1,0 +1,277 @@
+// 광고 효율 분석 — 토스 일매출 × 네이버 일별 광고 성과.
+// 동기화(sync*)는 서비스 키로 두 API에서 받아 테이블에 쌓고, 분석(analyze)은 쌓인 날짜 행만으로 계산한다.
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/types";
+import { callNaver, pool, STAT_FIELDS, type NaverAcct, type NaverStatRow } from "@/lib/naverAds";
+import { fetchTossClosing } from "@/lib/tossClosing";
+import type { TossKeys } from "@/lib/tossPlace";
+import { addYmd, HOLIDAYS, pctDelta, weekdayIndex, type SalesMap } from "@/lib/adReport";
+
+type Service = SupabaseClient<Database>;
+
+export type DailyRow = {
+  date: string;
+  sales: number | null; // 토스 없으면 null
+  orders: number | null;
+  imp: number;
+  clk: number;
+  cost: number;
+  conv: number;
+};
+
+/* ---------- 동기화 ---------- */
+// 토스: 날짜마다 주문 목록을 읽어 집계한다. 지난 날은 바뀌지 않으니 없는 날 + 최근 2일만.
+export async function syncTossDaily(
+  service: Service,
+  storeId: string,
+  keys: TossKeys,
+  merchantId: string,
+  from: string,
+  to: string,
+  { force = false } = {}
+): Promise<number> {
+  const { data: have } = await service.from("toss_daily_sales").select("date").eq("store_id", storeId).gte("date", from).lte("date", to);
+  const haveSet = new Set((have ?? []).map((r) => r.date));
+  const days: string[] = [];
+  for (let d = from; d <= to; d = addYmd(d, 1)) if (force || !haveSet.has(d) || d >= addYmd(to, -1)) days.push(d);
+  let n = 0;
+  await pool(days, 3, async (d) => {
+    const c = await fetchTossClosing(keys, merchantId, d);
+    await service.from("toss_daily_sales").upsert(
+      {
+        store_id: storeId,
+        date: d,
+        sales: c.paid,
+        orders: c.orders,
+        card: c.payments.CARD ?? 0,
+        cash: c.payments.CASH ?? 0,
+        easypay: c.payments.BARCODE ?? 0,
+        external: c.payments.EXTERNAL ?? 0,
+        delivery: c.delivery.amount,
+        discount: c.discount,
+        by_hour: null,
+        synced_at: new Date().toISOString(),
+      },
+      { onConflict: "store_id,date" }
+    );
+    n++;
+  });
+  return n;
+}
+
+// 네이버: 캠페인별 일별 stats를 받아 날짜로 합친다 (최대 31일).
+export async function syncAdDaily(service: Service, storeId: string, acct: NaverAcct, from: string, to: string): Promise<number> {
+  const camps = ((await callNaver<{ nccCampaignId: string; status?: string }[]>(acct, "/ncc/campaigns")) ?? []).filter((c) => c.status !== "DELETED");
+  const daily: Record<string, { imp: number; clk: number; cost: number; conv: number }> = {};
+  await pool(camps, 3, async (c) => {
+    const d = await callNaver<{ data?: NaverStatRow[] }>(acct, "/stats", {
+      id: c.nccCampaignId,
+      fields: STAT_FIELDS,
+      timeRange: JSON.stringify({ since: from, until: to }),
+      timeIncrement: "1",
+    }).catch(() => null);
+    for (const r of d?.data ?? []) {
+      const k = String(r.dateStart ?? "").slice(0, 10);
+      if (!k) continue;
+      const x = (daily[k] ??= { imp: 0, clk: 0, cost: 0, conv: 0 });
+      x.imp += r.impCnt ?? 0;
+      x.clk += r.clkCnt ?? 0;
+      x.cost += r.salesAmt ?? 0;
+      x.conv += r.ccnt ?? 0;
+    }
+  });
+  const rows = [];
+  for (let d = from; d <= to; d = addYmd(d, 1)) {
+    const x = daily[d] ?? { imp: 0, clk: 0, cost: 0, conv: 0 };
+    rows.push({ store_id: storeId, date: d, imp: x.imp, clk: x.clk, cost: Math.round(x.cost), conv: x.conv, synced_at: new Date().toISOString() });
+  }
+  if (rows.length) await service.from("ad_daily_stats").upsert(rows, { onConflict: "store_id,date" });
+  return rows.length;
+}
+
+/* ---------- 분석 ---------- */
+export type PeriodStat = {
+  sales: number;
+  salesDays: number;
+  cost: number;
+  clk: number;
+  conv: number;
+  roas: number | null; // 매출 / 광고비 × 100
+  adShare: number | null; // 광고비 / 매출 × 100
+  cpc: number | null;
+  cpa: number | null;
+};
+export type AdInsight = {
+  storeId: string;
+  storeName: string;
+  today: { date: string; sales: number | null; orders: number | null; cost: number; clk: number; conv: number; roas: number | null; lastPayAt: string | null };
+  week: PeriodStat; // 최근 7일(어제까지)
+  weekPrev: PeriodStat;
+  month: PeriodStat; // 최근 28일
+  monthPrev: PeriodStat;
+  salesNorm: number | null; // 최근 7일 매출 ÷ 평소(요일 보정)
+  weekday: { label: string; sales: number; cost: number; roas: number | null; days: number }[]; // 최근 28일 요일별
+  series: DailyRow[]; // 최근 28일 (오늘 포함)
+  findings: { sev: "bad" | "warn" | "good" | "info"; text: string }[];
+  convTracked: boolean;
+  /** 네이버 광고 계정이 연결돼 광고비 데이터가 있는지 */
+  adConnected: boolean;
+};
+
+const WD = ["일", "월", "화", "수", "목", "금", "토"];
+const wdOf = (ymd: string) => {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+};
+function period(rows: DailyRow[]): PeriodStat {
+  const withSales = rows.filter((r) => r.sales != null);
+  const sales = withSales.reduce((s, r) => s + (r.sales ?? 0), 0);
+  const cost = rows.reduce((s, r) => s + r.cost, 0);
+  const clk = rows.reduce((s, r) => s + r.clk, 0);
+  const conv = rows.reduce((s, r) => s + r.conv, 0);
+  // 매출이 있는 날의 광고비만으로 ROAS를 계산해야 비교가 공정하다
+  const costOnSalesDays = withSales.reduce((s, r) => s + r.cost, 0);
+  return {
+    sales,
+    salesDays: withSales.length,
+    cost,
+    clk,
+    conv,
+    roas: sales && costOnSalesDays ? (sales / costOnSalesDays) * 100 : null,
+    adShare: sales ? (costOnSalesDays / sales) * 100 : null,
+    cpc: clk ? cost / clk : null,
+    cpa: conv ? cost / conv : null,
+  };
+}
+export const won = (n: number | null | undefined) => (n == null || !isFinite(n) ? "-" : Math.round(n).toLocaleString("ko-KR"));
+const dTxt = (d: number | null) => (d == null ? "-" : (d > 0 ? "+" : "") + d.toFixed(0) + "%");
+
+export function analyze(input: {
+  storeId: string;
+  storeName: string;
+  today: string;
+  rows: DailyRow[]; // 날짜 오름차순, 오늘 포함 가능
+  yearSales: SalesMap; // 평소 대비 계산용(지난 1년 토스 또는 마감 매출)
+  todayLive: { sales: number | null; orders: number | null; lastPayAt: string | null };
+  adConnected: boolean;
+}): AdInsight {
+  const { today } = input;
+  const byDate = new Map(input.rows.map((r) => [r.date, r]));
+  const range = (from: string, to: string) => {
+    const out: DailyRow[] = [];
+    for (let d = from; d <= to; d = addYmd(d, 1)) out.push(byDate.get(d) ?? { date: d, sales: null, orders: null, imp: 0, clk: 0, cost: 0, conv: 0 });
+    return out;
+  };
+  const y = addYmd(today, -1);
+  const week = range(addYmd(y, -6), y);
+  const weekPrev = range(addYmd(y, -13), addYmd(y, -7));
+  const month = range(addYmd(y, -27), y);
+  const monthPrev = range(addYmd(y, -55), addYmd(y, -28));
+  const W = period(week);
+  const WP = period(weekPrev);
+  const M = period(month);
+  const MP = period(monthPrev);
+
+  // 요일별 (최근 28일)
+  const wdAgg = Array.from({ length: 7 }, (_, i) => ({ label: WD[i], sales: 0, cost: 0, days: 0 }));
+  for (const r of month) if (r.sales != null) {
+    const a = wdAgg[wdOf(r.date)];
+    a.sales += r.sales;
+    a.cost += r.cost;
+    a.days++;
+  }
+  const weekday = [1, 2, 3, 4, 5, 6, 0].map((i) => ({ ...wdAgg[i], roas: wdAgg[i].sales && wdAgg[i].cost ? (wdAgg[i].sales / wdAgg[i].cost) * 100 : null }));
+
+  // 평소 대비 (요일·공휴일 보정): 최근 7일 vs 직전 28일 수준
+  let salesNorm: number | null = null;
+  const ys = input.yearSales;
+  if (Object.values(ys).filter((v) => v > 0).length >= 14) {
+    const idx = weekdayIndex(ys, addYmd(y, -364), y);
+    const usable = (d: string) => ys[d] != null && ys[d] > 0 && !HOLIDAYS.has(d);
+    const ref: number[] = [];
+    for (let d = addYmd(y, -34); d <= addYmd(y, -7); d = addYmd(d, 1)) if (usable(d)) ref.push(ys[d] / idx[wdOf(d)]);
+    const level = ref.length ? ref.reduce((a, b) => a + b, 0) / ref.length : 0;
+    let act = 0;
+    let exp = 0;
+    for (let d = addYmd(y, -6); d <= y; d = addYmd(d, 1)) if (usable(d)) {
+      act += ys[d];
+      exp += level * idx[wdOf(d)];
+    }
+    salesNorm = exp ? act / exp : null;
+  }
+
+  const todayRow = byDate.get(today);
+  const todayCost = todayRow?.cost ?? 0;
+  const todaySales = input.todayLive.sales;
+  const convTracked = M.conv > 0 || MP.conv > 0;
+
+  // 진단
+  const F: AdInsight["findings"] = [];
+  const dCost = pctDelta(W.cost, WP.cost);
+  const dSales = pctDelta(W.sales, WP.sales);
+  if (W.roas != null && WP.roas != null && W.roas < WP.roas * 0.8) F.push({ sev: "warn", text: `최근 7일 광고비 대비 매출(ROAS)이 ${won(WP.roas)}% → ${won(W.roas)}%로 떨어졌어요.` });
+  else if (W.roas != null && WP.roas != null && W.roas > WP.roas * 1.2) F.push({ sev: "good", text: `최근 7일 ROAS가 ${won(WP.roas)}% → ${won(W.roas)}%로 좋아졌어요.` });
+  if (dCost != null && dCost > 30 && (dSales == null || dSales < dCost / 2)) F.push({ sev: "warn", text: `광고비는 ${dTxt(dCost)} 늘었는데 매출은 ${dTxt(dSales)}예요. 늘린 예산이 매출로 안 이어지고 있어요.` });
+  if (salesNorm != null && salesNorm < 0.85) F.push({ sev: "warn", text: `최근 7일 매출이 평소(요일·공휴일 보정)보다 ${((1 - salesNorm) * 100).toFixed(0)}% 낮아요.` });
+  if (salesNorm != null && salesNorm > 1.1) F.push({ sev: "good", text: `최근 7일 매출이 평소보다 ${((salesNorm - 1) * 100).toFixed(0)}% 높아요.` });
+  const withRoas = weekday.filter((w) => w.roas != null && w.days >= 2);
+  if (withRoas.length >= 3) {
+    const best = withRoas.reduce((a, b) => (b.roas! > a.roas! ? b : a));
+    const worst = withRoas.reduce((a, b) => (b.roas! < a.roas! ? b : a));
+    if (best.roas! > worst.roas! * 2) F.push({ sev: "info", text: `요일별로 보면 ${best.label}요일 ROAS ${won(best.roas)}%, ${worst.label}요일 ${won(worst.roas)}%예요. ${worst.label}요일 입찰가를 낮추고 ${best.label}요일에 예산을 더 두는 걸 검토하세요.` });
+  }
+  if (W.adShare != null && W.adShare > 5) F.push({ sev: "warn", text: `매출의 ${W.adShare.toFixed(1)}%를 광고비로 쓰고 있어요(최근 7일). 외식업 평균(1~3%)보다 높아요.` });
+  if (W.cost > 0 && W.sales === 0 && W.salesDays === 0) F.push({ sev: "info", text: "토스 매출이 아직 안 쌓여서 ROAS를 계산할 수 없어요. 동기화를 눌러 주세요." });
+  if (input.adConnected && W.cost === 0) F.push({ sev: "warn", text: "최근 7일 광고비가 0원이에요. 광고가 꺼져 있거나 비즈머니가 바닥났을 수 있어요." });
+  if (F.length === 0) F.push({ sev: "good", text: "지난주와 큰 변화 없이 안정적이에요." });
+
+  return {
+    storeId: input.storeId,
+    storeName: input.storeName,
+    today: {
+      date: today,
+      sales: todaySales,
+      orders: input.todayLive.orders,
+      cost: todayCost,
+      clk: todayRow?.clk ?? 0,
+      conv: todayRow?.conv ?? 0,
+      roas: todaySales && todayCost ? (todaySales / todayCost) * 100 : null,
+      lastPayAt: input.todayLive.lastPayAt,
+    },
+    week: W,
+    weekPrev: WP,
+    month: M,
+    monthPrev: MP,
+    salesNorm,
+    weekday,
+    series: range(addYmd(today, -27), today),
+    findings: F,
+    convTracked,
+    adConnected: input.adConnected,
+  };
+}
+
+/* ---------- AI 전략 메모 입력 ---------- */
+export function insightToPrompt(x: AdInsight): string {
+  const p = (s: PeriodStat) => `매출 ${won(s.sales)}원(${s.salesDays}일) · 광고비 ${won(s.cost)}원 · 클릭 ${s.clk} · 전환 ${s.conv} · ROAS ${s.roas == null ? "-" : won(s.roas) + "%"} · 광고비 비중 ${s.adShare == null ? "-" : s.adShare.toFixed(1) + "%"} · 클릭당 ${won(s.cpc)}원`;
+  const wd = x.weekday.map((w) => `${w.label}: 매출 ${won(w.sales)} / 광고비 ${won(w.cost)} / ROAS ${w.roas == null ? "-" : won(w.roas) + "%"} (${w.days}일)`).join("\n");
+  const last14 = x.series.slice(-14).map((r) => `${r.date.slice(5)} 매출 ${r.sales == null ? "-" : won(r.sales)} / 광고비 ${won(r.cost)} / 클릭 ${r.clk}`).join("\n");
+  const adNote = x.adConnected ? "" : "\n※ 네이버 광고 계정이 아직 연결되지 않아 광고비·클릭·전환은 데이터가 없는 것(0으로 표시)이지, 광고를 안 한 게 아님. 광고 관련 판단은 보류하고 매출 흐름 중심으로 써라.";
+  return `매장: ${x.storeName}${adNote}
+오늘(${x.today.date}, 진행 중): 매출 ${won(x.today.sales)}원 · 광고비 ${won(x.today.cost)}원 · 클릭 ${x.today.clk}
+최근 7일: ${p(x.week)}
+직전 7일: ${p(x.weekPrev)}
+최근 28일: ${p(x.month)}
+직전 28일: ${p(x.monthPrev)}
+최근 7일 매출의 평소 대비(요일·공휴일 보정): ${x.salesNorm == null ? "-" : ((x.salesNorm - 1) * 100).toFixed(1) + "%"}
+전환 추적: ${x.convTracked ? "있음" : "없음(클릭 기준으로 판단)"}
+
+요일별(최근 28일):
+${wd}
+
+최근 14일 일별:
+${last14}
+
+자동 진단:
+${x.findings.map((f) => `- ${f.text}`).join("\n")}`;
+}
