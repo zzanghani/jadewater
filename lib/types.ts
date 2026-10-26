@@ -358,6 +358,22 @@ export type AttendanceRecord = {
   shift_id: string | null
 }
 
+/** 매장별 네이버 검색광고 API 키·예산 (본사 마스터만 읽고 쓴다) */
+export type StoreAdAccount = {
+  store_id: string
+  naver_customer_id: string
+  naver_api_key: string
+  naver_secret_key: string
+  monthly_budget: number | null
+  target_cpa: number | null
+  enabled: boolean
+  updated_by: string | null
+  updated_at: string
+}
+
+/** ad_weekly_reports.report 컬럼 — lib/adReport의 AdStoreReport를 JSON으로 저장한 것 */
+export type AdStoreReportJson = Record<string, unknown>
+
 export type MonthlyPlanType = 'task' | 'vacation'
 
 export type MonthlyPlan = {
@@ -852,6 +868,18 @@ export type Database = {
         Update: Partial<StoreLocation>
         Relationships: []
       }
+      store_ad_accounts: {
+        Row: StoreAdAccount
+        Insert: Omit<StoreAdAccount, 'updated_at' | 'updated_by'> & { updated_by?: string | null; updated_at?: string }
+        Update: Partial<StoreAdAccount>
+        Relationships: []
+      }
+      ad_weekly_reports: {
+        Row: { id: string; store_id: string; week_start: string; report: AdStoreReportJson; generated_at: string }
+        Insert: { store_id: string; week_start: string; report: AdStoreReportJson; generated_at?: string }
+        Update: Partial<{ store_id: string; week_start: string; report: AdStoreReportJson; generated_at: string }>
+        Relationships: []
+      }
       attendance_reminders: {
         Row: { id: string; shift_id: string; user_id: string; kind: 'start' | 'end'; sent_at: string }
         Insert: { shift_id: string; user_id: string; kind: 'start' | 'end'; sent_at?: string }
@@ -1101,6 +1129,10 @@ export type Database = {
     Views: Record<string, never>
     Functions: {
       attendance_cron_token: { Args: Record<string, never>; Returns: string | null }
+      store_ad_account_status: {
+        Args: { target_store_id: string }
+        Returns: { connected: boolean; monthly_budget: number | null; target_cpa: number | null; naver_customer_id: string }[]
+      }
       upsert_push_subscription: {
         Args: {
           p_store_id: string | null
