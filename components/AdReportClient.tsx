@@ -167,12 +167,10 @@ function StoreCard({ s, rep }: { s: AdStoreReport; rep: AdWeeklyReport }) {
       )}
 
       <div className="rounded-xl bg-background px-3 py-2 text-xs">
-        <div className="flex items-baseline justify-between">
-          <span className="text-muted">{month}월 광고비 ({rep.monthElapsed}/{rep.monthDays}일)</span>
-          <span className="font-semibold tabular-nums">
-            {won(s.mtd.cost)}원 → 월말 예상 {won(s.projected)}원{s.budget && ` / 예산 ${won(s.budget)}원`}
-          </span>
-        </div>
+        <p className="text-muted">{month}월 광고비 ({rep.monthElapsed}/{rep.monthDays}일 경과)</p>
+        <p className="mt-0.5 font-semibold tabular-nums">
+          {won(s.mtd.cost)}원 → 월말 예상 {won(s.projected)}원{s.budget && ` / 예산 ${won(s.budget)}원`}
+        </p>
         {pacePct != null && (
           <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-border">
             <div className={`h-full rounded-full ${s.projected && s.budget && s.projected > s.budget * 1.1 ? "bg-red-500" : "bg-brand"}`} style={{ width: `${pacePct}%` }} />
