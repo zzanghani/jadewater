@@ -148,7 +148,7 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
         {memoError && <p className="mb-2 text-xs text-red-600">{memoError}</p>}
         {res.memo ? (
           <>
-            <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed">{res.memo}</pre>
+            <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed">{res.memo.replace(/^#+\s*/gm, "").replace(/\*\*/g, "")}</pre>
             {res.memoAt && <p className="mt-2 text-[10px] text-muted">{new Date(res.memoAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 생성</p>}
           </>
         ) : (

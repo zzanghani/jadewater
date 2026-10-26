@@ -107,7 +107,7 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = 
     }
   }
 
-  const insight = analyze({ storeId, storeName: store?.name ?? "매장", today, rows, yearSales, todayLive });
+  const insight = analyze({ storeId, storeName: store?.name ?? "매장", today, rows, yearSales, todayLive, adConnected: !!adAcct });
   if (!adAcct) insight.findings.unshift({ sev: "info", text: "네이버 광고 계정이 아직 연결되지 않아 매출만 보여요. 키를 등록하면 광고비·ROAS가 채워져요." });
   return { ok: true, insight, memo: memoRow?.memo ?? null, memoAt: memoRow?.generated_at ?? null, synced };
 }

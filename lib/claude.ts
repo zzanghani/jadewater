@@ -130,7 +130,7 @@ export async function generateAdStrategy(dataText: string, apiKey: string): Prom
 
 ${dataText}
 
-위 숫자만 근거로 한국어로 써줘. 데이터에 없는 건 추측하지 말고, 숫자를 인용하면서 써. 형식을 정확히 지켜:
+위 숫자만 근거로 한국어로 써줘. 데이터에 없는 건 추측하지 말고, 숫자를 인용하면서 써. 마크다운 기호(#, **, 표)는 쓰지 말고 아래 형식 그대로 일반 텍스트로:
 
 1) 한 줄 진단
 (광고가 매출로 이어지고 있는지 한 문장)

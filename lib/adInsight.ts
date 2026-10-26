@@ -114,6 +114,8 @@ export type AdInsight = {
   series: DailyRow[]; // 최근 28일 (오늘 포함)
   findings: { sev: "bad" | "warn" | "good" | "info"; text: string }[];
   convTracked: boolean;
+  /** 네이버 광고 계정이 연결돼 광고비 데이터가 있는지 */
+  adConnected: boolean;
 };
 
 const WD = ["일", "월", "화", "수", "목", "금", "토"];
@@ -151,6 +153,7 @@ export function analyze(input: {
   rows: DailyRow[]; // 날짜 오름차순, 오늘 포함 가능
   yearSales: SalesMap; // 평소 대비 계산용(지난 1년 토스 또는 마감 매출)
   todayLive: { sales: number | null; orders: number | null; lastPayAt: string | null };
+  adConnected: boolean;
 }): AdInsight {
   const { today } = input;
   const byDate = new Map(input.rows.map((r) => [r.date, r]));
@@ -219,7 +222,7 @@ export function analyze(input: {
   }
   if (W.adShare != null && W.adShare > 5) F.push({ sev: "warn", text: `매출의 ${W.adShare.toFixed(1)}%를 광고비로 쓰고 있어요(최근 7일). 외식업 평균(1~3%)보다 높아요.` });
   if (W.cost > 0 && W.sales === 0 && W.salesDays === 0) F.push({ sev: "info", text: "토스 매출이 아직 안 쌓여서 ROAS를 계산할 수 없어요. 동기화를 눌러 주세요." });
-  if (W.cost === 0) F.push({ sev: "warn", text: "최근 7일 광고비가 0원이에요. 광고가 꺼져 있거나 비즈머니가 바닥났을 수 있어요." });
+  if (input.adConnected && W.cost === 0) F.push({ sev: "warn", text: "최근 7일 광고비가 0원이에요. 광고가 꺼져 있거나 비즈머니가 바닥났을 수 있어요." });
   if (F.length === 0) F.push({ sev: "good", text: "지난주와 큰 변화 없이 안정적이에요." });
 
   return {
@@ -244,6 +247,7 @@ export function analyze(input: {
     series: range(addYmd(today, -27), today),
     findings: F,
     convTracked,
+    adConnected: input.adConnected,
   };
 }
 
@@ -252,7 +256,8 @@ export function insightToPrompt(x: AdInsight): string {
   const p = (s: PeriodStat) => `매출 ${won(s.sales)}원(${s.salesDays}일) · 광고비 ${won(s.cost)}원 · 클릭 ${s.clk} · 전환 ${s.conv} · ROAS ${s.roas == null ? "-" : won(s.roas) + "%"} · 광고비 비중 ${s.adShare == null ? "-" : s.adShare.toFixed(1) + "%"} · 클릭당 ${won(s.cpc)}원`;
   const wd = x.weekday.map((w) => `${w.label}: 매출 ${won(w.sales)} / 광고비 ${won(w.cost)} / ROAS ${w.roas == null ? "-" : won(w.roas) + "%"} (${w.days}일)`).join("\n");
   const last14 = x.series.slice(-14).map((r) => `${r.date.slice(5)} 매출 ${r.sales == null ? "-" : won(r.sales)} / 광고비 ${won(r.cost)} / 클릭 ${r.clk}`).join("\n");
-  return `매장: ${x.storeName}
+  const adNote = x.adConnected ? "" : "\n※ 네이버 광고 계정이 아직 연결되지 않아 광고비·클릭·전환은 데이터가 없는 것(0으로 표시)이지, 광고를 안 한 게 아님. 광고 관련 판단은 보류하고 매출 흐름 중심으로 써라.";
+  return `매장: ${x.storeName}${adNote}
 오늘(${x.today.date}, 진행 중): 매출 ${won(x.today.sales)}원 · 광고비 ${won(x.today.cost)}원 · 클릭 ${x.today.clk}
 최근 7일: ${p(x.week)}
 직전 7일: ${p(x.weekPrev)}
