@@ -124,26 +124,33 @@ ${items.map((i) => `- ${i}`).join("\n")}
 }
 
 // 광고 효율 숫자(토스 매출 × 네이버 광고)를 읽고 이번 주 전략 메모를 쓴다.
-// 숫자에 없는 건 지어내지 않게 하고, 실행 가능한 문장으로만 쓰게 한다.
+// 화면에서 카드로 나눠 보여주려고 JSON으로 받고, 숫자에 없는 건 지어내지 않게 한다.
+// 긴 문장은 폰에서 읽기 힘들어 한 항목을 짧게, 숫자는 만원 단위로 쓰게 한다.
+import { parseAdStrategyMemo } from "@/lib/adStrategyMemo";
+
 export async function generateAdStrategy(dataText: string, apiKey: string): Promise<string | null> {
   const prompt = `너는 레스토랑 체인의 네이버 검색광고를 운영하는 퍼포먼스 마케터야. 아래는 한 매장의 토스포스 매출과 네이버 검색광고 성과야.
 
 ${dataText}
 
-위 숫자만 근거로 한국어로 써줘. 데이터에 없는 건 추측하지 말고, 숫자를 인용하면서 써. 마크다운 기호(#, **, 표)는 쓰지 말고 아래 형식 그대로 일반 텍스트로:
+위 숫자만 근거로 한국어로 써줘. 데이터에 없는 건 추측하지 마. 점장이 폰으로 읽는 화면이라 다음 규칙을 지켜:
+- 각 문장은 40자 안팎, 한 항목에 한 문장만.
+- 금액은 만원 단위로 반올림 (예: 1,030만원, 6.6만원). 원 단위 긴 숫자 금지.
+- ROAS는 퍼센트 대신 "광고비 1만원당 매출 N만원"으로 써.
+- 전문 용어(CPC, ROAS, 전환 추적) 대신 쉬운 말(클릭 한 번 값, 광고비 대비 매출, 예약·전화 집계).
 
-1) 한 줄 진단
-(광고가 매출로 이어지고 있는지 한 문장)
-
-2) 지금 상태
-– 좋은 점 1~2개
-– 문제 1~2개
-
-3) 이번 주 전략 (3개, 각각 "무엇을 / 얼마나 / 왜")
-– ...
-
-4) 예산 제안
-(현재 광고비 비중과 ROAS를 근거로 유지·증액·감액 중 하나와 금액 범위)`;
+아래 JSON 형식 그대로만 출력해. 설명이나 코드 블록 없이 JSON만:
+{
+  "headline": "광고가 매출로 이어지고 있는지 한 문장",
+  "good": ["좋은 점 1", "좋은 점 2"],
+  "issues": ["문제 1", "문제 2"],
+  "actions": [
+    { "title": "무엇을 (짧은 제목)", "amount": "얼마나 (숫자 포함 한 문장)", "why": "왜 (근거 숫자 한 문장)" },
+    { "title": "...", "amount": "...", "why": "..." },
+    { "title": "...", "amount": "...", "why": "..." }
+  ],
+  "budget": { "verdict": "유지 또는 증액 또는 감액", "range": "일 광고비 금액 범위", "why": "근거 한 문장" }
+}`;
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -152,5 +159,9 @@ ${dataText}
   });
   if (!res.ok) return null;
   const data = (await res.json()) as { content?: { type: string; text?: string }[] };
-  return data.content?.find((c) => c.type === "text")?.text?.trim() || null;
+  const text = data.content?.find((c) => c.type === "text")?.text?.trim() || null;
+  if (!text) return null;
+  // JSON이 깨져 왔으면 원문을 그대로 저장해 화면에서 텍스트로라도 보여준다.
+  const parsed = parseAdStrategyMemo(text);
+  return parsed ? JSON.stringify(parsed) : text;
 }

@@ -5,6 +5,7 @@ import { generateStrategyMemo, loadAdInsight, type InsightResult } from "@/app/(
 import { won, type PeriodStat } from "@/lib/adInsight";
 import { pctDelta } from "@/lib/adReport";
 import AdInsightChart from "@/components/AdInsightChart";
+import { parseAdStrategyMemo } from "@/lib/adStrategyMemo";
 
 const SEV = {
   bad: "bg-red-50 text-red-600",
@@ -148,7 +149,7 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
         {memoError && <p className="mb-2 text-xs text-red-600">{memoError}</p>}
         {res.memo ? (
           <>
-            <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed">{res.memo.replace(/^#+\s*/gm, "").replace(/\*\*/g, "")}</pre>
+            <StrategyMemo raw={res.memo} />
             {res.memoAt && <p className="mt-2 text-[10px] text-muted">{new Date(res.memoAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 생성</p>}
           </>
         ) : (
@@ -192,6 +193,75 @@ function Kpi({ label, v, p, unit, goodUp, sub }: { label: string; v: number | nu
         <span className={`font-semibold ${dCls(v, p, goodUp)}`}>{d(v, p) || "-"}</span>
         <span className="text-muted"> 직전 기간 {sub && `· ${sub}`}</span>
       </p>
+    </div>
+  );
+}
+
+const VERDICT = {
+  유지: "bg-slate-100 text-slate-700",
+  증액: "bg-green-50 text-green-700",
+  감액: "bg-amber-50 text-amber-700",
+} as const;
+
+// AI 메모를 카드로 나눠 보여준다. 예전에 저장된 긴 텍스트 메모는 그대로 텍스트로.
+function StrategyMemo({ raw }: { raw: string }) {
+  const m = parseAdStrategyMemo(raw);
+  if (!m) return <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed">{raw.replace(/^#+\s*/gm, "").replace(/\*\*/g, "")}</pre>;
+  return (
+    <div className="space-y-3">
+      <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm font-semibold leading-snug">{m.headline}</p>
+
+      {(m.good.length > 0 || m.issues.length > 0) && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {m.good.length > 0 && (
+            <div className="rounded-xl bg-green-50 p-3">
+              <p className="mb-1 text-[11px] font-bold text-green-700">좋은 점</p>
+              <ul className="space-y-1 text-xs leading-snug text-green-900">
+                {m.good.map((s, i) => (
+                  <li key={i} className="flex gap-1.5"><span>✓</span><span>{s}</span></li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {m.issues.length > 0 && (
+            <div className="rounded-xl bg-amber-50 p-3">
+              <p className="mb-1 text-[11px] font-bold text-amber-700">문제</p>
+              <ul className="space-y-1 text-xs leading-snug text-amber-900">
+                {m.issues.map((s, i) => (
+                  <li key={i} className="flex gap-1.5"><span>!</span><span>{s}</span></li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {m.actions.length > 0 && (
+        <div>
+          <p className="mb-1.5 text-[11px] font-bold text-muted">이번 주 할 일</p>
+          <ol className="space-y-2">
+            {m.actions.map((a, i) => (
+              <li key={i} className="rounded-xl border border-border p-3">
+                <p className="text-sm font-semibold leading-snug">
+                  <span className="mr-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand text-[11px] font-bold text-white">{i + 1}</span>
+                  {a.title}
+                </p>
+                {a.amount && <p className="mt-1 text-xs leading-snug">{a.amount}</p>}
+                {a.why && <p className="mt-0.5 text-[11px] leading-snug text-muted">근거 · {a.why}</p>}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
+      <div className="rounded-xl border border-border p-3">
+        <div className="flex items-center gap-2">
+          <p className="text-[11px] font-bold text-muted">예산 제안</p>
+          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${VERDICT[m.budget.verdict]}`}>{m.budget.verdict}</span>
+        </div>
+        {m.budget.range && <p className="mt-1 text-sm font-semibold">{m.budget.range}</p>}
+        {m.budget.why && <p className="mt-0.5 text-[11px] leading-snug text-muted">{m.budget.why}</p>}
+      </div>
     </div>
   );
 }
