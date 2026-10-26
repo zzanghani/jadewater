@@ -109,11 +109,11 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
         <AdInsightChart rows={x.series} />
       </section>
 
-      {/* 손익분기 · 날씨 보정 */}
-      <BreakevenCard storeId={storeId} x={x} onSaved={() => start(async () => setRes(await loadAdInsight(storeId)))} />
-
-      {/* 특이일 */}
+      {/* 특이일 — 차트 바로 아래에 둬서 이상한 날을 보자마자 적을 수 있게 */}
       <SpecialDays storeId={storeId} days={x.specialDays} onChanged={() => start(async () => setRes(await loadAdInsight(storeId)))} />
+
+      {/* 손익분기 */}
+      <BreakevenCard storeId={storeId} x={x} onSaved={() => start(async () => setRes(await loadAdInsight(storeId)))} />
 
       {/* 요일별 */}
       <section className="rounded-2xl border border-border bg-card p-4">
