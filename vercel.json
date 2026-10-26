@@ -19,6 +19,10 @@
     {
       "path": "/api/cron/monthly-plan-reminder",
       "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/attendance-reminders",
+      "schedule": "*/10 * * * *"
     }
   ]
 }
