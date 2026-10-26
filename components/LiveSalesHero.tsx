@@ -43,7 +43,8 @@ export default function LiveSalesHero({
       {live && (
         <p className="mt-1 text-xs text-white/75">
           <span className="mr-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-green-300 align-middle" />
-          결제 {live.orders}건{live.lastPayAt && ` · 마지막 결제 ${live.lastPayAt}`} · 토스포스 기준
+          결제 {formatWon(live.paid)} ({live.orders}건){live.openOrders > 0 && ` + 미결제 ${formatWon(live.openAmount)} (${live.openOrders}건)`}
+          {live.lastPayAt && ` · 마지막 결제 ${live.lastPayAt}`}
         </p>
       )}
       <div className="mt-4 flex items-center justify-between border-t border-white/20 pt-3">

@@ -36,7 +36,7 @@ export default function LiveStoreSalesGrid({ stores }: { stores: StoreCard[] }) 
               {l ? (
                 <>
                   <span className="mr-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-green-300 align-middle" />
-                  실시간 · {l.orders}건{l.lastPayAt && ` · 마지막 ${l.lastPayAt}`}
+                  실시간 · 결제 {l.orders}건{l.openOrders > 0 && ` + 미결제 ${l.openOrders}건`}{l.lastPayAt && ` · 마지막 ${l.lastPayAt}`}
                 </>
               ) : (
                 "마감입력 기준"

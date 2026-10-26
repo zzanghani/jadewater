@@ -24,7 +24,10 @@ type TossLineItem = {
 type TossOrder = {
   orderState?: string;
   source?: string;
+  createdAt?: string;
+  openedAt?: string;
   completedAt?: string;
+  cancelledAt?: string | null;
   updatedAt?: string;
   chargePrice?: { discountAmount?: number | string; totalAmount?: number | string; listPrice?: number | string };
   payments?: TossPayment[];
@@ -53,6 +56,10 @@ export type TossClosing = {
   cancelled: { n: number; amount: number };
   categories: Record<string, number>; // 매장 카테고리별 실판매액(배달 제외)
   lastPayAt: string | null; // "21:40"
+  /** 오늘 열린 주문 중 아직 결제가 안 된 금액(테이블에 앉아 있는 손님) — 실시간 매출용 */
+  open: { amount: number; orders: number };
+  /** 결제 완료 + 미결제 = 지금까지의 매출 */
+  live: number;
 };
 
 export async function fetchTossClosing(keys: TossKeys, merchantId: string, ymd: string, now = Date.now()): Promise<TossClosing> {
@@ -87,6 +94,7 @@ export async function fetchTossClosing(keys: TossKeys, merchantId: string, ymd: 
   let discount = 0;
   let nOrders = 0;
   let lastPayAt = 0;
+  const open = { amount: 0, orders: 0 };
 
   for (const o of orders) {
     const ps = (o.payments ?? []).filter((p) => p && !seen.has(String(p.id)) && inDay(toMs(p.approvedAt)));
@@ -103,6 +111,18 @@ export async function fetchTossClosing(keys: TossKeys, merchantId: string, ymd: 
       if (ta > lastPayAt) lastPayAt = ta;
       add(pay, t, N(p.amount));
       if (t === "EXTERNAL") add(ext, p.externalDetails?.source || "(이름 없음)", N(p.amount));
+    }
+    if (o.orderState !== "CANCELLED" && !o.cancelledAt) {
+      // 오늘 연 주문인데 결제 합이 주문 금액보다 적으면 그 차액은 아직 안 받은 돈(미결제)
+      const opened = toMs(o.openedAt ?? o.createdAt);
+      if (inDay(opened)) {
+        const paidSum = (o.payments ?? []).filter((p) => p && p.state !== "CANCELLED" && p.approvedAt).reduce((s, p) => s + N(p.amount), 0);
+        const total = N(o.chargePrice?.totalAmount);
+        if (total > paidSum) {
+          open.amount += total - paidSum;
+          open.orders++;
+        }
+      }
     }
     if (!ok.length || o.orderState === "CANCELLED") continue;
     nOrders++;
@@ -152,6 +172,8 @@ export async function fetchTossClosing(keys: TossKeys, merchantId: string, ymd: 
     cancelled,
     categories: round(cat),
     lastPayAt: lastPayAt ? new Date(lastPayAt + 9 * 36e5).toISOString().slice(11, 16) : null,
+    open: { amount: Math.round(open.amount), orders: open.orders },
+    live: Math.round(paid + open.amount),
   };
 }
 

@@ -39,6 +39,29 @@ export async function GET(request: Request) {
     b_no_params: {},
     c_startAt_endAt: { startAt: new Date(start).toISOString(), endAt: new Date(Math.min(start + 24 * 36e5, Date.now())).toISOString(), page: 1, size: 100 },
   };
+  // 실시간 매출(미결제 포함) 검증용: 오늘 주문의 상태별 건수와, 결제 합이 주문 금액보다 적은 주문 요약
+  try {
+    const r = await callToss<unknown>(k, `/merchants/${merchantId}/order/orders`, { from: new Date(start - 12 * 36e5).toISOString(), to: new Date(Math.min(start + 36 * 36e5, Date.now())).toISOString(), page: 1, size: 500, sortOrder: "ASC" });
+    const l = r as { content?: unknown[] } | unknown[];
+    const arr = (Array.isArray(l) ? l : l?.content ?? []) as { orderState?: string; openedAt?: string; createdAt?: string; completedAt?: string | null; cancelledAt?: string | null; chargePrice?: { totalAmount?: number; discountAmount?: number }; payments?: { state?: string; amount?: number; approvedAt?: string }[] }[];
+    const states: Record<string, number> = {};
+    for (const o of arr) states[o.orderState ?? "?"] = (states[o.orderState ?? "?"] ?? 0) + 1;
+    const unpaid = arr
+      .map((o) => ({
+        orderState: o.orderState,
+        openedAt: o.openedAt,
+        completedAt: o.completedAt,
+        cancelledAt: o.cancelledAt,
+        total: o.chargePrice?.totalAmount,
+        paid: (o.payments ?? []).filter((q) => q.state !== "CANCELLED" && q.approvedAt).reduce((sum, q) => sum + Number(q.amount ?? 0), 0),
+        payStates: (o.payments ?? []).map((q) => q.state),
+      }))
+      .filter((o) => Number(o.total ?? 0) > o.paid)
+      .slice(0, 10);
+    out.d_states = { states, unpaid };
+  } catch (e) {
+    out.d_states = { error: (e as Error).message };
+  }
   for (const [name, q] of Object.entries(variants)) {
     try {
       const r = await callToss<unknown>(k, `/merchants/${merchantId}/order/orders`, q);

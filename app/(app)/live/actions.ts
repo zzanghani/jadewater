@@ -7,7 +7,15 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { kstYmd } from "@/lib/adReport";
 import { fetchTossClosing } from "@/lib/tossClosing";
 
-export type LiveSales = { sales: number; orders: number; lastPayAt: string | null; at: string };
+export type LiveSales = {
+  sales: number; // 결제 완료 + 미결제
+  paid: number;
+  orders: number; // 결제 완료 주문 수
+  openAmount: number; // 아직 결제 안 된 금액
+  openOrders: number;
+  lastPayAt: string | null;
+  at: string;
+};
 
 export async function loadLiveSales(): Promise<Record<string, LiveSales>> {
   const supabase = await createClient();
@@ -32,7 +40,7 @@ export async function loadLiveSales(): Promise<Record<string, LiveSales>> {
     targets.map(async (m) => {
       try {
         const c = await fetchTossClosing(keys, m.merchant_id, today);
-        out[m.store_id] = { sales: c.paid, orders: c.orders, lastPayAt: c.lastPayAt, at: new Date().toISOString() };
+        out[m.store_id] = { sales: c.live, paid: c.paid, orders: c.orders, openAmount: c.open.amount, openOrders: c.open.orders, lastPayAt: c.lastPayAt, at: new Date().toISOString() };
       } catch {
         // 못 읽으면 그 매장만 마감 기준으로 남긴다
       }
