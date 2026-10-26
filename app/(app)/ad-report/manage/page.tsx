@@ -27,8 +27,8 @@ export default async function AdManagePage() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Link href="/ad-report/insight" className="text-xs text-muted">
-          ‹ 효율 분석
+        <Link href="/ad-report" className="text-xs text-muted">
+          ‹ 광고 리포트
         </Link>
         <h1 className="mt-1 text-lg font-bold">광고 관리</h1>
         <p className="mt-1 text-xs text-muted">{storeName} · 네이버 검색광고 캠페인 켜기/끄기 · 하루 예산 · 변경 효과</p>

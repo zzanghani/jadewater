@@ -48,19 +48,22 @@ export default async function AdReportPage() {
             지난주 {W.week[0].slice(5).replace("-", "/")}~{W.week[1].slice(5).replace("-", "/")} (월~일) · 네이버 검색광고 + 마감 매출
           </p>
         </div>
-        <div className="flex shrink-0 gap-1.5">
-          <Link href="/ad-report/manage" className="rounded-full border border-brand px-3 py-1.5 text-xs font-semibold text-brand">
-            광고 관리
+        {isHqMaster && (
+          <Link href="/ad-report/settings" className="shrink-0 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold">
+            매장 키 설정
           </Link>
-          <Link href="/ad-report/insight" className="rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white">
-            효율 분석
-          </Link>
-          {isHqMaster && (
-            <Link href="/ad-report/settings" className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold">
-              매장 키 설정
-            </Link>
-          )}
-        </div>
+        )}
+      </div>
+      {/* 큰 버튼 두 개 — 폰에서도 바로 누르게 */}
+      <div className="grid grid-cols-2 gap-2">
+        <Link href="/ad-report/insight" className="flex flex-col items-center justify-center rounded-2xl bg-brand px-3 py-4 text-white shadow-md shadow-brand/20">
+          <span className="text-base font-bold">효율 분석</span>
+          <span className="mt-0.5 text-[11px] text-white/80">실시간 매출 × 광고비 · AI 전략</span>
+        </Link>
+        <Link href="/ad-report/manage" className="flex flex-col items-center justify-center rounded-2xl border-2 border-brand bg-card px-3 py-4 text-brand">
+          <span className="text-base font-bold">광고 관리</span>
+          <span className="mt-0.5 text-[11px] text-brand/80">캠페인 켜기/끄기 · 하루 예산</span>
+        </Link>
       </div>
       <AdReportClient initial={initial} />
     </div>
