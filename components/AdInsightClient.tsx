@@ -57,7 +57,13 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
         <button type="button" onClick={sync} disabled={loading} className="rounded-xl bg-brand px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">
           {loading ? "동기화 중..." : "최근 8주 동기화"}
         </button>
-        {res.synced.ad != null && <span className="text-[11px] text-muted">광고 {res.synced.ad}일{res.synced.toss != null && ` · 토스 ${res.synced.toss}일`} 갱신</span>}
+        {(res.synced.ad != null || res.synced.toss != null) && (
+          <span className="text-[11px] text-muted">
+            {res.synced.ad != null && `광고 ${res.synced.ad}일`}
+            {res.synced.ad != null && res.synced.toss != null && " · "}
+            {res.synced.toss != null && `토스 ${res.synced.toss}일`} 갱신
+          </span>
+        )}
       </div>
       {needSync && <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-800">아직 쌓인 데이터가 없어요. &lsquo;최근 8주 동기화&rsquo;를 한 번 눌러 주세요 (30초쯤 걸려요).</p>}
 
