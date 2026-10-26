@@ -4,6 +4,7 @@ export const maxDuration = 60;
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendPush } from "@/lib/webpush";
+import { AD_PILOT_STORE_MATCH } from "@/lib/adAccess";
 import { addYmd, buildStoreReport, weekWindows, type AdStoreReport, type SalesMap } from "@/lib/adReport";
 
 // Vercel Cron이 매주 월요일 08:47(KST)에 호출한다 (vercel.json: 47 23 * * 0 UTC).
@@ -53,8 +54,11 @@ export async function GET(request: Request) {
       { onConflict: "store_id,week_start" }
     );
 
-    // 받는 사람: 그 매장 지점장 + 본사 마스터
-    const { data: owners } = await supabase.from("profiles").select("id").eq("store_id", a.store_id).eq("role", "owner").is("department", null).eq("status", "approved");
+    // 받는 사람: 그 매장 지점장 + 본사 마스터. 시범 운영 중엔 점장은 성수만 (lib/adAccess.ts)
+    const pilotOk = !AD_PILOT_STORE_MATCH || (store?.name ?? "").includes(AD_PILOT_STORE_MATCH);
+    const { data: owners } = pilotOk
+      ? await supabase.from("profiles").select("id").eq("store_id", a.store_id).eq("role", "owner").is("department", null).eq("status", "approved")
+      : { data: [] as { id: string }[] };
     const targets = Array.from(new Set([...(owners ?? []).map((o) => o.id), ...masterIds]));
     const first = r.actions[0];
     const payload = {

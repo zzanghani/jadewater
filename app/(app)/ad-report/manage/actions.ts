@@ -4,6 +4,7 @@
 // 7일이 지나면 전후 7일을 비교해 효과를 판정한다 (변동 ±34% 안이면 '판단 보류'). 실행 시간 제한은 page.tsx의 maxDuration을 따른다.
 
 import { createClient } from "@/lib/supabase/server";
+import { adReportAllowedFor } from "@/lib/adAccess";
 import { createServiceClient } from "@/lib/supabase/service";
 import { addYmd, kstYmd } from "@/lib/adReport";
 import { callNaver, CAMPAIGN_TP_LABEL, listCampaigns, setCampaignBudget, setCampaignLock, statsMap, type NaverAcct, type NaverCampaign } from "@/lib/naverAds";
@@ -44,6 +45,7 @@ async function ctx(storeId: string): Promise<Ctx> {
   if (!p || p.status !== "approved" || p.department || p.role !== "owner" || (p.store_id && p.store_id !== storeId)) {
     return { error: "이 매장의 광고를 관리할 권한이 없어요." };
   }
+  if (!(await adReportAllowedFor(supabase, p))) return { error: "광고 관리는 아직 시범 운영 중이라 이 계정에서는 쓸 수 없어요." };
   const { data: a } = await createServiceClient().from("store_ad_accounts").select("*").eq("store_id", storeId).eq("enabled", true).maybeSingle();
   if (!a) return { error: "이 매장은 네이버 광고 계정이 아직 연결되지 않았어요. 광고 리포트 → 매장 키 설정에서 등록해 주세요." };
   return { userId: user.id, userName: p.name ?? "", acct: { customerId: a.naver_customer_id, apiKey: a.naver_api_key, secretKey: a.naver_secret_key } };

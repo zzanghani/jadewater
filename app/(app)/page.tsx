@@ -11,6 +11,7 @@ import {
 import DashboardChart, { type ChartPoint } from "@/components/DashboardChart";
 import MultiStoreChart, { type MultiStorePoint, type StoreSeries } from "@/components/MultiStoreChart";
 import QuickMenu from "@/components/QuickMenu";
+import { adReportAllowed } from "@/lib/adAccess";
 import MonthlyPlanCalendar from "@/components/MonthlyPlanCalendar";
 import MonthlyPlanAlerts from "@/components/MonthlyPlanAlerts";
 import type { PlanComment, PlanFollower } from "@/components/MonthlyPlanDetail";
@@ -420,6 +421,7 @@ if (isHq) {
         isMaster={isMaster}
         employeeOnly={isEmployee}
         pendingAccountCount={pendingAccountCount ?? 0}
+        showAdReport={isMaster || adReportAllowed({ role: profile?.role ?? null, store_id: storeId ?? null, department: profile?.department ?? null }, store?.name)}
       />
 
       {!isMaster && (

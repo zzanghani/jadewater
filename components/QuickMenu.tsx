@@ -63,8 +63,11 @@ export default function QuickMenu({
   showInventory = false,
   showStoreOpsView = false,
   pendingAccountCount = 0,
+  showAdReport = true,
 }: {
   isMaster?: boolean;
+  /** 광고 리포트 시범 운영: 성수 점장만 true (마스터는 항상) */
+  showAdReport?: boolean;
   teamOnly?: boolean;
   employeeOnly?: boolean;
   showHr?: boolean;
@@ -84,7 +87,7 @@ export default function QuickMenu({
       ? EMPLOYEE_ITEMS
       : isMaster
         ? [...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), ATTENDANCE_ITEM, AD_REPORT_ITEM, HR_ITEM, ACCOUNTS_ITEM, LOAN_ITEM]
-        : [ATTENDANCE_ITEM, ...ALL_ITEMS, REVIEW_REPORT_ITEM, AD_REPORT_ITEM, HR_ITEM, MY_REVIEW_ITEM];
+        : [ATTENDANCE_ITEM, ...ALL_ITEMS, REVIEW_REPORT_ITEM, ...(showAdReport ? [AD_REPORT_ITEM] : []), HR_ITEM, MY_REVIEW_ITEM];
 
   return (
     <section>

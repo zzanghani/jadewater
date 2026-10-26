@@ -4,6 +4,7 @@ export const maxDuration = 60;
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { adReportAllowedFor } from "@/lib/adAccess";
 import { weekWindows, type AdStoreReport, type AdWeeklyReport } from "@/lib/adReport";
 import AdReportClient from "@/components/AdReportClient";
 
@@ -17,6 +18,8 @@ export default async function AdReportPage() {
   const { data: profile } = await supabase.from("profiles").select("role, store_id, department").eq("id", user.id).maybeSingle();
   const isManager = !!profile && profile.role === "owner" && !profile.department;
   if (!isManager) redirect("/");
+  // 시범 운영: 본사 마스터 + 성수 점장만 (lib/adAccess.ts)
+  if (!(await adReportAllowedFor(supabase, profile))) redirect("/");
   const isHqMaster = isManager && !profile!.store_id;
 
   // 이미 만들어 둔 이번 주 저장본이 있으면 먼저 보여주고, 없으면 화면에서 만든다.

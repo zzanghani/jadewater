@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { adReportAllowedFor } from "@/lib/adAccess";
 import { createServiceClient } from "@/lib/supabase/service";
 import { generateAdStrategy } from "@/lib/claude";
 import { addYmd, kstYmd, type SalesMap } from "@/lib/adReport";
@@ -26,6 +27,7 @@ async function authStore(storeId: string): Promise<AuthResult> {
   if (!p || p.status !== "approved" || p.department || p.role !== "owner" || (p.store_id && p.store_id !== storeId)) {
     return { error: "이 매장의 광고 분석을 볼 권한이 없어요." };
   }
+  if (!(await adReportAllowedFor(supabase, p))) return { error: "광고 효율 분석은 아직 시범 운영 중이라 이 계정에서는 볼 수 없어요." };
   return { supabase };
 }
 

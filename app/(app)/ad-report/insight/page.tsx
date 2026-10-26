@@ -4,6 +4,7 @@ export const maxDuration = 60;
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { adReportAllowedFor } from "@/lib/adAccess";
 import { getStoreContext } from "@/lib/store";
 import AdInsightClient from "@/components/AdInsightClient";
 
@@ -20,6 +21,8 @@ export default async function AdInsightPage() {
   ]);
   const isManager = !!profile && profile.role === "owner" && !profile.department;
   if (!isManager) redirect("/");
+  // 시범 운영: 본사 마스터 + 성수 점장만 (lib/adAccess.ts)
+  if (!(await adReportAllowedFor(supabase, profile))) redirect("/");
   const storeId = profile!.store_id ?? contextStoreId;
 
   return (
