@@ -18,6 +18,8 @@ export default async function AdReportPage() {
   const isManager = !!profile && profile.role === "owner" && !profile.department;
   if (!isManager) redirect("/");
   const isHqMaster = isManager && !profile!.store_id;
+  // 광고 리포트는 지점장 전용 — 마스터는 키 설정 화면으로 보낸다.
+  if (isHqMaster) redirect("/ad-report/settings");
 
   // 이미 만들어 둔 이번 주 저장본이 있으면 먼저 보여주고, 없으면 화면에서 만든다.
   const W = weekWindows();
