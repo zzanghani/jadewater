@@ -43,12 +43,13 @@ export async function callToss<T = unknown>(
   } catch {
     data = { raw: text };
   }
-  if (res.status >= 400) {
-    const d = (data ?? {}) as { message?: string; error?: { message?: string }; raw?: string };
-    const msg = d.message || d.error?.message || d.raw || `토스 API 오류 (${res.status})`;
+  // 토스 응답은 { resultType: "SUCCESS"|"FAIL", success: <본문>, error: { errorCode, reason } } 한 겹으로 싸여 온다.
+  const env = (data ?? {}) as { resultType?: string; success?: unknown; error?: { errorCode?: string; reason?: string; message?: string }; message?: string; raw?: string };
+  if (res.status >= 400 || env.resultType === "FAIL") {
+    const msg = env.error?.reason || env.error?.message || env.message || env.raw || `토스 API 오류 (${res.status})`;
     throw new TossApiError(res.status === 401 || res.status === 403 ? `인증 실패 — 키를 확인해 주세요 (${msg})` : msg, res.status);
   }
-  return data as T;
+  return (env.resultType === "SUCCESS" || "success" in env ? env.success : data) as T;
 }
 
 export type TossMerchant = { id?: string | number; name?: string; businessNumber?: string; [k: string]: unknown };
