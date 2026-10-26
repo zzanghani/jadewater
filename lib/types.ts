@@ -852,6 +852,12 @@ export type Database = {
         Update: Partial<StoreLocation>
         Relationships: []
       }
+      attendance_reminders: {
+        Row: { id: string; shift_id: string; user_id: string; kind: 'start' | 'end'; sent_at: string }
+        Insert: { shift_id: string; user_id: string; kind: 'start' | 'end'; sent_at?: string }
+        Update: Partial<{ shift_id: string; user_id: string; kind: 'start' | 'end'; sent_at: string }>
+        Relationships: []
+      }
       attendance_records: {
         Row: AttendanceRecord
         Insert: Omit<AttendanceRecord, 'id' | 'server_received_at' | 'flagged' | 'scheduled_at' | 'diff_minutes' | 'shift_id'> & {
@@ -1094,6 +1100,7 @@ export type Database = {
     }
     Views: Record<string, never>
     Functions: {
+      attendance_cron_token: { Args: Record<string, never>; Returns: string | null }
       upsert_push_subscription: {
         Args: {
           p_store_id: string | null
