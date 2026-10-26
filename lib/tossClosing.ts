@@ -56,6 +56,8 @@ export type TossClosing = {
   cancelled: { n: number; amount: number };
   categories: Record<string, number>; // 매장 카테고리별 실판매액(배달 제외)
   lastPayAt: string | null; // "21:40"
+  /** 시간대별 승인 결제 합계 ("0"~"23", KST) — 마감 추정·시간대 분석용 */
+  byHour: Record<string, number>;
   /** 오늘 열린 주문 중 아직 결제가 안 된 금액(테이블에 앉아 있는 손님) — 실시간 매출용 */
   open: { amount: number; orders: number };
   /** 결제 완료 + 미결제 = 지금까지의 매출 */
@@ -95,6 +97,7 @@ export async function fetchTossClosing(keys: TossKeys, merchantId: string, ymd: 
   let nOrders = 0;
   let lastPayAt = 0;
   const open = { amount: 0, orders: 0 };
+  const byHour: Record<string, number> = {};
 
   for (const o of orders) {
     const ps = (o.payments ?? []).filter((p) => p && !seen.has(String(p.id)) && inDay(toMs(p.approvedAt)));
@@ -110,6 +113,7 @@ export async function fetchTossClosing(keys: TossKeys, merchantId: string, ymd: 
       const ta = toMs(p.approvedAt) ?? 0;
       if (ta > lastPayAt) lastPayAt = ta;
       add(pay, t, N(p.amount));
+      add(byHour, String(new Date(ta + 9 * 36e5).getUTCHours()), N(p.amount));
       if (t === "EXTERNAL") add(ext, p.externalDetails?.source || "(이름 없음)", N(p.amount));
     }
     if (o.orderState !== "CANCELLED" && !o.cancelledAt) {
@@ -172,6 +176,7 @@ export async function fetchTossClosing(keys: TossKeys, merchantId: string, ymd: 
     cancelled,
     categories: round(cat),
     lastPayAt: lastPayAt ? new Date(lastPayAt + 9 * 36e5).toISOString().slice(11, 16) : null,
+    byHour: round(byHour),
     open: { amount: Math.round(open.amount), orders: open.orders },
     live: Math.round(paid + open.amount),
   };

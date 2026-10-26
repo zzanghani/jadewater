@@ -36,8 +36,9 @@ export async function syncTossDaily(
   to: string,
   { force = false } = {}
 ): Promise<number> {
-  const { data: have } = await service.from("toss_daily_sales").select("date").eq("store_id", storeId).gte("date", from).lte("date", to);
-  const haveSet = new Set((have ?? []).map((r) => r.date));
+  // 시간대(by_hour)가 아직 없는 옛 행은 다시 받아 채운다 (마감 추정에 필요).
+  const { data: have } = await service.from("toss_daily_sales").select("date, by_hour").eq("store_id", storeId).gte("date", from).lte("date", to);
+  const haveSet = new Set((have ?? []).filter((r) => r.by_hour != null).map((r) => r.date));
   const days: string[] = [];
   for (let d = from; d <= to; d = addYmd(d, 1)) if (force || !haveSet.has(d) || d >= addYmd(to, -1)) days.push(d);
   let n = 0;
@@ -55,7 +56,7 @@ export async function syncTossDaily(
         external: c.payments.EXTERNAL ?? 0,
         delivery: c.delivery.amount,
         discount: c.discount,
-        by_hour: null,
+        by_hour: c.byHour,
         synced_at: new Date().toISOString(),
       },
       { onConflict: "store_id,date" }
