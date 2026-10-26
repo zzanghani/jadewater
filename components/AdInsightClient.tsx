@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { generateStrategyMemo, loadAdInsight, type InsightResult } from "@/app/(app)/ad-report/insight/actions";
-import { won, type PeriodStat } from "@/lib/adInsight";
+import Link from "next/link";
+import { addSpecialDay, generateStrategyMemo, loadAdInsight, removeSpecialDay, saveCostRate, type InsightResult } from "@/app/(app)/ad-report/insight/actions";
+import { won, type AdInsight, type PeriodStat } from "@/lib/adInsight";
 import { pctDelta } from "@/lib/adReport";
 import AdInsightChart from "@/components/AdInsightChart";
 import { parseAdStrategyMemo } from "@/lib/adStrategyMemo";
@@ -58,11 +59,15 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
         <button type="button" onClick={sync} disabled={loading} className="rounded-xl bg-brand px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">
           {loading ? "동기화 중..." : "최근 8주 동기화"}
         </button>
+        <Link href="/ad-report/manage" className="rounded-xl border border-brand px-3 py-2 text-xs font-semibold text-brand">
+          광고 관리
+        </Link>
         {(res.synced.ad != null || res.synced.toss != null) && (
           <span className="text-[11px] text-muted">
             {res.synced.ad != null && `광고 ${res.synced.ad}일`}
             {res.synced.ad != null && res.synced.toss != null && " · "}
-            {res.synced.toss != null && `토스 ${res.synced.toss}일`} 갱신
+            {res.synced.toss != null && `토스 ${res.synced.toss}일`}
+            {res.synced.weather != null && ` · 날씨 ${res.synced.weather}일`} 갱신
           </span>
         )}
       </div>
@@ -95,7 +100,7 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
       </section>
 
       {/* 7일 / 28일 */}
-      <PeriodCard title="최근 7일" cur={x.week} prev={x.weekPrev} norm={x.salesNorm} convTracked={x.convTracked} />
+      <PeriodCard title="최근 7일" cur={x.week} prev={x.weekPrev} norm={x.weather.adjNorm ?? x.salesNorm} convTracked={x.convTracked} note={x.weather.hasWeather ? `비 ${x.weather.rainyDays7}일${x.weather.excluded7 ? ` · 비교 제외 ${x.weather.excluded7}일` : ""}` : ""} />
       <PeriodCard title="최근 28일" cur={x.month} prev={x.monthPrev} norm={null} convTracked={x.convTracked} />
 
       {/* 추이 */}
@@ -103,6 +108,12 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
         <h2 className="mb-2 text-sm font-bold">최근 4주 매출 vs 광고비</h2>
         <AdInsightChart rows={x.series} />
       </section>
+
+      {/* 특이일 — 차트 바로 아래에 둬서 이상한 날을 보자마자 적을 수 있게 */}
+      <SpecialDays storeId={storeId} days={x.specialDays} onChanged={() => start(async () => setRes(await loadAdInsight(storeId)))} />
+
+      {/* 손익분기 */}
+      <BreakevenCard storeId={storeId} x={x} onSaved={() => start(async () => setRes(await loadAdInsight(storeId)))} />
 
       {/* 요일별 */}
       <section className="rounded-2xl border border-border bg-card p-4">
@@ -160,11 +171,14 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
   );
 }
 
-function PeriodCard({ title, cur, prev, norm, convTracked }: { title: string; cur: PeriodStat; prev: PeriodStat; norm: number | null; convTracked: boolean }) {
+function PeriodCard({ title, cur, prev, norm, convTracked, note = "" }: { title: string; cur: PeriodStat; prev: PeriodStat; norm: number | null; convTracked: boolean; note?: string }) {
   return (
     <section className="rounded-2xl border border-border bg-card p-4">
       <div className="mb-2 flex items-baseline justify-between">
-        <h2 className="text-sm font-bold">{title}</h2>
+        <h2 className="text-sm font-bold">
+          {title}
+          {note && <span className="ml-2 text-[10px] font-normal text-muted">{note}</span>}
+        </h2>
         {norm != null && (
           <span className={`text-[11px] font-semibold ${norm < 0.85 ? "text-red-600" : norm > 1.05 ? "text-green-700" : "text-muted"}`}>
             매출 평소 대비 {(norm >= 1 ? "+" : "") + ((norm - 1) * 100).toFixed(1)}%
@@ -263,5 +277,109 @@ function StrategyMemo({ raw }: { raw: string }) {
         {m.budget.why && <p className="mt-0.5 text-[11px] leading-snug text-muted">{m.budget.why}</p>}
       </div>
     </div>
+  );
+}
+
+// 광고 손익분기: 원가율을 넣으면 "광고비 1만원 늘릴 때 매출이 얼마나 따라와야 본전인지"가 나온다.
+function BreakevenCard({ storeId, x, onSaved }: { storeId: string; x: AdInsight; onSaved: () => void }) {
+  const [rate, setRate] = useState(String(Math.round(x.breakeven.costRate * 100)));
+  const [saving, startSave] = useTransition();
+  const [err, setErr] = useState<string | null>(null);
+  const b = x.breakeven;
+  const w = x.week;
+  const over = w.roas != null && w.cost > 0 ? w.roas >= b.minRoas : null;
+  function save() {
+    setErr(null);
+    startSave(async () => {
+      const r = await saveCostRate(storeId, Number(rate));
+      if (!r.ok) setErr(r.error);
+      else onSaved();
+    });
+  }
+  return (
+    <section className="rounded-2xl border border-border bg-card p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-sm font-bold">광고 손익분기</h2>
+        <label className="flex items-center gap-1 text-[11px] text-muted">
+          원가율
+          <input type="number" inputMode="numeric" min={0} max={94} value={rate} onChange={(e) => setRate(e.target.value)} className="w-14 rounded-lg border border-border bg-background px-2 py-1 text-right text-xs text-foreground" />
+          %
+          <button type="button" onClick={save} disabled={saving || Number(rate) === Math.round(b.costRate * 100)} className="rounded-lg bg-brand px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-40">
+            {saving ? "저장 중" : "저장"}
+          </button>
+        </label>
+      </div>
+      {err && <p className="mb-2 text-xs text-red-600">{err}</p>}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl bg-background px-3 py-2">
+          <p className="text-[11px] text-muted">본전이 되는 광고비 대비 매출</p>
+          <p className="text-base font-bold tabular-nums">{won(b.minRoas)}<span className="text-xs font-normal text-muted">%</span></p>
+          <p className={`text-[11px] font-semibold ${over == null ? "text-muted" : over ? "text-green-700" : "text-red-600"}`}>
+            {over == null ? "최근 7일 광고비 없음" : `최근 7일 ${won(w.roas)}% · ${over ? "넘김" : "미달"}`}
+          </p>
+        </div>
+        <div className="rounded-xl bg-background px-3 py-2">
+          <p className="text-[11px] text-muted">광고비 1만원 늘리면 필요한 매출</p>
+          <p className="text-base font-bold tabular-nums">{won(b.neededPer10k)}<span className="text-xs font-normal text-muted">원</span></p>
+          <p className="text-[11px] text-muted">{b.weekProfit == null ? "" : `최근 7일 광고 뒤 남은 이익 ${won(b.weekProfit)}원`}</p>
+        </div>
+      </div>
+      <p className="mt-2 text-[10px] text-muted">원가율 = 재료비 등 매출에 비례해 나가는 비용 비율. 매출 1만원 중 {Math.round(b.costRate * 100)}%가 원가면 광고비 1만원은 매출 {won(b.neededPer10k)}원이 돼야 본전이에요.</p>
+    </section>
+  );
+}
+
+// 특이일: 행사·단체·휴무처럼 평소와 다른 날. 평소 대비 계산과 효과 판정에서 뺀다.
+function SpecialDays({ storeId, days, onChanged }: { storeId: string; days: { date: string; note: string }[]; onChanged: () => void }) {
+  const [date, setDate] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, startBusy] = useTransition();
+  const [err, setErr] = useState<string | null>(null);
+  function add() {
+    setErr(null);
+    startBusy(async () => {
+      const r = await addSpecialDay(storeId, date, note);
+      if (!r.ok) setErr(r.error);
+      else {
+        setDate("");
+        setNote("");
+        onChanged();
+      }
+    });
+  }
+  function remove(d: string) {
+    startBusy(async () => {
+      const r = await removeSpecialDay(storeId, d);
+      if (!r.ok) setErr(r.error);
+      else onChanged();
+    });
+  }
+  return (
+    <section className="rounded-2xl border border-border bg-card p-4">
+      <h2 className="mb-1 text-sm font-bold">특이일 (비교에서 제외)</h2>
+      <p className="mb-2 text-[11px] text-muted">단체 예약·행사·임시 휴무처럼 평소와 다른 날을 적어 두면 평소 대비와 광고 효과 판정에서 빼요.</p>
+      <div className="flex gap-1.5">
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs text-foreground" />
+        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="예: 단체 40명" maxLength={40} className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs text-foreground" />
+        <button type="button" onClick={add} disabled={busy || !date} className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">
+          추가
+        </button>
+      </div>
+      {err && <p className="mt-1 text-xs text-red-600">{err}</p>}
+      {days.length > 0 && (
+        <ul className="mt-2 flex flex-col gap-1">
+          {days.map((s) => (
+            <li key={s.date} className="flex items-center justify-between rounded-lg bg-background px-3 py-1.5 text-xs">
+              <span>
+                <span className="tabular-nums text-muted">{s.date.slice(5).replace("-", "/")}</span> {s.note}
+              </span>
+              <button type="button" onClick={() => remove(s.date)} disabled={busy} className="text-[11px] text-muted underline">
+                삭제
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

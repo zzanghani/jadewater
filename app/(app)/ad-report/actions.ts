@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { adReportAllowedFor } from "@/lib/adAccess";
 import { createServiceClient } from "@/lib/supabase/service";
 import { testNaverAccount } from "@/lib/naverAds";
 import {
@@ -113,6 +114,7 @@ export async function buildAdReportAction(refresh = false): Promise<BuildResult>
   if (!profile || profile.status !== "approved" || profile.department || profile.role !== "owner") {
     return { ok: false, error: "지점장·대표 계정만 볼 수 있어요." };
   }
+  if (!(await adReportAllowedFor(supabase, profile))) return { ok: false, error: "광고 리포트는 아직 시범 운영 중이라 이 계정에서는 볼 수 없어요." };
 
   const service = createServiceClient();
   let q = service.from("store_ad_accounts").select("*").eq("enabled", true);
