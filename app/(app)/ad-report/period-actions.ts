@@ -85,7 +85,8 @@ export async function loadAdPeriod(key: PeriodKey, custom?: { from: string; to: 
     ]);
     const ad = new Map((adRows ?? []).map((r) => [r.date, r]));
     const tossMap = new Map((tossRows ?? []).map((r) => [r.date, r.sales]));
-    const closeMap = new Map((closings ?? []).map((r) => [r.date, r.grand_total]));
+    // 마감입력은 0원(미입력·휴무)을 자료 없음으로 본다. 토스는 0원도 실제 매출.
+    const closeMap = new Map((closings ?? []).filter((r) => (r.grand_total ?? 0) > 0).map((r) => [r.date, r.grand_total]));
     let todaySales: number | null = null;
     if (keys && merchant && to === today) {
       try {

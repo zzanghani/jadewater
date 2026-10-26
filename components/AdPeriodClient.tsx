@@ -90,6 +90,7 @@ function StoreAgg({ s }: { s: PeriodStore }) {
 }
 
 function AggCard({ title, cur, cmp, note, highlight = false }: { title: string; cur: PeriodAgg; cmp: PeriodAgg; note?: string; highlight?: boolean }) {
+  const salesSub = highlight ? "" : cur.sales != null && cur.days > 1 ? `${cur.salesDays}일` : "";
   const convTracked = cur.conv > 0 || cmp.conv > 0;
   return (
     <div className={`rounded-2xl border bg-card p-4 ${highlight ? "border-brand" : "border-border"}`}>
@@ -99,7 +100,7 @@ function AggCard({ title, cur, cmp, note, highlight = false }: { title: string; 
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <Kpi label="광고비" cur={cur.cost} cmp={cmp.cost} unit="원" goodUp={false} />
-        <Kpi label="매출" cur={cur.sales} cmp={cmp.sales} unit="원" goodUp sub={cur.sales != null && cur.days > 1 ? `${cur.salesDays}일` : ""} />
+        <Kpi label="매출" cur={cur.sales} cmp={cmp.sales} unit="원" goodUp sub={salesSub} />
         <Kpi label="광고비 대비 매출" cur={cur.roas} cmp={cmp.roas} unit="%" goodUp sub={cur.adShare == null ? "" : `매출의 ${cur.adShare.toFixed(1)}%`} />
         <Kpi label="클릭" cur={cur.clk} cmp={cmp.clk} goodUp sub={cur.ctr == null ? "" : `클릭률 ${cur.ctr.toFixed(2)}%`} />
         <Kpi label="클릭 한 번 값" cur={cur.cpc} cmp={cmp.cpc} unit="원" goodUp={false} />
