@@ -13,7 +13,7 @@ export type WeatherDay = { date: string; precip_mm: number; tmax: number | null;
 type OpenMeteo = { daily?: { time: string[]; precipitation_sum: (number | null)[]; temperature_2m_max: (number | null)[]; temperature_2m_min: (number | null)[] } };
 
 async function fetchRange(url: string): Promise<WeatherDay[]> {
-  const res = await fetch(url, { signal: AbortSignal.timeout(9000), cache: "no-store" });
+  const res = await fetch(url, { signal: AbortSignal.timeout(25000), cache: "no-store" });
   if (!res.ok) throw new Error(`날씨 조회 실패 (${res.status})`);
   const j = (await res.json()) as OpenMeteo;
   const d = j.daily;

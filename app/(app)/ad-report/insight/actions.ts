@@ -9,7 +9,7 @@ import { fetchTossClosing } from "@/lib/tossClosing";
 import { syncWeather } from "@/lib/weather";
 
 export type InsightResult =
-  | { ok: true; insight: AdInsight; memo: string | null; memoAt: string | null; synced: { toss: number | null; ad: number | null } }
+  | { ok: true; insight: AdInsight; memo: string | null; memoAt: string | null; synced: { toss: number | null; ad: number | null; weather: number | null } }
   | { ok: false; error: string };
 
 type AuthResult =
@@ -53,7 +53,7 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = 
   // 광고 계정이 없으면 매출만 보여준다 (광고비 0으로).
   const acct = adAcct ? { customerId: adAcct.naver_customer_id, apiKey: adAcct.naver_api_key, secretKey: adAcct.naver_secret_key } : null;
 
-  const synced = { toss: null as number | null, ad: null as number | null };
+  const synced = { toss: null as number | null, ad: null as number | null, weather: null as number | null };
   if (opts.sync) {
     if (acct) {
       try {
@@ -73,8 +73,8 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = 
         return { ok: false, error: `토스 매출을 못 읽었어요: ${(e as Error).message}` };
       }
     }
-    // 날씨는 실패해도 분석은 계속한다 (보정만 빠짐)
-    await syncWeather(service, addYmd(today, -370), today).catch(() => null);
+    // 날씨는 실패해도 분석은 계속한다 (보정만 빠짐). 크론이 매일 밤 다시 채운다.
+    synced.weather = await syncWeather(service, addYmd(today, -370), today).catch(() => null);
   }
 
   const [{ data: tossRows }, { data: adRows }, { data: closings }, { data: memoRow }, { data: weatherRows }, { data: specialRows }, { data: setting }] = await Promise.all([

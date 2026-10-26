@@ -66,7 +66,8 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
           <span className="text-[11px] text-muted">
             {res.synced.ad != null && `광고 ${res.synced.ad}일`}
             {res.synced.ad != null && res.synced.toss != null && " · "}
-            {res.synced.toss != null && `토스 ${res.synced.toss}일`} 갱신
+            {res.synced.toss != null && `토스 ${res.synced.toss}일`}
+            {res.synced.weather != null && ` · 날씨 ${res.synced.weather}일`} 갱신
           </span>
         )}
       </div>
@@ -106,7 +107,7 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
       <section className="rounded-2xl border border-border bg-card p-4">
         <h2 className="mb-2 text-sm font-bold">최근 4주 매출 vs 광고비</h2>
         <AdInsightChart rows={x.series} />
-        {x.weather.hasWeather && <p className="mt-1 text-[10px] text-muted">연한 막대 = 비 온 날(1mm↑) · 빗금 없는 회색 = 공휴일·특이일. 평소 대비 계산에서 큰비·공휴일·특이일은 뺐어요.</p>}
+        {x.weather.hasWeather && <p className="mt-1 text-[10px] text-muted">연한 막대 = 비 온 날(1mm↑) · 회색 = 공휴일·특이일. 평소 대비 계산에서 큰비·공휴일·특이일은 뺐어요.</p>}
       </section>
 
       {/* 손익분기 · 날씨 보정 */}
@@ -315,7 +316,7 @@ function BreakevenCard({ storeId, x, onSaved }: { storeId: string; x: AdInsight;
           <p className="text-[11px] text-muted">본전이 되는 광고비 대비 매출</p>
           <p className="text-base font-bold tabular-nums">{won(b.minRoas)}<span className="text-xs font-normal text-muted">%</span></p>
           <p className={`text-[11px] font-semibold ${over == null ? "text-muted" : over ? "text-green-700" : "text-red-600"}`}>
-            {over == null ? "최근 7일 자료 없음" : `최근 7일 ${won(w.roas)}% · ${over ? "넘김" : "미달"}`}
+            {over == null ? "최근 7일 광고비 없음" : `최근 7일 ${won(w.roas)}% · ${over ? "넘김" : "미달"}`}
           </p>
         </div>
         <div className="rounded-xl bg-background px-3 py-2">
