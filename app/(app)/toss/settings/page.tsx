@@ -15,11 +15,13 @@ export default async function TossSettingsPage() {
   const isHqMaster = !!profile && profile.role === "owner" && !profile.store_id && !profile.department;
   if (!isHqMaster) redirect("/");
 
-  const [{ stores }, { data: keys }, { data: merchants }] = await Promise.all([
+  const [{ stores }, { data: keys }, { data: merchants }, { data: installations }] = await Promise.all([
     getStoreContext(supabase),
-    supabase.from("toss_settings").select("access_key, updated_at").eq("id", 1).maybeSingle(),
+    supabase.from("toss_settings").select("access_key, webhook_secret, updated_at").eq("id", 1).maybeSingle(),
     supabase.from("store_toss_merchants").select("*"),
+    supabase.from("toss_installations").select("*").is("removed_at", null).order("installed_at", { ascending: false }),
   ]);
+  const webhookUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://jadewater.vercel.app"}/api/toss/webhook`;
 
   return (
     <div className="flex flex-col gap-4">
@@ -37,6 +39,9 @@ export default async function TossSettingsPage() {
         hasKeys={!!keys}
         accessKeyMasked={keys ? keys.access_key.slice(0, 4) + "••••" + keys.access_key.slice(-4) : null}
         merchants={merchants ?? []}
+        installations={installations ?? []}
+        hasWebhookSecret={!!keys?.webhook_secret}
+        webhookUrl={webhookUrl}
       />
     </div>
   );

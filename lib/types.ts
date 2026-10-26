@@ -376,8 +376,19 @@ export type TossSettings = {
   id: number
   access_key: string
   access_secret: string
+  /** 웹훅 서명 검증 키 (개발자센터 웹훅에 넣은 값과 같아야 한다) */
+  webhook_secret: string | null
   updated_by: string | null
   updated_at: string
+}
+
+/** 토스 앱이 설치된 매장 (웹훅 app.installation.created.v1로 들어온다) */
+export type TossInstallation = {
+  merchant_id: string
+  merchant_name: string | null
+  business_number: string | null
+  installed_at: string
+  removed_at: string | null
 }
 
 /** 매장 ↔ 토스 가맹점 ID */
@@ -887,9 +898,21 @@ export type Database = {
         Update: Partial<StoreLocation>
         Relationships: []
       }
+      toss_webhook_events: {
+        Row: { id: string; type: string; merchant_id: string | null; created_at: string | null; received_at: string; payload: Record<string, unknown> }
+        Insert: { id: string; type: string; merchant_id?: string | null; created_at?: string | null; received_at?: string; payload: Record<string, unknown> }
+        Update: Partial<{ id: string; type: string; merchant_id: string | null; created_at: string | null; received_at: string; payload: Record<string, unknown> }>
+        Relationships: []
+      }
+      toss_installations: {
+        Row: TossInstallation
+        Insert: Omit<TossInstallation, 'installed_at' | 'removed_at' | 'merchant_name' | 'business_number'> & { merchant_name?: string | null; business_number?: string | null; installed_at?: string; removed_at?: string | null }
+        Update: Partial<TossInstallation>
+        Relationships: []
+      }
       toss_settings: {
         Row: TossSettings
-        Insert: Omit<TossSettings, 'updated_at' | 'updated_by'> & { updated_by?: string | null; updated_at?: string }
+        Insert: Omit<TossSettings, 'updated_at' | 'updated_by' | 'webhook_secret'> & { webhook_secret?: string | null; updated_by?: string | null; updated_at?: string }
         Update: Partial<TossSettings>
         Relationships: []
       }

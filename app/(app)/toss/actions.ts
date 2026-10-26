@@ -38,8 +38,17 @@ export async function saveTossKeys(_prev: TossFormState, formData: FormData): Pr
     info = `토스 연결 확인됨 (${t.merchant.name ?? merchants[0].merchant_id})`;
   }
 
+  const webhookIn = String(formData.get("webhook_secret") ?? "").trim();
+  const { data: existingWh } = await supabase.from("toss_settings").select("webhook_secret").eq("id", 1).maybeSingle();
   const { error } = await supabase.from("toss_settings").upsert(
-    { id: 1, access_key: accessKey, access_secret: secretKey, updated_by: user.id, updated_at: new Date().toISOString() },
+    {
+      id: 1,
+      access_key: accessKey,
+      access_secret: secretKey,
+      webhook_secret: webhookIn || existingWh?.webhook_secret || null,
+      updated_by: user.id,
+      updated_at: new Date().toISOString(),
+    },
     { onConflict: "id" }
   );
   if (error) return { error: "저장에 실패했어요." };
