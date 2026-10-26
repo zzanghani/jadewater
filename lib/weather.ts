@@ -38,7 +38,10 @@ export async function syncWeather(service: SupabaseClient<Database>, from: strin
   const upserts = rows
     .filter((r) => r.date >= from && r.date <= to)
     .map((r) => ({ ...r, precip_mm: Number(r.precip_mm ?? 0), synced_at: new Date().toISOString() }));
-  if (upserts.length) await service.from("weather_daily").upsert(upserts, { onConflict: "date" });
+  if (upserts.length) {
+    const { error } = await service.from("weather_daily").upsert(upserts, { onConflict: "date" });
+    if (error) throw new Error(`날씨 저장 실패: ${error.message}`);
+  }
   return upserts.length;
 }
 
