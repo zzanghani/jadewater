@@ -16,10 +16,10 @@ export default function AdInsightChart({ rows }: { rows: DailyRow[] }) {
   return (
     <div className="h-56 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 8, right: 0, left: -12, bottom: 0 }}>
+        <ComposedChart data={data} margin={{ top: 8, right: 0, left: -4, bottom: 0 }}>
           <CartesianGrid vertical={false} stroke="var(--border)" />
           <XAxis dataKey="label" tick={{ fontSize: 9, fill: "var(--muted)" }} axisLine={{ stroke: "var(--border)" }} tickLine={false} interval={6} />
-          <YAxis yAxisId="l" tick={{ fontSize: 10, fill: "var(--muted)" }} axisLine={false} tickLine={false} tickFormatter={(v) => (v >= 10000 ? `${Math.round(v / 10000)}만` : `${v}`)} width={36} />
+          <YAxis yAxisId="l" tick={{ fontSize: 10, fill: "var(--muted)" }} axisLine={false} tickLine={false} tickFormatter={(v) => (v >= 10000 ? `${Math.round(v / 10000)}만` : `${v}`)} width={46} />
           <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 10, fill: "var(--muted)" }} axisLine={false} tickLine={false} tickFormatter={(v) => (v >= 10000 ? `${Math.round(v / 10000)}만` : `${v}`)} width={36} />
           <Tooltip
             formatter={(value, name) => [`${Math.round(Number(value)).toLocaleString()}원`, name === "sales" ? "매출" : "광고비"]}
