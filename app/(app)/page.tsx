@@ -11,6 +11,8 @@ import {
 import DashboardChart, { type ChartPoint } from "@/components/DashboardChart";
 import MultiStoreChart, { type MultiStorePoint, type StoreSeries } from "@/components/MultiStoreChart";
 import QuickMenu from "@/components/QuickMenu";
+import LiveStoreSalesGrid from "@/components/LiveStoreSalesGrid";
+import LiveSalesHero from "@/components/LiveSalesHero";
 import { adReportAllowed } from "@/lib/adAccess";
 import MonthlyPlanCalendar from "@/components/MonthlyPlanCalendar";
 import MonthlyPlanAlerts from "@/components/MonthlyPlanAlerts";
@@ -313,19 +315,7 @@ if (isHq) {
               <h2 className="text-sm font-semibold text-foreground">실시간매출</h2>
               <span className="text-2xl font-bold text-foreground">{todayLabel}</span>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {storeTodaySales.map((s) => (
-                <Link
-                  key={s.id}
-                  href={`/store/${s.id}`}
-                  style={{ backgroundColor: s.color }}
-                  className="rounded-2xl p-4 text-white shadow-lg transition-opacity active:opacity-80"
-                >
-                  <p className="text-xs leading-tight text-white/85">{s.name}</p>
-                  <p className="mt-1 text-lg font-bold">{formatWon(s.sales)}</p>
-                </Link>
-              ))}
-            </div>
+            <LiveStoreSalesGrid stores={storeTodaySales} />
           </section>
         )}
 
@@ -367,41 +357,16 @@ if (isHq) {
             <h2 className="text-sm font-semibold text-foreground">실시간매출</h2>
             <span className="text-2xl font-bold text-foreground">{todayLabel}</span>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {storeTodaySales.map((s) => (
-              <Link
-                key={s.id}
-                href={`/store/${s.id}`}
-                style={{ backgroundColor: s.color }}
-                className="rounded-2xl p-4 text-white shadow-lg transition-opacity active:opacity-80"
-              >
-                <p className="text-xs leading-tight text-white/85">{s.name}</p>
-                <p className="mt-1 text-lg font-bold">{formatWon(s.sales)}</p>
-              </Link>
-            ))}
-          </div>
+          <LiveStoreSalesGrid stores={storeTodaySales} />
         </section>
       ) : (
-        <Link
-          href={`/store/${storeId}`}
-          className="block rounded-2xl bg-gradient-to-br from-brand to-brand-dark p-5 text-white shadow-lg shadow-brand/25 transition-opacity active:opacity-90"
-        >
-          <div className="flex items-center justify-between text-sm text-white/80">
-            <span>오늘 매출</span>
-            <span>{todayLabel}</span>
-          </div>
-          <p className="mt-1 text-3xl font-bold">{formatWon(todaySales)}</p>
-          <div className="mt-4 flex items-center justify-between border-t border-white/20 pt-3">
-            <span className="text-sm text-white/80">
-              {isHanam ? "오늘 방문팀" : "오늘 총객수"}
-            </span>
-            <span className="text-lg font-semibold">
-              {isHanam
-                ? `${todayVisitTeams.toLocaleString()}팀`
-                : `${todayGuests.toLocaleString()}명`}
-            </span>
-          </div>
-        </Link>
+        <LiveSalesHero
+          storeId={storeId}
+          todayLabel={todayLabel}
+          closingSales={todaySales}
+          guestsLabel={isHanam ? "오늘 방문팀" : "오늘 총객수"}
+          guestsText={isHanam ? `${todayVisitTeams.toLocaleString()}팀` : `${todayGuests.toLocaleString()}명`}
+        />
       )}
 
       {isEmployee && (
