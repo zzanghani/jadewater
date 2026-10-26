@@ -1100,6 +1100,7 @@ export type Database = {
     }
     Views: Record<string, never>
     Functions: {
+      attendance_cron_token: { Args: Record<string, never>; Returns: string | null }
       upsert_push_subscription: {
         Args: {
           p_store_id: string | null

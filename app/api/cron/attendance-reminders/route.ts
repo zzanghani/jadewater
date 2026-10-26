@@ -14,12 +14,18 @@ const END_LEAD_MIN = 60;
 const CATCH_UP_WINDOW_MIN = 20;
 
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const authHeader = request.headers.get("authorization") ?? "";
+  const supabase = createServiceClient();
+
+  // 호출 토큰: Vercel CRON_SECRET 또는 Supabase Vault의 cron_secret(pg_cron이 보내는 값).
+  // 둘 다 없으면(설정 전) 거부한다 — 아무나 알림을 쏘게 두면 안 된다.
+  const { data: dbToken } = await supabase.rpc("attendance_cron_token");
+  const accepted = [process.env.CRON_SECRET, dbToken].filter(
+    (t): t is string => typeof t === "string" && t.length > 0
+  );
+  if (accepted.length === 0 || !accepted.some((t) => authHeader === `Bearer ${t}`)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-
-  const supabase = createServiceClient();
   const today = kstDateString(0);
   const { minutes: nowMin } = kstDateAndMinutes(new Date().toISOString());
 

@@ -32,3 +32,23 @@ select cron.schedule(
   );
   $$
 );
+
+-- ----------------------------------------------------------------------------
+-- 앱(서비스 키)이 Vault의 cron_secret을 읽어 호출 토큰을 검증할 수 있게 하는 함수.
+-- Vercel 환경변수를 안 건드리고도 pg_cron ↔ 앱이 같은 토큰을 공유한다.
+-- anon/authenticated는 실행 불가(서비스 롤만).
+-- ----------------------------------------------------------------------------
+create or replace function public.attendance_cron_token()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret' limit 1;
+$$;
+
+revoke all on function public.attendance_cron_token() from public;
+revoke all on function public.attendance_cron_token() from anon;
+revoke all on function public.attendance_cron_token() from authenticated;
+grant execute on function public.attendance_cron_token() to service_role;
