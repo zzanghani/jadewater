@@ -59,6 +59,15 @@ export default function AdManageClient({ storeId }: { storeId: string }) {
         <button type="button" onClick={reload} disabled={loading} className="ml-auto rounded-xl border border-border px-3 py-1.5 text-xs disabled:opacity-50">
           {loading ? "읽는 중..." : "새로고침"}
         </button>
+        <a
+          href="https://searchad.naver.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-xl bg-[#03c75a] px-3 py-1.5 text-xs font-semibold text-white"
+          title="키워드·입찰가·노출 시간 등 세부 설정은 네이버 광고주 사이트에서"
+        >
+          네이버 광고주 ↗
+        </a>
       </div>
       {err && <p className="rounded-xl bg-red-50 px-4 py-3 text-xs text-red-600">{err}</p>}
 

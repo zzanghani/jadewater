@@ -67,7 +67,6 @@ export default function AdReportClient({ initial }: { initial: AdWeeklyReport | 
 
       {report?.stores.map((s) => <StoreCard key={s.storeId} s={s} rep={report} />)}
 
-      {report && <p className="text-center text-[11px] text-muted">지난주(월~일) 성과를 전주와 비교해요. 매주 월요일 아침 알림으로도 보내요.</p>}
     </div>
   );
 }

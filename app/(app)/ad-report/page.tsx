@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { adReportAllowedFor } from "@/lib/adAccess";
 import { weekWindows, type AdStoreReport, type AdWeeklyReport } from "@/lib/adReport";
 import AdReportClient from "@/components/AdReportClient";
+import AdPeriodClient from "@/components/AdPeriodClient";
 
 // 네이버 검색광고 주간 리포트 — 지점장은 자기 매장, 본사 마스터는 연결된 전 매장.
 export default async function AdReportPage() {
@@ -44,9 +45,7 @@ export default async function AdReportPage() {
       <div className="flex items-start justify-between gap-2">
         <div>
           <h1 className="text-lg font-bold">광고 리포트</h1>
-          <p className="mt-1 text-xs text-muted">
-            지난주 {W.week[0].slice(5).replace("-", "/")}~{W.week[1].slice(5).replace("-", "/")} (월~일) · 네이버 검색광고 + 마감 매출
-          </p>
+          <p className="mt-1 text-xs text-muted">네이버 검색광고 × 토스·마감 매출</p>
         </div>
         {isHqMaster && (
           <Link href="/ad-report/settings" className="shrink-0 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold">
@@ -64,6 +63,13 @@ export default async function AdReportPage() {
           <span className="text-base font-bold">광고 관리</span>
           <span className="mt-0.5 text-[11px] text-brand/80">캠페인 켜기/끄기 · 하루 예산</span>
         </Link>
+      </div>
+      {/* 기간별 조회 — 오늘은 실시간 */}
+      <AdPeriodClient />
+
+      <div className="mt-2">
+        <h2 className="text-base font-bold">주간 리포트 · 할 일</h2>
+        <p className="text-xs text-muted">지난주(월~일) 성과와 이번 주 할 일. 매주 월요일 아침 알림으로도 보내요.</p>
       </div>
       <AdReportClient initial={initial} />
     </div>
