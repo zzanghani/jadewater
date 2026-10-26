@@ -20,6 +20,8 @@ export default async function AdInsightPage() {
   ]);
   const isManager = !!profile && profile.role === "owner" && !profile.department;
   if (!isManager) redirect("/");
+  // 광고 효율 분석도 지점장 전용.
+  if (!profile!.store_id) redirect("/ad-report/settings");
   const storeId = profile!.store_id ?? contextStoreId;
 
   return (

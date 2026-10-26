@@ -24,8 +24,8 @@ export default async function AdReportSettingsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Link href="/ad-report" className="text-xs text-muted">
-          ‹ 광고 리포트
+        <Link href="/" className="text-xs text-muted">
+          ‹ 홈
         </Link>
         <div className="mt-1 flex items-center justify-between">
           <h1 className="text-lg font-bold">매장 광고 키 설정</h1>
