@@ -75,6 +75,7 @@ export default function AdPeriodClient() {
             {res.range.to === res.today && " · 오늘은 실시간"} · 비교: {res.range.cmpLabel}
           </p>
           {res.total && <AggCard title="전 매장 합계" cur={res.total.cur} cmp={res.total.cmp} highlight />}
+          {res.total && <StoreCompare stores={res.stores} />}
           {res.stores.map((s) => (
             <StoreAgg key={s.storeId} s={s} />
           ))}
@@ -123,6 +124,74 @@ function Kpi({ label, cur, cmp, unit = "", goodUp, sub = "" }: { label: string; 
         <span className={`font-bold ${deltaClass(d, goodUp)}`}>{deltaTxt(d)}</span>
         <span className="text-muted"> 비교 기간{sub && ` · ${sub}`}</span>
       </p>
+    </div>
+  );
+}
+
+// 매장 간 비교: 성과 표 + 격차가 큰 지표 한 줄씩 (운영관리 앱 E·F 블록)
+function StoreCompare({ stores }: { stores: PeriodStore[] }) {
+  const on = stores.filter((s) => s.adConnected && s.cur.cost > 0);
+  if (on.length < 2) return null;
+  const short = (n: string) => n.replace(/^제이드앤워터\s*/, "").replace(/^정다미\s*/, "정다미 ");
+  const pick = (f: (s: PeriodStore) => number | null) => {
+    const list = on.filter((s) => f(s) != null) as PeriodStore[];
+    if (list.length < 2) return null;
+    const hi = list.reduce((a, b) => (f(b)! > f(a)! ? b : a));
+    const lo = list.reduce((a, b) => (f(b)! < f(a)! ? b : a));
+    return hi === lo ? null : { hi, lo, hv: f(hi)!, lv: f(lo)! };
+  };
+  const lines: { text: string; tip: string }[] = [];
+  const ctr = pick((s) => s.cur.ctr);
+  if (ctr && ctr.hv >= ctr.lv * 1.3) lines.push({ text: `클릭률 격차: ${short(ctr.hi.name)} ${ctr.hv.toFixed(2)}% vs ${short(ctr.lo.name)} ${ctr.lv.toFixed(2)}%`, tip: `${short(ctr.lo.name)}의 광고 문구·키워드를 ${short(ctr.hi.name)} 것과 비교해 보세요.` });
+  const cpc = pick((s) => s.cur.cpc);
+  if (cpc && cpc.hv >= cpc.lv * 1.3) lines.push({ text: `클릭 한 번 값 격차: ${short(cpc.hi.name)} ${won(cpc.hv)}원 vs ${short(cpc.lo.name)} ${won(cpc.lv)}원`, tip: `${short(cpc.hi.name)}은 입찰가가 높거나 경쟁 키워드가 많아요. 입찰가를 낮춰 볼 만해요.` });
+  const share = pick((s) => s.cur.adShare);
+  if (share && share.hv >= share.lv * 1.3) lines.push({ text: `매출 대비 광고비: ${short(share.hi.name)} ${share.hv.toFixed(2)}% vs ${short(share.lo.name)} ${share.lv.toFixed(2)}%`, tip: `${short(share.hi.name)}은 광고비를 더 쓰고 있어요. 매출이 그만큼 따라오는지 확인하세요.` });
+  const roas = pick((s) => s.cur.roas);
+  if (roas) lines.push({ text: `광고비 대비 매출 최고: ${short(roas.hi.name)} ${won(roas.hv)}%`, tip: `${short(roas.hi.name)}의 캠페인 구성을 다른 매장에 적용해 볼 만해요.` });
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <h2 className="mb-2 text-base font-bold">매장 간 비교</h2>
+      {lines.length > 0 && (
+        <ul className="mb-3 flex flex-col gap-1.5">
+          {lines.map((l, i) => (
+            <li key={i} className="rounded-xl bg-background px-3 py-2 text-xs">
+              <p className="font-semibold">{l.text}</p>
+              <p className="text-[11px] text-muted">{l.tip}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="overflow-x-auto">
+        <table className="w-full text-[11px] tabular-nums">
+          <thead>
+            <tr className="text-left text-muted">
+              <th className="pb-1 font-medium">매장</th>
+              <th className="pb-1 text-right font-medium">광고비</th>
+              <th className="pb-1 text-right font-medium">비중</th>
+              <th className="pb-1 text-right font-medium">클릭</th>
+              <th className="pb-1 text-right font-medium">클릭률</th>
+              <th className="pb-1 text-right font-medium">클릭당</th>
+              <th className="pb-1 text-right font-medium">매출</th>
+              <th className="pb-1 text-right font-medium">광고비 대비</th>
+            </tr>
+          </thead>
+          <tbody>
+            {stores.map((s) => (
+              <tr key={s.storeId} className="border-t border-border">
+                <td className="py-1.5 pr-2 whitespace-nowrap">{short(s.name)}</td>
+                <td className="py-1.5 text-right">{won(s.cur.cost)}</td>
+                <td className="py-1.5 text-right">{s.cur.adShare == null ? "-" : s.cur.adShare.toFixed(1) + "%"}</td>
+                <td className="py-1.5 text-right">{s.cur.clk}</td>
+                <td className="py-1.5 text-right">{s.cur.ctr == null ? "-" : s.cur.ctr.toFixed(2) + "%"}</td>
+                <td className="py-1.5 text-right">{won(s.cur.cpc)}</td>
+                <td className="py-1.5 text-right">{won(s.cur.sales)}</td>
+                <td className="py-1.5 text-right">{s.cur.roas == null ? "-" : won(s.cur.roas) + "%"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

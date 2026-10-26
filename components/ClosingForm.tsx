@@ -25,7 +25,7 @@ export default function ClosingForm({
   const [tossLoading, startToss] = useTransition();
   const [toss, setToss] = useState<TossClosingResult | null>(null);
 
-  // 토스 결제 자료로 매출 칸을 채운다. 객수·카테고리는 손대지 않는다.
+  // 토스 결제 자료로 매출 칸과 카테고리 칸을 채운다. 객수는 손대지 않는다.
   function fillFromToss() {
     setToss(null);
     startToss(async () => {
@@ -38,6 +38,12 @@ export default function ClosingForm({
       setDiscountAmount(r.fields.discount_amount);
       setCoupangEatsSales(r.fields.coupang_eats_sales);
       setBaeminSales(r.fields.baemin_sales);
+      // 카테고리(음식/음료/와인)도 토스 분류명으로 자동으로 나눠 채운다. 객수만 손으로.
+      if (r.fields.food_sales + r.fields.beverage_sales + r.fields.wine_sales > 0) {
+        setFoodSales(r.fields.food_sales);
+        setBeverageSales(r.fields.beverage_sales);
+        setWineSales(r.fields.wine_sales);
+      }
     });
   }
 
@@ -150,6 +156,7 @@ export default function ClosingForm({
               {toss.isTest && <span className="mr-1 rounded bg-amber-100 px-1 py-0.5 font-semibold text-amber-800">테스트 가맹점</span>}
               {toss.summary.day} 결제 {toss.summary.orders}건 · 합계 {formatWon(toss.summary.paid)}
               {toss.summary.delivery.amount > 0 && ` (배달 ${formatWon(toss.summary.delivery.amount)})`}
+              {toss.fields.category_note && <span className="block text-[11px] text-muted">카테고리 자동 분류 — {toss.fields.category_note}</span>}
               {toss.summary.cancelled.n > 0 && ` · 취소 ${toss.summary.cancelled.n}건`}
               {toss.summary.lastPayAt && ` · 마지막 결제 ${toss.summary.lastPayAt}`}
               <br />

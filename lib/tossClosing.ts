@@ -194,6 +194,7 @@ export function tossClosingToForm(c: TossClosing) {
   const baemin = pick(/배민|배달의민족|baemin/i);
   // 매장 결제(배달 제외)를 결제수단별로. EXTERNAL 중 배달이 아닌 것(기타 외부결제)은 간편결제에 넣는다.
   const externalNonDelivery = Math.max(0, (c.payments.EXTERNAL ?? 0) - coupang - baemin);
+  const cat = splitCategories(c.categories);
   return {
     card_sales: c.payments.CARD ?? 0,
     cash_sales: c.payments.CASH ?? 0,
@@ -201,5 +202,30 @@ export function tossClosingToForm(c: TossClosing) {
     discount_amount: c.discount,
     coupang_eats_sales: coupang,
     baemin_sales: baemin,
+    food_sales: cat.food,
+    beverage_sales: cat.beverage,
+    wine_sales: cat.wine,
+    category_note: cat.note,
+  };
+}
+
+// 토스 카테고리명 → 우리 마감 칸(음식/음료/와인·주류). 이름에 든 단어로 나누고,
+// 어디에도 안 걸리면 음식으로 본다. 어떻게 나눴는지 메모로 돌려줘 화면에서 확인할 수 있게 한다.
+const WINE_RE = /와인|wine|주류|술|맥주|beer|소주|칵테일|cocktail|하이볼|위스키|whisky|whiskey|샴페인|champagne|스파클링|사케|막걸리|보틀|bottle|glass|글라스/i;
+const BEV_RE = /음료|beverage|drink|커피|coffee|라떼|latte|아메리카노|차|tea|에이드|ade|주스|juice|탄산|소다|soda|논알콜|non.?alc|스무디|smoothie|콜라|사이다|생수|water/i;
+export function splitCategories(categories: Record<string, number>): { food: number; beverage: number; wine: number; note: string } {
+  const out = { food: 0, beverage: 0, wine: 0 };
+  const names = { food: [] as string[], beverage: [] as string[], wine: [] as string[] };
+  for (const [name, amount] of Object.entries(categories)) {
+    const k: keyof typeof out = WINE_RE.test(name) ? "wine" : BEV_RE.test(name) ? "beverage" : "food";
+    out[k] += amount;
+    if (amount > 0) names[k].push(name);
+  }
+  const part = (label: string, list: string[]) => (list.length ? `${label}: ${list.join(", ")}` : "");
+  return {
+    food: Math.round(out.food),
+    beverage: Math.round(out.beverage),
+    wine: Math.round(out.wine),
+    note: [part("음식", names.food), part("음료", names.beverage), part("와인·주류", names.wine)].filter(Boolean).join(" / "),
   };
 }

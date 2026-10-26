@@ -951,6 +951,12 @@ export type Database = {
         Update: Partial<AdDailyStats>
         Relationships: []
       }
+      store_monthly_targets: {
+        Row: { store_id: string; month: string; target: number; updated_by: string | null; updated_at: string }
+        Insert: { store_id: string; month: string; target: number; updated_by?: string | null; updated_at?: string }
+        Update: Partial<{ store_id: string; month: string; target: number; updated_by: string | null; updated_at: string }>
+        Relationships: []
+      }
       ad_store_settings: {
         Row: { store_id: string; cost_rate: number; updated_by: string | null; updated_at: string }
         Insert: { store_id: string; cost_rate?: number; updated_by?: string | null; updated_at?: string }
