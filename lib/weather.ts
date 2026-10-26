@@ -35,9 +35,10 @@ export async function syncWeather(service: SupabaseClient<Database>, from: strin
     rows.push(...(await fetchRange(`https://archive-api.open-meteo.com/v1/archive?latitude=${LAT}&longitude=${LNG}&start_date=${a}&end_date=${z}&daily=${DAILY}&timezone=Asia%2FSeoul`)));
   }
   rows.push(...(await fetchRange(`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LNG}&daily=${DAILY}&past_days=8&forecast_days=1&timezone=Asia%2FSeoul`)));
-  const upserts = rows
-    .filter((r) => r.date >= from && r.date <= to)
-    .map((r) => ({ ...r, precip_mm: Number(r.precip_mm ?? 0), synced_at: new Date().toISOString() }));
+  // archive와 forecast가 하루쯤 겹친다 — 같은 날짜는 뒤(forecast, 더 최신)로 덮어 한 번만 넣는다.
+  const byDate = new Map<string, WeatherDay>();
+  for (const r of rows) if (r.date >= from && r.date <= to) byDate.set(r.date, r);
+  const upserts = [...byDate.values()].map((r) => ({ ...r, precip_mm: Number(r.precip_mm ?? 0), synced_at: new Date().toISOString() }));
   if (upserts.length) {
     const { error } = await service.from("weather_daily").upsert(upserts, { onConflict: "date" });
     if (error) throw new Error(`날씨 저장 실패: ${error.message}`);
