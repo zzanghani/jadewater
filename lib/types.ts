@@ -371,6 +371,25 @@ export type StoreAdAccount = {
   updated_at: string
 }
 
+/** 토스플레이스 앱 인증 키 (단일 행, 본사 마스터만) */
+export type TossSettings = {
+  id: number
+  access_key: string
+  access_secret: string
+  updated_by: string | null
+  updated_at: string
+}
+
+/** 매장 ↔ 토스 가맹점 ID */
+export type StoreTossMerchant = {
+  store_id: string
+  merchant_id: string
+  merchant_name: string | null
+  is_test: boolean
+  updated_by: string | null
+  updated_at: string
+}
+
 /** ad_weekly_reports.report 컬럼 — lib/adReport의 AdStoreReport를 JSON으로 저장한 것 */
 export type AdStoreReportJson = Record<string, unknown>
 
@@ -866,6 +885,18 @@ export type Database = {
         Row: StoreLocation
         Insert: Partial<StoreLocation> & { store_id: string; lat: number; lng: number }
         Update: Partial<StoreLocation>
+        Relationships: []
+      }
+      toss_settings: {
+        Row: TossSettings
+        Insert: Omit<TossSettings, 'updated_at' | 'updated_by'> & { updated_by?: string | null; updated_at?: string }
+        Update: Partial<TossSettings>
+        Relationships: []
+      }
+      store_toss_merchants: {
+        Row: StoreTossMerchant
+        Insert: Omit<StoreTossMerchant, 'updated_at' | 'updated_by' | 'merchant_name' | 'is_test'> & { merchant_name?: string | null; is_test?: boolean; updated_by?: string | null; updated_at?: string }
+        Update: Partial<StoreTossMerchant>
         Relationships: []
       }
       store_ad_accounts: {
