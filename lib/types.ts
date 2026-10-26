@@ -371,6 +371,33 @@ export type StoreAdAccount = {
   updated_at: string
 }
 
+/** 매장·날짜별 토스 결제 집계 (광고 효율 분석용) */
+export type TossDailySales = {
+  store_id: string
+  date: string
+  sales: number
+  orders: number
+  card: number
+  cash: number
+  easypay: number
+  external: number
+  delivery: number
+  discount: number
+  by_hour: Record<string, number> | null
+  synced_at: string
+}
+
+/** 매장·날짜별 네이버 검색광고 성과 */
+export type AdDailyStats = {
+  store_id: string
+  date: string
+  imp: number
+  clk: number
+  cost: number
+  conv: number
+  synced_at: string
+}
+
 /** 토스플레이스 앱 인증 키 (단일 행, 본사 마스터만) */
 export type TossSettings = {
   id: number
@@ -896,6 +923,24 @@ export type Database = {
         Row: StoreLocation
         Insert: Partial<StoreLocation> & { store_id: string; lat: number; lng: number }
         Update: Partial<StoreLocation>
+        Relationships: []
+      }
+      toss_daily_sales: {
+        Row: TossDailySales
+        Insert: Partial<TossDailySales> & { store_id: string; date: string }
+        Update: Partial<TossDailySales>
+        Relationships: []
+      }
+      ad_daily_stats: {
+        Row: AdDailyStats
+        Insert: Partial<AdDailyStats> & { store_id: string; date: string }
+        Update: Partial<AdDailyStats>
+        Relationships: []
+      }
+      ad_insight_memos: {
+        Row: { store_id: string; date: string; memo: string; generated_at: string }
+        Insert: { store_id: string; date: string; memo: string; generated_at?: string }
+        Update: Partial<{ store_id: string; date: string; memo: string; generated_at: string }>
         Relationships: []
       }
       toss_webhook_events: {

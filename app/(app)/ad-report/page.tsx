@@ -42,11 +42,16 @@ export default async function AdReportPage() {
             지난주 {W.week[0].slice(5).replace("-", "/")}~{W.week[1].slice(5).replace("-", "/")} (월~일) · 네이버 검색광고 + 마감 매출
           </p>
         </div>
-        {isHqMaster && (
-          <Link href="/ad-report/settings" className="shrink-0 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold">
-            매장 키 설정
+        <div className="flex shrink-0 gap-1.5">
+          <Link href="/ad-report/insight" className="rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white">
+            효율 분석
           </Link>
-        )}
+          {isHqMaster && (
+            <Link href="/ad-report/settings" className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold">
+              매장 키 설정
+            </Link>
+          )}
+        </div>
       </div>
       <AdReportClient initial={initial} />
     </div>

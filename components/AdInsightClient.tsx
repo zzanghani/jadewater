@@ -1,0 +1,191 @@
+"use client";
+
+import { useEffect, useState, useTransition } from "react";
+import { generateStrategyMemo, loadAdInsight, type InsightResult } from "@/app/(app)/ad-report/insight/actions";
+import { won, type PeriodStat } from "@/lib/adInsight";
+import { pctDelta } from "@/lib/adReport";
+import AdInsightChart from "@/components/AdInsightChart";
+
+const SEV = {
+  bad: "bg-red-50 text-red-600",
+  warn: "bg-amber-50 text-amber-700",
+  good: "bg-green-50 text-green-700",
+  info: "bg-blue-50 text-blue-700",
+} as const;
+const SEV_LABEL = { bad: "조치", warn: "점검", good: "좋음", info: "참고" } as const;
+
+function d(c: number | null, p: number | null) {
+  const v = pctDelta(c, p);
+  return v == null ? "" : (v > 0 ? "+" : "") + v.toFixed(0) + "%";
+}
+function dCls(c: number | null, p: number | null, goodUp: boolean) {
+  const v = pctDelta(c, p);
+  if (v == null || Math.abs(v) < 0.5) return "text-muted";
+  return (v > 0) === goodUp ? "text-green-700" : "text-red-600";
+}
+
+export default function AdInsightClient({ storeId }: { storeId: string }) {
+  const [res, setRes] = useState<InsightResult | null>(null);
+  const [loading, start] = useTransition();
+  const [memoLoading, startMemo] = useTransition();
+  const [memoError, setMemoError] = useState<string | null>(null);
+
+  useEffect(() => {
+    start(async () => setRes(await loadAdInsight(storeId)));
+  }, [storeId]);
+
+  function sync() {
+    start(async () => setRes(await loadAdInsight(storeId, { sync: true })));
+  }
+  function makeMemo() {
+    setMemoError(null);
+    startMemo(async () => {
+      const r = await generateStrategyMemo(storeId);
+      if (!r.ok) setMemoError(r.error);
+      else setRes((prev) => (prev && prev.ok ? { ...prev, memo: r.memo, memoAt: new Date().toISOString() } : prev));
+    });
+  }
+
+  if (!res) return <p className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">{loading ? "불러오는 중..." : ""}</p>;
+  if (!res.ok) return <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{res.error}</p>;
+  const x = res.insight;
+  const needSync = x.week.salesDays === 0 && x.week.cost === 0;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={sync} disabled={loading} className="rounded-xl bg-brand px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">
+          {loading ? "동기화 중..." : "최근 8주 동기화"}
+        </button>
+        {res.synced.ad != null && <span className="text-[11px] text-muted">광고 {res.synced.ad}일{res.synced.toss != null && ` · 토스 ${res.synced.toss}일`} 갱신</span>}
+      </div>
+      {needSync && <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-800">아직 쌓인 데이터가 없어요. &lsquo;최근 8주 동기화&rsquo;를 한 번 눌러 주세요 (30초쯤 걸려요).</p>}
+
+      {/* 오늘 실시간 */}
+      <section className="rounded-2xl bg-gradient-to-br from-brand to-brand-dark p-4 text-white shadow-lg shadow-brand/25">
+        <div className="flex items-baseline justify-between">
+          <p className="text-sm text-white/85">오늘 실시간 · {x.today.date.slice(5).replace("-", "/")}</p>
+          {x.today.lastPayAt && <p className="text-[11px] text-white/70">마지막 결제 {x.today.lastPayAt}</p>}
+        </div>
+        <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+          <div>
+            <p className="text-white/70">매출</p>
+            <p className="text-lg font-bold tabular-nums">{x.today.sales == null ? "-" : won(x.today.sales)}<span className="text-xs font-normal">원</span></p>
+            {x.today.orders != null && <p className="text-white/70">{x.today.orders}건</p>}
+          </div>
+          <div>
+            <p className="text-white/70">광고비</p>
+            <p className="text-lg font-bold tabular-nums">{won(x.today.cost)}<span className="text-xs font-normal">원</span></p>
+            <p className="text-white/70">클릭 {x.today.clk}</p>
+          </div>
+          <div>
+            <p className="text-white/70">광고비 대비 매출</p>
+            <p className="text-lg font-bold tabular-nums">{x.today.roas == null ? "-" : won(x.today.roas) + "%"}</p>
+            <p className="text-white/70">광고비 1원당 {x.today.roas == null ? "-" : (x.today.roas / 100).toFixed(0)}원</p>
+          </div>
+        </div>
+        <p className="mt-2 text-[10px] text-white/60">오늘 광고비는 어젯밤 동기화 이후 값이라 조금 늦을 수 있어요.</p>
+      </section>
+
+      {/* 7일 / 28일 */}
+      <PeriodCard title="최근 7일" cur={x.week} prev={x.weekPrev} norm={x.salesNorm} convTracked={x.convTracked} />
+      <PeriodCard title="최근 28일" cur={x.month} prev={x.monthPrev} norm={null} convTracked={x.convTracked} />
+
+      {/* 추이 */}
+      <section className="rounded-2xl border border-border bg-card p-4">
+        <h2 className="mb-2 text-sm font-bold">최근 4주 매출 vs 광고비</h2>
+        <AdInsightChart rows={x.series} />
+      </section>
+
+      {/* 요일별 */}
+      <section className="rounded-2xl border border-border bg-card p-4">
+        <h2 className="mb-2 text-sm font-bold">요일별 효율 (최근 28일)</h2>
+        <div className="grid grid-cols-7 gap-1 text-center">
+          {x.weekday.map((w) => {
+            const best = Math.max(...x.weekday.map((v) => v.roas ?? 0));
+            const h = w.roas && best ? Math.max(8, (w.roas / best) * 56) : 4;
+            return (
+              <div key={w.label} className="flex flex-col items-center gap-1">
+                <div className="flex h-14 items-end">
+                  <div className={`w-5 rounded-t ${w.roas === best && best > 0 ? "bg-brand" : "bg-brand/40"}`} style={{ height: h }} />
+                </div>
+                <p className="text-[11px] font-semibold">{w.label}</p>
+                <p className="text-[10px] tabular-nums text-muted">{w.roas == null ? "-" : won(w.roas) + "%"}</p>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-[10px] text-muted">막대 = 광고비 대비 매출. 높을수록 그 요일 광고가 효율적이에요.</p>
+      </section>
+
+      {/* 진단 */}
+      <section className="rounded-2xl border border-border bg-card p-4">
+        <h2 className="mb-2 text-sm font-bold">자동 진단</h2>
+        <ul className="flex flex-col gap-1.5">
+          {x.findings.map((f, i) => (
+            <li key={i} className="flex gap-2 text-xs leading-relaxed">
+              <span className={`mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${SEV[f.sev]}`}>{SEV_LABEL[f.sev]}</span>
+              <span>{f.text}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* AI 전략 */}
+      <section className="rounded-2xl border border-brand bg-card p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-bold">AI 전략 메모</h2>
+          <button type="button" onClick={makeMemo} disabled={memoLoading || needSync} className="rounded-xl bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60">
+            {memoLoading ? "쓰는 중..." : res.memo ? "다시 생성" : "전략 생성"}
+          </button>
+        </div>
+        {memoError && <p className="mb-2 text-xs text-red-600">{memoError}</p>}
+        {res.memo ? (
+          <>
+            <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed">{res.memo}</pre>
+            {res.memoAt && <p className="mt-2 text-[10px] text-muted">{new Date(res.memoAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 생성</p>}
+          </>
+        ) : (
+          <p className="text-xs text-muted">위 숫자를 읽고 &lsquo;진단 → 이번 주 전략 3개 → 예산 제안&rsquo;을 써줘요.</p>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function PeriodCard({ title, cur, prev, norm, convTracked }: { title: string; cur: PeriodStat; prev: PeriodStat; norm: number | null; convTracked: boolean }) {
+  return (
+    <section className="rounded-2xl border border-border bg-card p-4">
+      <div className="mb-2 flex items-baseline justify-between">
+        <h2 className="text-sm font-bold">{title}</h2>
+        {norm != null && (
+          <span className={`text-[11px] font-semibold ${norm < 0.85 ? "text-red-600" : norm > 1.05 ? "text-green-700" : "text-muted"}`}>
+            매출 평소 대비 {(norm >= 1 ? "+" : "") + ((norm - 1) * 100).toFixed(1)}%
+          </span>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Kpi label="매출" v={cur.sales} p={prev.sales} unit="원" goodUp sub={`${cur.salesDays}일`} />
+        <Kpi label="광고비" v={cur.cost} p={prev.cost} unit="원" goodUp={false} sub={cur.adShare == null ? "" : `매출의 ${cur.adShare.toFixed(1)}%`} />
+        <Kpi label="광고비 대비 매출" v={cur.roas} p={prev.roas} unit="%" goodUp sub={cur.roas == null ? "" : `1원당 ${(cur.roas / 100).toFixed(0)}원`} />
+        {convTracked ? <Kpi label="전환당 비용" v={cur.cpa} p={prev.cpa} unit="원" goodUp={false} sub={`전환 ${cur.conv}`} /> : <Kpi label="클릭당 비용" v={cur.cpc} p={prev.cpc} unit="원" goodUp={false} sub={`클릭 ${cur.clk}`} />}
+      </div>
+    </section>
+  );
+}
+
+function Kpi({ label, v, p, unit, goodUp, sub }: { label: string; v: number | null; p: number | null; unit: string; goodUp: boolean; sub: string }) {
+  return (
+    <div className="rounded-xl bg-background px-3 py-2">
+      <p className="text-[11px] text-muted">{label}</p>
+      <p className="text-base font-bold tabular-nums">
+        {won(v)}
+        <span className="text-xs font-normal text-muted">{v == null ? "" : unit}</span>
+      </p>
+      <p className="text-[11px] tabular-nums">
+        <span className={`font-semibold ${dCls(v, p, goodUp)}`}>{d(v, p) || "-"}</span>
+        <span className="text-muted"> 직전 기간 {sub && `· ${sub}`}</span>
+      </p>
+    </div>
+  );
+}
