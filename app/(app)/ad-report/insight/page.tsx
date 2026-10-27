@@ -31,7 +31,12 @@ export default async function AdInsightPage() {
         <Link href="/ad-report" className="text-xs text-muted">
           ‹ 광고 리포트
         </Link>
-        <h1 className="mt-1 text-lg font-bold">광고 효율 분석</h1>
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <h1 className="text-lg font-bold">광고 효율 분석</h1>
+          <Link href="/ad-report/hours" className="shrink-0 rounded-full border border-brand px-3 py-1.5 text-xs font-semibold text-brand">
+            시간·요일 분석
+          </Link>
+        </div>
         <p className="mt-1 text-xs text-muted">{storeName} · 토스 매출 × 네이버 검색광고 · 오늘은 실시간</p>
       </div>
       <AdInsightClient key={storeId} storeId={storeId} />
