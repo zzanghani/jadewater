@@ -91,7 +91,7 @@ export default function AdSearchClient({ storeId }: { storeId: string }) {
         ))}
       </div>
       {msg && <p className="rounded-xl bg-blue-50 px-3 py-2 text-xs text-blue-800">{msg}</p>}
-      {tab === "track" && <TrackPanel storeId={storeId} search={info} onChanged={reload} />}
+      {tab === "track" && <TrackPanel key={`${info.terms.join("|")}#${info.keywords.join("|")}`} storeId={storeId} search={info} onChanged={reload} />}
       {tab === "find" && <FindPanel storeId={storeId} adConnected={info.adConnected} groups={groups ?? []} registered={registered} tracked={tracked} onTrack={addTrack} onAd={addAd} />}
       {tab === "combo" && <ComboPanel storeId={storeId} adConnected={info.adConnected} groups={groups ?? []} tracked={tracked} onTrack={addTrack} onAd={addAd} />}
       {tab === "ad" && <AdKeywordsPanel storeId={storeId} groups={groups} onChanged={reload} onMsg={setMsg} />}
@@ -106,10 +106,6 @@ function TrackPanel({ storeId, search, onChanged }: { storeId: string; search: S
   const [keywords, setKeywords] = useState(search.keywords.join(", "));
   const [busy, startBusy] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
-  useEffect(() => {
-    setTerms(search.terms.join(", "));
-    setKeywords(search.keywords.join(", "));
-  }, [search]);
   function save(thenCheck: boolean) {
     setMsg(null);
     startBusy(async () => {
