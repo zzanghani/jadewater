@@ -39,17 +39,19 @@ export default function AdPeriodClient() {
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none]">
-        {KEYS.map((k) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => setKey(k)}
-            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${key === k ? "bg-brand text-white" : "border border-border bg-card text-foreground"}`}
-          >
-            {PERIOD_LABEL[k]}
-          </button>
-        ))}
+      <div className="flex items-center gap-2">
+        <label className="text-xs text-muted">기간</label>
+        <select
+          value={key}
+          onChange={(e) => setKey(e.target.value as PeriodKey)}
+          className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground"
+        >
+          {KEYS.map((k) => (
+            <option key={k} value={k}>
+              {PERIOD_LABEL[k]}
+            </option>
+          ))}
+        </select>
       </div>
       {key === "custom" && (
         <div className="flex flex-wrap items-center gap-1.5 text-xs">
