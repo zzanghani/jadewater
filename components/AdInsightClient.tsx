@@ -55,12 +55,15 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <button type="button" onClick={sync} disabled={loading} className="rounded-xl bg-brand px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <button type="button" onClick={sync} disabled={loading} className="rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
           {loading ? "동기화 중..." : "최근 8주 동기화"}
         </button>
-        <Link href="/ad-report/manage" className="rounded-xl border border-brand px-3 py-2 text-xs font-semibold text-brand">
+        <Link href="/ad-report/manage" className="rounded-xl border-2 border-brand px-4 py-2.5 text-sm font-semibold text-brand">
           광고 관리
+        </Link>
+        <Link href="/ad-report/hours" className="rounded-xl border-2 border-brand px-4 py-2.5 text-sm font-semibold text-brand">
+          시간·요일 분석
         </Link>
         {(res.synced.ad != null || res.synced.toss != null) && (
           <span className="text-[11px] text-muted">
