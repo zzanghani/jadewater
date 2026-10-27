@@ -102,45 +102,43 @@ export async function syncAdDaily(service: Service, storeId: string, acct: Naver
   return rows.length;
 }
 
-// 네이버: 시간대(hh24)별 성과. 네이버 stats는 breakdown을 timeIncrement=allDays에서만 적용하므로
-// 캠페인×날짜마다 한 번씩(그날 전체를 시간대로 쪼개) 받아 합친다. 호출이 많아 하루 단위로 끊어 쓴다.
+// 네이버: 시간대(hh24)별 성과. stats에 ids=캠페인들 + breakdown=hh24 로 하루씩 부르면
+// 캠페인마다 breakdowns[{name:"16시~17시", impCnt, clkCnt, salesAmt, ccnt}] 가 온다 (하루 1회 호출).
 export async function syncAdHourly(service: Service, storeId: string, acct: NaverAcct, from: string, to: string): Promise<number> {
   const camps = ((await callNaver<{ nccCampaignId: string; status?: string }[]>(acct, "/ncc/campaigns")) ?? []).filter((c) => c.status !== "DELETED");
-  type HRow = NaverStatRow & { hh24?: number | string; breakdownValue?: string | number };
+  if (!camps.length) return 0;
+  type BRow = { id?: string; breakdowns?: { name?: string; impCnt?: number; clkCnt?: number; salesAmt?: number; ccnt?: number }[] };
   const days: string[] = [];
   for (let d = from; d <= to; d = addYmd(d, 1)) days.push(d);
-  const jobs = days.flatMap((d) => camps.map((c) => ({ d, c })));
-  const agg: Record<string, { imp: number; clk: number; cost: number; conv: number }> = {};
-  const okDays = new Set<string>();
-  await pool(jobs, 4, async ({ d, c }) => {
-    const r = await callNaver<{ data?: HRow[] }>(acct, "/stats", {
-      id: c.nccCampaignId,
+  const rows: { store_id: string; date: string; hour: number; imp: number; clk: number; cost: number; conv: number; synced_at: string }[] = [];
+  let ok = 0;
+  await pool(days, 3, async (d) => {
+    const r = await callNaver<{ data?: BRow[] }>(acct, "/stats", {
+      ids: camps.map((c) => c.nccCampaignId).join(","),
       fields: STAT_FIELDS,
       timeRange: JSON.stringify({ since: d, until: d }),
-      timeIncrement: "allDays",
       breakdown: "hh24",
     }).catch(() => null);
     if (!r) return;
-    okDays.add(d);
-    for (const row of r.data ?? []) {
-      const hv = row.hh24 ?? row.breakdownValue;
-      const hour = Number(hv);
-      if (!Number.isFinite(hour) || hour < 0 || hour > 23) continue;
-      const x = (agg[`${d}|${hour}`] ??= { imp: 0, clk: 0, cost: 0, conv: 0 });
-      x.imp += row.impCnt ?? 0;
-      x.clk += row.clkCnt ?? 0;
-      x.cost += row.salesAmt ?? 0;
-      x.conv += row.ccnt ?? 0;
-    }
-  });
-  const rows = [];
-  for (const d of okDays)
+    ok++;
+    const byHour: Record<number, { imp: number; clk: number; cost: number; conv: number }> = {};
+    for (const row of r.data ?? [])
+      for (const b of row.breakdowns ?? []) {
+        const hour = Number(String(b.name ?? "").match(/^(\d{1,2})시/)?.[1]);
+        if (!Number.isFinite(hour) || hour < 0 || hour > 23) continue;
+        const x = (byHour[hour] ??= { imp: 0, clk: 0, cost: 0, conv: 0 });
+        x.imp += b.impCnt ?? 0;
+        x.clk += b.clkCnt ?? 0;
+        x.cost += b.salesAmt ?? 0;
+        x.conv += b.ccnt ?? 0;
+      }
     for (let h = 0; h < 24; h++) {
-      const x = agg[`${d}|${h}`] ?? { imp: 0, clk: 0, cost: 0, conv: 0 };
+      const x = byHour[h] ?? { imp: 0, clk: 0, cost: 0, conv: 0 };
       rows.push({ store_id: storeId, date: d, hour: h, imp: x.imp, clk: x.clk, cost: Math.round(x.cost), conv: x.conv, synced_at: new Date().toISOString() });
     }
+  });
   for (let i = 0; i < rows.length; i += 500) await service.from("ad_hourly_stats").upsert(rows.slice(i, i + 500), { onConflict: "store_id,date,hour" });
-  return okDays.size;
+  return ok;
 }
 
 /* ---------- 분석 ---------- */
