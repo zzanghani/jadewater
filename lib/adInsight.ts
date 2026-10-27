@@ -102,44 +102,45 @@ export async function syncAdDaily(service: Service, storeId: string, acct: Naver
   return rows.length;
 }
 
-// 네이버: 시간대(hh24)별 성과. 캠페인마다 날짜 범위를 시간대로 쪼개 받아 날짜·시간으로 합친다 (최대 31일).
+// 네이버: 시간대(hh24)별 성과. 네이버 stats는 breakdown을 timeIncrement=allDays에서만 적용하므로
+// 캠페인×날짜마다 한 번씩(그날 전체를 시간대로 쪼개) 받아 합친다. 호출이 많아 하루 단위로 끊어 쓴다.
 export async function syncAdHourly(service: Service, storeId: string, acct: NaverAcct, from: string, to: string): Promise<number> {
   const camps = ((await callNaver<{ nccCampaignId: string; status?: string }[]>(acct, "/ncc/campaigns")) ?? []).filter((c) => c.status !== "DELETED");
-  type HRow = NaverStatRow & { hh24?: number | string; breakdownValue?: string };
+  type HRow = NaverStatRow & { hh24?: number | string; breakdownValue?: string | number };
+  const days: string[] = [];
+  for (let d = from; d <= to; d = addYmd(d, 1)) days.push(d);
+  const jobs = days.flatMap((d) => camps.map((c) => ({ d, c })));
   const agg: Record<string, { imp: number; clk: number; cost: number; conv: number }> = {};
-  let ok = 0;
-  await pool(camps, 3, async (c) => {
-    const d = await callNaver<{ data?: HRow[] }>(acct, "/stats", {
+  const okDays = new Set<string>();
+  await pool(jobs, 4, async ({ d, c }) => {
+    const r = await callNaver<{ data?: HRow[] }>(acct, "/stats", {
       id: c.nccCampaignId,
       fields: STAT_FIELDS,
-      timeRange: JSON.stringify({ since: from, until: to }),
-      timeIncrement: "1",
+      timeRange: JSON.stringify({ since: d, until: d }),
+      timeIncrement: "allDays",
       breakdown: "hh24",
     }).catch(() => null);
-    if (!d) return;
-    ok++;
-    for (const r of d.data ?? []) {
-      const day = String(r.dateStart ?? "").slice(0, 10);
-      const hv = r.hh24 ?? r.breakdownValue;
+    if (!r) return;
+    okDays.add(d);
+    for (const row of r.data ?? []) {
+      const hv = row.hh24 ?? row.breakdownValue;
       const hour = Number(hv);
-      if (!day || !Number.isFinite(hour) || hour < 0 || hour > 23) continue;
-      const x = (agg[`${day}|${hour}`] ??= { imp: 0, clk: 0, cost: 0, conv: 0 });
-      x.imp += r.impCnt ?? 0;
-      x.clk += r.clkCnt ?? 0;
-      x.cost += r.salesAmt ?? 0;
-      x.conv += r.ccnt ?? 0;
+      if (!Number.isFinite(hour) || hour < 0 || hour > 23) continue;
+      const x = (agg[`${d}|${hour}`] ??= { imp: 0, clk: 0, cost: 0, conv: 0 });
+      x.imp += row.impCnt ?? 0;
+      x.clk += row.clkCnt ?? 0;
+      x.cost += row.salesAmt ?? 0;
+      x.conv += row.ccnt ?? 0;
     }
   });
-  if (!ok) return 0;
-  // 범위 안 모든 날·시간을 채운다 (0도 저장해야 "자료 없음"과 구분된다)
   const rows = [];
-  for (let d = from; d <= to; d = addYmd(d, 1))
+  for (const d of okDays)
     for (let h = 0; h < 24; h++) {
       const x = agg[`${d}|${h}`] ?? { imp: 0, clk: 0, cost: 0, conv: 0 };
       rows.push({ store_id: storeId, date: d, hour: h, imp: x.imp, clk: x.clk, cost: Math.round(x.cost), conv: x.conv, synced_at: new Date().toISOString() });
     }
   for (let i = 0; i < rows.length; i += 500) await service.from("ad_hourly_stats").upsert(rows.slice(i, i + 500), { onConflict: "store_id,date,hour" });
-  return rows.length / 24;
+  return okDays.size;
 }
 
 /* ---------- 분석 ---------- */

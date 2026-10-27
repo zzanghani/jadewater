@@ -25,14 +25,25 @@ export async function GET(request: Request) {
   const since = addYmd(today, -3);
   const until = addYmd(today, -1);
   const camps = (await callNaver<{ nccCampaignId: string; status?: string }[]>(acct, "/ncc/campaigns")) ?? [];
-  const id = camps.find((c) => c.status !== "DELETED")?.nccCampaignId;
-  if (!id) return NextResponse.json({ error: "no campaign" });
+  const live = camps.filter((c) => c.status !== "DELETED");
+  if (!live.length) return NextResponse.json({ error: "no campaign" });
+  // 광고비가 있는 캠페인을 고른다
+  let id = live[0].nccCampaignId;
+  for (const c of live) {
+    const r = await callNaver<{ data?: { salesAmt?: number }[] }>(acct, "/stats", { id: c.nccCampaignId, fields: STAT_FIELDS, timeRange: JSON.stringify({ since, until }) }).catch(() => null);
+    if ((r?.data ?? []).some((x) => (x.salesAmt ?? 0) > 0)) {
+      id = c.nccCampaignId;
+      break;
+    }
+  }
   const out: Record<string, unknown> = {};
   const variants: Record<string, Record<string, string>> = {
     a_daily: { id, fields: STAT_FIELDS, timeRange: JSON.stringify({ since, until }), timeIncrement: "1" },
     b_daily_hh24: { id, fields: STAT_FIELDS, timeRange: JSON.stringify({ since, until }), timeIncrement: "1", breakdown: "hh24" },
     c_hh24_only: { id, fields: STAT_FIELDS, timeRange: JSON.stringify({ since, until }), breakdown: "hh24" },
     d_ids_hh24: { ids: id, fields: STAT_FIELDS, timeRange: JSON.stringify({ since, until }), breakdown: "hh24" },
+    e_allDays_hh24: { id, fields: STAT_FIELDS, timeRange: JSON.stringify({ since: until, until }), timeIncrement: "allDays", breakdown: "hh24" },
+    f_allDays_pcMbl: { id, fields: STAT_FIELDS, timeRange: JSON.stringify({ since: until, until }), timeIncrement: "allDays", breakdown: "pcMblTp" },
   };
   for (const [name, q] of Object.entries(variants)) {
     try {
