@@ -80,7 +80,7 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
       {needSync && <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-800">아직 쌓인 데이터가 없어요. &lsquo;최근 8주 동기화&rsquo;를 한 번 눌러 주세요 (30초쯤 걸려요).</p>}
 
       {/* 오늘 실시간 */}
-      <section className="rounded-2xl bg-gradient-to-br from-brand to-brand-dark p-4 text-white shadow-lg shadow-brand/25">
+      <section className="rounded-2xl bg-brand-dark p-4 text-white shadow-lg shadow-brand/25">
         <div className="flex items-baseline justify-between">
           <p className="text-sm text-white/85">오늘 실시간 · {x.today.date.slice(5).replace("-", "/")}</p>
           {x.today.lastPayAt && <p className="text-[11px] text-white/70">마지막 결제 {x.today.lastPayAt}</p>}

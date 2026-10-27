@@ -81,7 +81,7 @@ export default function LoanRepaymentTable({
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="rounded-2xl bg-gradient-to-br from-brand to-brand-dark p-4 text-white shadow-lg shadow-brand/25">
+      <section className="rounded-2xl bg-brand-dark p-4 text-white shadow-lg shadow-brand/25">
         <p className="text-sm text-white/85">전체 상환 진행</p>
         <p className="mt-1 text-2xl font-bold">{ratio(totalRepaid, totalPrincipal)}</p>
         <div className="mt-3 grid grid-cols-3 gap-2 text-xs">

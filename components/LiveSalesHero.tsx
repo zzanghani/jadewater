@@ -34,7 +34,7 @@ export default function LiveSalesHero({
     };
   }, [storeId]);
   return (
-    <Link href={`/store/${storeId}`} className="block rounded-2xl bg-gradient-to-br from-brand to-brand-dark p-5 text-white shadow-lg shadow-brand/25 transition-opacity active:opacity-90">
+    <Link href={`/store/${storeId}`} className="block rounded-2xl bg-brand-dark p-5 text-white shadow-lg shadow-brand/25 transition-opacity active:opacity-90">
       <div className="flex items-center justify-between text-sm text-white/80">
         <span>{live ? "오늘 매출 · 실시간" : "오늘 매출"}</span>
         <span>{todayLabel}</span>

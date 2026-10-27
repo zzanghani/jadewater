@@ -231,7 +231,7 @@ export default async function MonthlyAnalysisPage() {
         <p className="mt-1 text-xs text-muted">{thisMonth.label}</p>
       </div>
 
-      <section className="rounded-2xl bg-gradient-to-br from-brand to-brand-dark p-4 text-white shadow-lg shadow-brand/25">
+      <section className="rounded-2xl bg-brand-dark p-4 text-white shadow-lg shadow-brand/25">
         <p className="text-sm text-white/85">이번달 총매출</p>
         <p className="mt-1 text-2xl font-bold">{formatWon(thisMonthSales)}</p>
         <div className="mt-2 flex items-center justify-between border-t border-white/20 pt-2 text-sm">

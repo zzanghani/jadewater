@@ -867,7 +867,7 @@ function BigStatCard({
 }) {
   if (tone === "brand") {
     return (
-      <div className="rounded-2xl bg-gradient-to-br from-brand to-brand-dark p-4 text-white shadow-lg shadow-brand/25">
+      <div className="rounded-2xl bg-brand-dark p-4 text-white shadow-lg shadow-brand/25">
         <p className="text-sm text-white/85">{label}</p>
         <p className="mt-1 text-2xl font-bold">{formatWon(value)}</p>
       </div>
