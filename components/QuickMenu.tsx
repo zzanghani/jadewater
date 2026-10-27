@@ -99,7 +99,7 @@ export default function QuickMenu({
             href={href}
             className="relative flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-2 py-3 text-center transition-colors hover:border-brand"
           >
-            <span className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-brand-light text-brand">
+            <span className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-brand-light text-brand ring-1 ring-inset ring-black/20">
               <Icon />
               {href === "/accounts" && pendingAccountCount > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500" />
