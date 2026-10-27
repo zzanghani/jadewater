@@ -227,7 +227,7 @@ export default async function AnalysisPage() {
         <WeeklySalesChart data={chartData} />
       </section>
 
-      <section className="flex items-center justify-between rounded-2xl bg-gradient-to-br from-brand to-brand-dark p-4 text-white shadow-lg shadow-brand/25">
+      <section className="flex items-center justify-between rounded-2xl bg-brand-dark p-4 text-white shadow-lg shadow-brand/25">
         <span className="text-sm text-white/85">이번주 총 입고금액</span>
         <span className="text-lg font-bold">{formatWon(weeklyReceiptTotal)}</span>
       </section>
