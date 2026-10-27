@@ -45,12 +45,17 @@ export async function GET(request: Request) {
     e_allDays_hh24: { id, fields: STAT_FIELDS, timeRange: JSON.stringify({ since: until, until }), timeIncrement: "allDays", breakdown: "hh24" },
     f_allDays_pcMbl: { id, fields: STAT_FIELDS, timeRange: JSON.stringify({ since: until, until }), timeIncrement: "allDays", breakdown: "pcMblTp" },
   };
-  // 광고그룹 타겟(노출 시간) 모양: 캠페인별 광고그룹 목록 + 첫 그룹의 targets
+  // 광고그룹 타겟(노출 시간) 모양: 모든 캠페인의 모든 광고그룹 targets 요약 (시간 타겟 형식 확인용)
   try {
-    const groups = (await callNaver<{ nccAdgroupId: string; nccCampaignId: string; name: string; status?: string; userLock?: boolean; targets?: unknown[] }[]>(acct, "/ncc/adgroups", { nccCampaignId: id })) ?? [];
-    const g = groups.find((x) => x.status !== "DELETED");
-    const detail = g ? await callNaver<Record<string, unknown>>(acct, `/ncc/adgroups/${g.nccAdgroupId}`) : null;
-    out.g_adgroups = { count: groups.length, first: g ? { id: g.nccAdgroupId, name: g.name, status: g.status, userLock: g.userLock, targets: g.targets } : null, detailKeys: detail ? Object.keys(detail) : [], detailTargets: detail?.targets ?? null };
+    const all: unknown[] = [];
+    for (const c of live) {
+      const groups = (await callNaver<{ nccAdgroupId: string; name: string; status?: string; userLock?: boolean; targets?: { targetTp?: string; target?: unknown }[]; targetSummary?: unknown }[]>(acct, "/ncc/adgroups", { nccCampaignId: c.nccCampaignId })) ?? [];
+      for (const g of groups) {
+        const d = await callNaver<{ targets?: { targetTp?: string; target?: unknown }[]; targetSummary?: unknown }>(acct, `/ncc/adgroups/${g.nccAdgroupId}`).catch(() => null);
+        all.push({ campaign: c.nccCampaignId, id: g.nccAdgroupId, name: g.name, status: g.status, userLock: g.userLock, targetTps: (d?.targets ?? []).map((t) => t.targetTp), time: (d?.targets ?? []).find((t) => String(t.targetTp).includes("TIME"))?.target ?? null, targetSummary: d?.targetSummary ?? null });
+      }
+    }
+    out.g_adgroups = all;
   } catch (e) {
     out.g_adgroups = { error: (e as Error).message };
   }
