@@ -5,7 +5,7 @@ import { adReportAllowedFor } from "@/lib/adAccess";
 import { createServiceClient } from "@/lib/supabase/service";
 import { generateAdStrategy } from "@/lib/claude";
 import { addYmd, kstYmd, type SalesMap } from "@/lib/adReport";
-import { analyze, insightToPrompt, syncAdDaily, syncTossDaily, type AdInsight, type DailyRow } from "@/lib/adInsight";
+import { analyze, insightToPrompt, syncAdDaily, syncAdHourly, syncTossDaily, type AdInsight, type DailyRow } from "@/lib/adInsight";
 import { fetchTossClosing } from "@/lib/tossClosing";
 import { syncWeather } from "@/lib/weather";
 
@@ -64,6 +64,8 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = 
         const a1 = await syncAdDaily(service, storeId, acct, from, addYmd(mid, -1));
         const a2 = await syncAdDaily(service, storeId, acct, mid, today);
         synced.ad = a1 + a2;
+        // 시간대별은 최근 28일만 (호출 수 절약)
+        await syncAdHourly(service, storeId, acct, mid, today).catch(() => 0);
       } catch (e) {
         return { ok: false, error: `네이버 광고 성과를 못 읽었어요: ${(e as Error).message}` };
       }

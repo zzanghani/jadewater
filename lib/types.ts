@@ -957,6 +957,18 @@ export type Database = {
         Update: Partial<{ store_id: string; month: string; target: number; updated_by: string | null; updated_at: string }>
         Relationships: []
       }
+      ad_hourly_stats: {
+        Row: { store_id: string; date: string; hour: number; imp: number; clk: number; cost: number; conv: number; synced_at: string }
+        Insert: { store_id: string; date: string; hour: number; imp?: number; clk?: number; cost?: number; conv?: number; synced_at?: string }
+        Update: Partial<{ store_id: string; date: string; hour: number; imp: number; clk: number; cost: number; conv: number; synced_at: string }>
+        Relationships: []
+      }
+      toss_daily_items: {
+        Row: { store_id: string; date: string; name: string; category: string; qty: number; amount: number; orders: number; synced_at: string }
+        Insert: { store_id: string; date: string; name: string; category?: string; qty?: number; amount?: number; orders?: number; synced_at?: string }
+        Update: Partial<{ store_id: string; date: string; name: string; category: string; qty: number; amount: number; orders: number; synced_at: string }>
+        Relationships: []
+      }
       ad_store_settings: {
         Row: { store_id: string; cost_rate: number; updated_by: string | null; updated_at: string }
         Insert: { store_id: string; cost_rate?: number; updated_by?: string | null; updated_at?: string }
