@@ -14,12 +14,14 @@ type TossPayment = {
   externalDetails?: { source?: string };
 };
 type TossLineItem = {
+  title?: string;
+  name?: string;
   quantity?: number | string;
   diningOption?: string; // DELIVERY 등
   itemPrice?: { priceValue?: number | string };
   optionChoices?: { priceValue?: number | string; quantity?: number | string }[];
   appliedDiscounts?: { amount?: number | string }[];
-  item?: { category?: { title?: string } };
+  item?: { title?: string; name?: string; category?: { title?: string } };
 };
 type TossOrder = {
   orderState?: string;
@@ -58,6 +60,8 @@ export type TossClosing = {
   lastPayAt: string | null; // "21:40"
   /** 시간대별 승인 결제 합계 ("0"~"23", KST) — 마감 추정·시간대 분석용 */
   byHour: Record<string, number>;
+  /** 메뉴별 판매 (결제된 주문만, 배달 포함): 이름 → 카테고리·수량·실판매액·주문 수 */
+  items: Record<string, { category: string; qty: number; amount: number; orders: number }>;
   /** 오늘 열린 주문 중 아직 결제가 안 된 금액(테이블에 앉아 있는 손님) — 실시간 매출용 */
   open: { amount: number; orders: number };
   /** 결제 완료 + 미결제 = 지금까지의 매출 */
@@ -98,6 +102,7 @@ export async function fetchTossClosing(keys: TossKeys, merchantId: string, ymd: 
   let lastPayAt = 0;
   const open = { amount: 0, orders: 0 };
   const byHour: Record<string, number> = {};
+  const items: Record<string, { category: string; qty: number; amount: number; orders: number }> = {};
 
   for (const o of orders) {
     const ps = (o.payments ?? []).filter((p) => p && !seen.has(String(p.id)) && inDay(toMs(p.approvedAt)));
@@ -139,8 +144,14 @@ export async function fetchTossClosing(keys: TossKeys, merchantId: string, ymd: 
       const unit = N(li.itemPrice?.priceValue) + (li.optionChoices ?? []).reduce((s, c) => s + N(c.priceValue) * (N(c.quantity) || 1), 0);
       const gross = unit * (N(li.quantity) || 1);
       const ld = (li.appliedDiscounts ?? []).reduce((s, d) => s + N(d.amount), 0);
-      return { c: li.item?.category?.title || "(카테고리 없음)", gross, net: gross - ld, d: li.diningOption };
+      return { c: li.item?.category?.title || "(카테고리 없음)", n: li.item?.title || li.item?.name || li.title || li.name || "(이름 없음)", q: N(li.quantity) || 1, gross, net: gross - ld, d: li.diningOption };
     });
+    for (const l of lines) {
+      const it = (items[l.n] ??= { category: l.c, qty: 0, amount: 0, orders: 0 });
+      it.qty += l.q;
+      it.amount += l.net;
+      it.orders++;
+    }
     // 주문 전체 할인 중 상품에 안 붙은 몫은 금액 비율로 나눠 뺀다. 배달 메뉴는 매장 카테고리에서 뺀다.
     const sumNet = lines.reduce((s, l) => s + l.net, 0);
     const rest = dAmt - lines.reduce((s, l) => s + (l.gross - l.net), 0);
@@ -177,6 +188,7 @@ export async function fetchTossClosing(keys: TossKeys, merchantId: string, ymd: 
     categories: round(cat),
     lastPayAt: lastPayAt ? new Date(lastPayAt + 9 * 36e5).toISOString().slice(11, 16) : null,
     byHour: round(byHour),
+    items: Object.fromEntries(Object.entries(items).map(([k, v]) => [k, { ...v, amount: Math.round(v.amount) }])),
     open: { amount: Math.round(open.amount), orders: open.orders },
     live: Math.round(paid + open.amount),
   };

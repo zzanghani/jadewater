@@ -34,13 +34,15 @@ export async function syncTossDaily(
   merchantId: string,
   from: string,
   to: string,
-  { force = false } = {}
+  { force = false, maxDays = 35 } = {}
 ): Promise<number> {
   // 시간대(by_hour)가 아직 없는 옛 행은 다시 받아 채운다 (마감 추정에 필요).
   const { data: have } = await service.from("toss_daily_sales").select("date, by_hour").eq("store_id", storeId).gte("date", from).lte("date", to);
   const haveSet = new Set((have ?? []).filter((r) => r.by_hour != null).map((r) => r.date));
-  const days: string[] = [];
+  let days: string[] = [];
   for (let d = from; d <= to; d = addYmd(d, 1)) if (force || !haveSet.has(d) || d >= addYmd(to, -1)) days.push(d);
+  // 한 번에 너무 많으면(옛 자료 다시 받기) 최근 날짜부터 maxDays만 — 나머지는 다음 동기화·크론이 채운다
+  if (days.length > maxDays) days = days.slice(-maxDays);
   let n = 0;
   await pool(days, 3, async (d) => {
     const c = await fetchTossClosing(keys, merchantId, d);
@@ -61,6 +63,10 @@ export async function syncTossDaily(
       },
       { onConflict: "store_id,date" }
     );
+    // 메뉴별 판매도 같이 쌓는다 (그날 행은 통째로 갈아끼움)
+    const itemRows = Object.entries(c.items).map(([name, v]) => ({ store_id: storeId, date: d, name: name.slice(0, 120), category: v.category.slice(0, 60), qty: v.qty, amount: v.amount, orders: v.orders, synced_at: new Date().toISOString() }));
+    await service.from("toss_daily_items").delete().eq("store_id", storeId).eq("date", d);
+    if (itemRows.length) await service.from("toss_daily_items").upsert(itemRows, { onConflict: "store_id,date,name" });
     n++;
   });
   return n;
@@ -94,6 +100,45 @@ export async function syncAdDaily(service: Service, storeId: string, acct: Naver
   }
   if (rows.length) await service.from("ad_daily_stats").upsert(rows, { onConflict: "store_id,date" });
   return rows.length;
+}
+
+// 네이버: 시간대(hh24)별 성과. stats에 ids=캠페인들 + breakdown=hh24 로 하루씩 부르면
+// 캠페인마다 breakdowns[{name:"16시~17시", impCnt, clkCnt, salesAmt, ccnt}] 가 온다 (하루 1회 호출).
+export async function syncAdHourly(service: Service, storeId: string, acct: NaverAcct, from: string, to: string): Promise<number> {
+  const camps = ((await callNaver<{ nccCampaignId: string; status?: string }[]>(acct, "/ncc/campaigns")) ?? []).filter((c) => c.status !== "DELETED");
+  if (!camps.length) return 0;
+  type BRow = { id?: string; breakdowns?: { name?: string; impCnt?: number; clkCnt?: number; salesAmt?: number; ccnt?: number }[] };
+  const days: string[] = [];
+  for (let d = from; d <= to; d = addYmd(d, 1)) days.push(d);
+  const rows: { store_id: string; date: string; hour: number; imp: number; clk: number; cost: number; conv: number; synced_at: string }[] = [];
+  let ok = 0;
+  await pool(days, 3, async (d) => {
+    const r = await callNaver<{ data?: BRow[] }>(acct, "/stats", {
+      ids: camps.map((c) => c.nccCampaignId).join(","),
+      fields: STAT_FIELDS,
+      timeRange: JSON.stringify({ since: d, until: d }),
+      breakdown: "hh24",
+    }).catch(() => null);
+    if (!r) return;
+    ok++;
+    const byHour: Record<number, { imp: number; clk: number; cost: number; conv: number }> = {};
+    for (const row of r.data ?? [])
+      for (const b of row.breakdowns ?? []) {
+        const hour = Number(String(b.name ?? "").match(/^(\d{1,2})시/)?.[1]);
+        if (!Number.isFinite(hour) || hour < 0 || hour > 23) continue;
+        const x = (byHour[hour] ??= { imp: 0, clk: 0, cost: 0, conv: 0 });
+        x.imp += b.impCnt ?? 0;
+        x.clk += b.clkCnt ?? 0;
+        x.cost += b.salesAmt ?? 0;
+        x.conv += b.ccnt ?? 0;
+      }
+    for (let h = 0; h < 24; h++) {
+      const x = byHour[h] ?? { imp: 0, clk: 0, cost: 0, conv: 0 };
+      rows.push({ store_id: storeId, date: d, hour: h, imp: x.imp, clk: x.clk, cost: Math.round(x.cost), conv: x.conv, synced_at: new Date().toISOString() });
+    }
+  });
+  for (let i = 0; i < rows.length; i += 500) await service.from("ad_hourly_stats").upsert(rows.slice(i, i + 500), { onConflict: "store_id,date,hour" });
+  return ok;
 }
 
 /* ---------- 분석 ---------- */

@@ -5,12 +5,19 @@ import { adReportAllowedFor } from "@/lib/adAccess";
 import { createServiceClient } from "@/lib/supabase/service";
 import { generateAdStrategy } from "@/lib/claude";
 import { addYmd, kstYmd, type SalesMap } from "@/lib/adReport";
-import { analyze, insightToPrompt, syncAdDaily, syncTossDaily, type AdInsight, type DailyRow } from "@/lib/adInsight";
+import { analyze, insightToPrompt, syncAdDaily, syncAdHourly, syncTossDaily, type AdInsight, type DailyRow } from "@/lib/adInsight";
 import { fetchTossClosing } from "@/lib/tossClosing";
 import { syncWeather } from "@/lib/weather";
+import { syncSearchRanks } from "@/lib/searchRank";
 
+export type SearchInfo = {
+  terms: string[];
+  keywords: string[];
+  rows: { keyword: string; mapRank: number | null; blogHits: number; mapRankPrev: number | null; blogHitsPrev: number | null }[];
+  checkedAt: string | null;
+};
 export type InsightResult =
-  | { ok: true; insight: AdInsight; memo: string | null; memoAt: string | null; synced: { toss: number | null; ad: number | null; weather: number | null } }
+  | { ok: true; insight: AdInsight; memo: string | null; memoAt: string | null; synced: { toss: number | null; ad: number | null; weather: number | null }; search: SearchInfo }
   | { ok: false; error: string };
 
 type AuthResult =
@@ -64,6 +71,8 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = 
         const a1 = await syncAdDaily(service, storeId, acct, from, addYmd(mid, -1));
         const a2 = await syncAdDaily(service, storeId, acct, mid, today);
         synced.ad = a1 + a2;
+        // 시간대별은 최근 28일만 (호출 수 절약)
+        await syncAdHourly(service, storeId, acct, mid, today).catch(() => 0);
       } catch (e) {
         return { ok: false, error: `네이버 광고 성과를 못 읽었어요: ${(e as Error).message}` };
       }
@@ -79,7 +88,7 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = 
     synced.weather = await syncWeather(service, addYmd(today, -370), today).catch(() => null);
   }
 
-  const [{ data: tossRows }, { data: adRows }, { data: closings }, { data: memoRow }, { data: weatherRows }, { data: specialRows }, { data: setting }] = await Promise.all([
+  const [{ data: tossRows }, { data: adRows }, { data: closings }, { data: memoRow }, { data: weatherRows }, { data: specialRows }, { data: setting }, { data: searchSetting }, { data: rankRows }] = await Promise.all([
     service.from("toss_daily_sales").select("date, sales, orders").eq("store_id", storeId).gte("date", addYmd(today, -370)).lte("date", today),
     service.from("ad_daily_stats").select("date, imp, clk, cost, conv").eq("store_id", storeId).gte("date", from).lte("date", today),
     service.from("daily_closings").select("date, grand_total").eq("store_id", storeId).gte("date", addYmd(today, -370)).lte("date", today),
@@ -87,7 +96,24 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = 
     service.from("weather_daily").select("date, precip_mm").gte("date", addYmd(today, -370)).lte("date", today),
     service.from("ad_special_days").select("date, note").eq("store_id", storeId).gte("date", addYmd(today, -370)),
     service.from("ad_store_settings").select("cost_rate").eq("store_id", storeId).maybeSingle(),
+    service.from("store_search_settings").select("terms, keywords").eq("store_id", storeId).maybeSingle(),
+    service.from("search_rank_daily").select("date, keyword, map_rank, blog_hits, checked_at").eq("store_id", storeId).gte("date", addYmd(today, -8)).order("date", { ascending: false }),
   ]);
+  // 검색 노출: 가장 최근 확인값과 7일 전쯤 값
+  const latestDate = rankRows?.[0]?.date ?? null;
+  const latest = (rankRows ?? []).filter((r) => r.date === latestDate);
+  const prevDate = (rankRows ?? []).map((r) => r.date).find((d) => d <= addYmd(latestDate ?? today, -6)) ?? null;
+  const prev = (rankRows ?? []).filter((r) => r.date === prevDate);
+  const search: SearchInfo = {
+    terms: searchSetting?.terms ?? [],
+    keywords: searchSetting?.keywords ?? [],
+    rows: (searchSetting?.keywords ?? []).map((kw) => {
+      const a = latest.find((r) => r.keyword === kw);
+      const b = prev.find((r) => r.keyword === kw);
+      return { keyword: kw, mapRank: a?.map_rank ?? null, blogHits: a?.blog_hits ?? 0, mapRankPrev: b ? b.map_rank : null, blogHitsPrev: b ? b.blog_hits : null };
+    }),
+    checkedAt: latest[0]?.checked_at ?? null,
+  };
   const weather: Record<string, number> = {};
   for (const w of weatherRows ?? []) weather[w.date] = Number(w.precip_mm);
   const specials: Record<string, string> = {};
@@ -121,7 +147,7 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = 
 
   const insight = analyze({ storeId, storeName: store?.name ?? "매장", today, rows, yearSales, todayLive, adConnected: !!adAcct, weather, specials, costRate: setting ? Number(setting.cost_rate) : undefined });
   if (!adAcct) insight.findings.unshift({ sev: "info", text: "네이버 광고 계정이 아직 연결되지 않아 매출만 보여요. 키를 등록하면 광고비·ROAS가 채워져요." });
-  return { ok: true, insight, memo: memoRow?.memo ?? null, memoAt: memoRow?.generated_at ?? null, synced };
+  return { ok: true, insight, memo: memoRow?.memo ?? null, memoAt: memoRow?.generated_at ?? null, synced, search };
 }
 
 export async function generateStrategyMemo(storeId: string): Promise<{ ok: true; memo: string } | { ok: false; error: string }> {
@@ -131,7 +157,10 @@ export async function generateStrategyMemo(storeId: string): Promise<{ ok: true;
   if (!apiKey) return { ok: false, error: "AI 키가 설정되지 않았어요." };
   const r = await loadAdInsight(storeId);
   if (!r.ok) return r;
-  const memo = await generateAdStrategy(insightToPrompt(r.insight), apiKey);
+  const searchText = r.search.rows.length
+    ? `\n검색 노출(네이버): ${r.search.rows.map((x) => `${x.keyword} 지도 ${x.mapRank == null ? "상위5 밖" : x.mapRank + "위"}·블로그 상위30 중 우리 글 ${x.blogHits}개`).join(", ")}`
+    : "";
+  const memo = await generateAdStrategy(insightToPrompt(r.insight) + searchText, apiKey);
   if (!memo) return { ok: false, error: "AI 응답을 받지 못했어요. 잠시 후 다시 시도해 주세요." };
   const service = createServiceClient();
   await service.from("ad_insight_memos").upsert({ store_id: storeId, date: kstYmd(0), memo, generated_at: new Date().toISOString() }, { onConflict: "store_id,date" });
@@ -174,4 +203,33 @@ export async function removeSpecialDay(storeId: string, date: string): Promise<{
   const { error } = await createServiceClient().from("ad_special_days").delete().eq("store_id", storeId).eq("date", date);
   if (error) return { ok: false, error: error.message };
   return { ok: true };
+}
+
+/* ---------- 검색 노출 추적 설정 ---------- */
+export async function saveSearchSettings(storeId: string, termsText: string, keywordsText: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const auth = await authStore(storeId);
+  if (auth.error !== undefined) return { ok: false, error: auth.error };
+  const split = (t: string) => Array.from(new Set(t.split(/[,\n]/).map((x) => x.trim()).filter(Boolean)));
+  const terms = split(termsText).slice(0, 10);
+  const keywords = split(keywordsText).slice(0, 10);
+  if (!terms.length) return { ok: false, error: "매장 식별어를 하나 이상 넣어 주세요 (예: 제이드앤워터, 서울역점)." };
+  const {
+    data: { user },
+  } = await auth.supabase.auth.getUser();
+  const service = createServiceClient();
+  const { error } = await service.from("store_search_settings").upsert({ store_id: storeId, terms, keywords, updated_by: user?.id ?? null, updated_at: new Date().toISOString() }, { onConflict: "store_id" });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function checkSearchNow(storeId: string): Promise<{ ok: true; n: number } | { ok: false; error: string }> {
+  const auth = await authStore(storeId);
+  if (auth.error !== undefined) return { ok: false, error: auth.error };
+  try {
+    const n = await syncSearchRanks(createServiceClient(), kstYmd(0), storeId);
+    if (n === 0) return { ok: false, error: "확인할 키워드가 없거나 네이버 검색 키가 설정되지 않았어요." };
+    return { ok: true, n };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
 }

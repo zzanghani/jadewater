@@ -7,6 +7,7 @@ const TABS = [
   { href: "/monthly-analysis", label: "월간", title: "월간 분석" },
   { href: "/weekday-analysis", label: "요일별", title: "요일별 분석" },
   { href: "/cost", label: "코스트", title: "실시간 코스트" },
+  { href: "/sales/menu", label: "메뉴", title: "메뉴 판매·업셀링" },
 ] as const;
 
 // 주간·월간·요일별 분석과 실시간 코스트를 "매출 분석" 하나로 묶는 상단 탭.

@@ -4,8 +4,9 @@ export const maxDuration = 60;
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { addYmd, kstYmd } from "@/lib/adReport";
-import { syncAdDaily, syncTossDaily } from "@/lib/adInsight";
+import { syncAdDaily, syncAdHourly, syncTossDaily } from "@/lib/adInsight";
 import { syncWeather } from "@/lib/weather";
+import { syncSearchRanks } from "@/lib/searchRank";
 
 // Vercel Cron이 매일 23:50 KST(14:50 UTC)에 호출한다. 광고 계정이 연결된 매장마다
 // 최근 7일 네이버 성과와 토스 매출을 쌓아 둔다 (화면은 이 테이블을 읽는다).
@@ -26,11 +27,13 @@ export async function GET(request: Request) {
   const results: Record<string, string> = {};
   for (const a of accounts ?? []) {
     try {
-      const n = await syncAdDaily(service, a.store_id, { customerId: a.naver_customer_id, apiKey: a.naver_api_key, secretKey: a.naver_secret_key }, from, today);
+      const acct = { customerId: a.naver_customer_id, apiKey: a.naver_api_key, secretKey: a.naver_secret_key };
+      const n = await syncAdDaily(service, a.store_id, acct, from, today);
+      const hn = await syncAdHourly(service, a.store_id, acct, from, today).catch(() => 0);
       let t = 0;
       const m = merchantByStore.get(a.store_id);
       if (m && toss) t = await syncTossDaily(service, a.store_id, { accessKey: toss.access_key, secretKey: toss.access_secret }, m, from, today);
-      results[a.store_id] = `광고 ${n}일 · 토스 ${t}일`;
+      results[a.store_id] = `광고 ${n}일 · 시간대 ${hn}일 · 토스 ${t}일`;
     } catch (e) {
       results[a.store_id] = `실패: ${(e as Error).message}`;
     }
@@ -50,6 +53,11 @@ export async function GET(request: Request) {
     results.weather = `${await syncWeather(service, addYmd(today, -370), today)}일`;
   } catch (e) {
     results.weather = `실패: ${(e as Error).message}`;
+  }
+  try {
+    results.search = `${await syncSearchRanks(service, today)}개 키워드`;
+  } catch (e) {
+    results.search = `실패: ${(e as Error).message}`;
   }
   console.log("[ad-insight-sync]", results);
   return NextResponse.json({ ok: true, results });
