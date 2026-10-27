@@ -90,7 +90,7 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = 
     synced.weather = await syncWeather(service, addYmd(today, -370), today).catch(() => null);
   }
 
-  const [{ data: tossRows }, { data: adRows }, { data: closings }, { data: memoRow }, { data: weatherRows }, { data: specialRows }, { data: setting }, { data: searchSetting }, { data: rankRows }] = await Promise.all([
+  const [{ data: tossRows }, { data: adRows }, { data: closings }, { data: memoRow }, { data: weatherRows }, { data: specialRows }, { data: setting }, { data: searchSetting }, { data: rankRows }, { data: receipts }, { data: costClosings }] = await Promise.all([
     service.from("toss_daily_sales").select("date, sales, orders").eq("store_id", storeId).gte("date", addYmd(today, -370)).lte("date", today),
     service.from("ad_daily_stats").select("date, imp, clk, cost, conv").eq("store_id", storeId).gte("date", from).lte("date", today),
     service.from("daily_closings").select("date, grand_total").eq("store_id", storeId).gte("date", addYmd(today, -370)).lte("date", today),
@@ -100,7 +100,16 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = 
     service.from("ad_store_settings").select("cost_rate").eq("store_id", storeId).maybeSingle(),
     service.from("store_search_settings").select("terms, keywords, volumes").eq("store_id", storeId).maybeSingle(),
     service.from("search_rank_daily").select("date, keyword, map_rank, blog_hits, checked_at").eq("store_id", storeId).gte("date", addYmd(today, -8)).order("date", { ascending: false }),
+    service.from("receipts").select("amount, category").eq("store_id", storeId).gte("date", addYmd(today, -28)).lte("date", addYmd(today, -1)),
+    service.from("daily_closings").select("food_sales, beverage_sales, wine_sales, coupang_eats_sales, baemin_sales").eq("store_id", storeId).gte("date", addYmd(today, -28)).lte("date", addYmd(today, -1)),
   ]);
+  // 원가율 자동: 실시간 코스트와 같은 계산 (식재료+음료재료 입고 ÷ 음식+음료+주류+배달 매출, 최근 28일)
+  let autoCostRate: number | null = null;
+  {
+    const cost = (receipts ?? []).filter((r) => r.category === "식재료" || r.category === "음료재료").reduce((a, r) => a + r.amount, 0);
+    const sales = (costClosings ?? []).reduce((a, c) => a + c.food_sales + c.beverage_sales + c.wine_sales + c.coupang_eats_sales + c.baemin_sales, 0);
+    if (cost > 0 && sales > 0) autoCostRate = Math.min(0.9, cost / sales);
+  }
   // 검색 노출: 가장 최근 확인값과 7일 전쯤 값
   const latestDate = rankRows?.[0]?.date ?? null;
   const latest = (rankRows ?? []).filter((r) => r.date === latestDate);
@@ -148,7 +157,7 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = 
     }
   }
 
-  const insight = analyze({ storeId, storeName: store?.name ?? "매장", today, rows, yearSales, todayLive, adConnected: !!adAcct, weather, specials, costRate: setting ? Number(setting.cost_rate) : undefined });
+  const insight = analyze({ storeId, storeName: store?.name ?? "매장", today, rows, yearSales, todayLive, adConnected: !!adAcct, weather, specials, costRate: setting ? Number(setting.cost_rate) : undefined, autoCostRate });
   if (!adAcct) insight.findings.unshift({ sev: "info", text: "네이버 광고 계정이 아직 연결되지 않아 매출만 보여요. 키를 등록하면 광고비·ROAS가 채워져요." });
   return { ok: true, insight, memo: memoRow?.memo ?? null, memoAt: memoRow?.generated_at ?? null, synced, search };
 }
@@ -176,6 +185,12 @@ export async function saveCostRate(storeId: string, ratePct: number): Promise<{ 
   if (auth.error !== undefined) return { ok: false, error: auth.error };
   const rate = Number(ratePct) / 100;
   if (!isFinite(rate) || rate < 0 || rate >= 0.95) return { ok: false, error: "원가율은 0~94% 사이로 넣어 주세요." };
+  // 0이면 직접 입력을 지우고 앱 코스트 자동 계산으로 돌아간다
+  if (rate === 0) {
+    const { error } = await createServiceClient().from("ad_store_settings").delete().eq("store_id", storeId);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }
   const {
     data: { user },
   } = await auth.supabase.auth.getUser();

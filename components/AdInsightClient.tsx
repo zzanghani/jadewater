@@ -304,7 +304,7 @@ function BreakevenCard({ storeId, x, onSaved }: { storeId: string; x: AdInsight;
   }
   return (
     <section className="rounded-2xl border border-border bg-card p-4">
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <h2 className="text-sm font-bold">광고 손익분기</h2>
         <label className="flex items-center gap-1 text-[11px] text-muted">
           원가율
@@ -313,8 +313,18 @@ function BreakevenCard({ storeId, x, onSaved }: { storeId: string; x: AdInsight;
           <button type="button" onClick={save} disabled={saving || Number(rate) === Math.round(b.costRate * 100)} className="rounded-lg bg-brand px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-40">
             {saving ? "저장 중" : "저장"}
           </button>
+          {b.source === "manual" && (
+            <button type="button" onClick={() => { setRate("0"); startSave(async () => { const r = await saveCostRate(storeId, 0); if (!r.ok) setErr(r.error); else onSaved(); }); }} disabled={saving} className="rounded-lg border border-border px-2 py-1 text-[11px] disabled:opacity-40">
+              자동으로
+            </button>
+          )}
         </label>
       </div>
+      <p className="mb-2 text-[11px] text-muted">
+        {b.source === "auto" && <>원가율 {(b.costRate * 100).toFixed(1)}% = 앱의 실시간 코스트 자동 반영(최근 28일 식재료·음료 입고 ÷ 음식·음료·주류·배달 매출). 직접 넣으면 그 값이 우선해요.</>}
+        {b.source === "manual" && <>직접 입력한 원가율 {(b.costRate * 100).toFixed(0)}%{b.autoRate != null && ` (앱 코스트 자동 계산은 ${(b.autoRate * 100).toFixed(1)}%)`}. &lsquo;자동으로&rsquo;를 누르면 코스트 기준으로 돌아가요.</>}
+        {b.source === "default" && <>아직 입고·마감 자료가 적어 기본값 35%를 쓰고 있어요. 입고와 마감이 쌓이면 자동으로 바뀌어요.</>}
+      </p>
       {err && <p className="mb-2 text-xs text-red-600">{err}</p>}
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-xl bg-background px-3 py-2">
@@ -330,7 +340,7 @@ function BreakevenCard({ storeId, x, onSaved }: { storeId: string; x: AdInsight;
           <p className="text-[11px] text-muted">{b.weekProfit == null ? "" : `최근 7일 광고 뒤 남은 이익 ${won(b.weekProfit)}원`}</p>
         </div>
       </div>
-      <p className="mt-2 text-[10px] text-muted">원가율 = 재료비 등 매출에 비례해 나가는 비용 비율. 매출 1만원 중 {Math.round(b.costRate * 100)}%가 원가면 광고비 1만원은 매출 {won(b.neededPer10k)}원이 돼야 본전이에요.</p>
+      <p className="mt-2 text-[10px] text-muted">매출 1만원 중 {Math.round(b.costRate * 100)}%가 원가면 광고비 1만원은 매출 {won(b.neededPer10k)}원이 돼야 본전이에요.</p>
     </section>
   );
 }
