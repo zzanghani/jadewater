@@ -283,3 +283,34 @@ export async function setAdgroupSchedule(acct: NaverAcct, adgroupId: string, sch
     return attempt("name");
   }
 }
+
+/* ---------- 키워드 도구 (연관 키워드 + 월 검색량) ---------- */
+export type KeywordIdea = { keyword: string; pc: number; mobile: number; total: number; compIdx: string | null };
+const qc = (v: unknown) => {
+  // 네이버는 10 미만을 "< 10" 문자열로 준다
+  if (typeof v === "number") return v;
+  const s = String(v ?? "").trim();
+  if (s.startsWith("<")) return 5;
+  const n = Number(s.replace(/[^0-9]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+};
+/** hintKeywords(최대 5개)로 연관 키워드와 월 검색량을 받는다. */
+export async function keywordTool(acct: NaverAcct, hints: string[]): Promise<KeywordIdea[]> {
+  const out: KeywordIdea[] = [];
+  for (let i = 0; i < hints.length; i += 5) {
+    const r = await callNaver<{ keywordList?: { relKeyword?: string; monthlyPcQcCnt?: unknown; monthlyMobileQcCnt?: unknown; compIdx?: string }[] }>(acct, "/keywordstool", {
+      hintKeywords: hints.slice(i, i + 5).map((h) => h.replace(/\s+/g, "")).join(","),
+      showDetail: "1",
+    });
+    for (const k of r?.keywordList ?? []) {
+      if (!k.relKeyword) continue;
+      const pc = qc(k.monthlyPcQcCnt);
+      const mobile = qc(k.monthlyMobileQcCnt);
+      out.push({ keyword: k.relKeyword, pc, mobile, total: pc + mobile, compIdx: k.compIdx ?? null });
+    }
+  }
+  // 중복 제거, 검색량 큰 순
+  const seen = new Map<string, KeywordIdea>();
+  for (const k of out) if (!seen.has(k.keyword) || seen.get(k.keyword)!.total < k.total) seen.set(k.keyword, k);
+  return [...seen.values()].sort((a, b) => b.total - a.total);
+}

@@ -2,6 +2,7 @@
 // 지도(지역검색) 상위 5에 우리 가게가 몇 위인지, 블로그 상위 30에 우리 글이 몇 개인지 본다.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/types";
+import { keywordTool } from "@/lib/naverAds";
 
 const strip = (t: string) => t.replace(/<[^>]+>/g, "").replace(/&quot;|&amp;|&lt;|&gt;|&#39;/g, " ").replace(/\s+/g, "").toLowerCase();
 const norm = (t: string) => t.replace(/\s+/g, "").toLowerCase();
@@ -50,6 +51,21 @@ export async function syncSearchRanks(service: SupabaseClient<Database>, today: 
     }
     if (rows.length) await service.from("search_rank_daily").upsert(rows, { onConflict: "store_id,date,keyword" });
     n += rows.length;
+    // 월 검색량(네이버 키워드 도구) — 광고 계정이 있을 때만
+    try {
+      const { data: a } = await service.from("store_ad_accounts").select("naver_customer_id, naver_api_key, naver_secret_key").eq("store_id", s.store_id).eq("enabled", true).maybeSingle();
+      if (a) {
+        const ideas = await keywordTool({ customerId: a.naver_customer_id, apiKey: a.naver_api_key, secretKey: a.naver_secret_key }, kws);
+        const volumes: Record<string, number> = {};
+        for (const kw of kws) {
+          const hit = ideas.find((i) => norm(i.keyword) === norm(kw));
+          if (hit) volumes[kw] = hit.total;
+        }
+        await service.from("store_search_settings").update({ volumes }).eq("store_id", s.store_id);
+      }
+    } catch {
+      // 검색량은 없어도 순위는 저장됨
+    }
   }
   return n;
 }

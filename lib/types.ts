@@ -970,9 +970,9 @@ export type Database = {
         Relationships: []
       }
       store_search_settings: {
-        Row: { store_id: string; terms: string[]; keywords: string[]; updated_by: string | null; updated_at: string }
-        Insert: { store_id: string; terms?: string[]; keywords?: string[]; updated_by?: string | null; updated_at?: string }
-        Update: Partial<{ store_id: string; terms: string[]; keywords: string[]; updated_by: string | null; updated_at: string }>
+        Row: { store_id: string; terms: string[]; keywords: string[]; volumes: Record<string, number>; updated_by: string | null; updated_at: string }
+        Insert: { store_id: string; terms?: string[]; keywords?: string[]; volumes?: Record<string, number>; updated_by?: string | null; updated_at?: string }
+        Update: Partial<{ store_id: string; terms: string[]; keywords: string[]; volumes: Record<string, number>; updated_by: string | null; updated_at: string }>
         Relationships: []
       }
       search_rank_daily: {

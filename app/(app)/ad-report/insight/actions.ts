@@ -9,12 +9,14 @@ import { analyze, insightToPrompt, syncAdDaily, syncAdHourly, syncTossDaily, typ
 import { fetchTossClosing } from "@/lib/tossClosing";
 import { syncWeather } from "@/lib/weather";
 import { syncSearchRanks } from "@/lib/searchRank";
+import { keywordTool, type KeywordIdea } from "@/lib/naverAds";
 
 export type SearchInfo = {
   terms: string[];
   keywords: string[];
-  rows: { keyword: string; mapRank: number | null; blogHits: number; mapRankPrev: number | null; blogHitsPrev: number | null }[];
+  rows: { keyword: string; volume: number | null; mapRank: number | null; blogHits: number; mapRankPrev: number | null; blogHitsPrev: number | null }[];
   checkedAt: string | null;
+  adConnected: boolean;
 };
 export type InsightResult =
   | { ok: true; insight: AdInsight; memo: string | null; memoAt: string | null; synced: { toss: number | null; ad: number | null; weather: number | null }; search: SearchInfo }
@@ -96,7 +98,7 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = 
     service.from("weather_daily").select("date, precip_mm").gte("date", addYmd(today, -370)).lte("date", today),
     service.from("ad_special_days").select("date, note").eq("store_id", storeId).gte("date", addYmd(today, -370)),
     service.from("ad_store_settings").select("cost_rate").eq("store_id", storeId).maybeSingle(),
-    service.from("store_search_settings").select("terms, keywords").eq("store_id", storeId).maybeSingle(),
+    service.from("store_search_settings").select("terms, keywords, volumes").eq("store_id", storeId).maybeSingle(),
     service.from("search_rank_daily").select("date, keyword, map_rank, blog_hits, checked_at").eq("store_id", storeId).gte("date", addYmd(today, -8)).order("date", { ascending: false }),
   ]);
   // 검색 노출: 가장 최근 확인값과 7일 전쯤 값
@@ -110,9 +112,10 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = 
     rows: (searchSetting?.keywords ?? []).map((kw) => {
       const a = latest.find((r) => r.keyword === kw);
       const b = prev.find((r) => r.keyword === kw);
-      return { keyword: kw, mapRank: a?.map_rank ?? null, blogHits: a?.blog_hits ?? 0, mapRankPrev: b ? b.map_rank : null, blogHitsPrev: b ? b.blog_hits : null };
+      return { keyword: kw, volume: (searchSetting?.volumes as Record<string, number> | null)?.[kw] ?? null, mapRank: a?.map_rank ?? null, blogHits: a?.blog_hits ?? 0, mapRankPrev: b ? b.map_rank : null, blogHitsPrev: b ? b.blog_hits : null };
     }),
     checkedAt: latest[0]?.checked_at ?? null,
+    adConnected: !!adAcct,
   };
   const weather: Record<string, number> = {};
   for (const w of weatherRows ?? []) weather[w.date] = Number(w.precip_mm);
@@ -158,7 +161,7 @@ export async function generateStrategyMemo(storeId: string): Promise<{ ok: true;
   const r = await loadAdInsight(storeId);
   if (!r.ok) return r;
   const searchText = r.search.rows.length
-    ? `\n검색 노출(네이버): ${r.search.rows.map((x) => `${x.keyword} 지도 ${x.mapRank == null ? "상위5 밖" : x.mapRank + "위"}·블로그 상위30 중 우리 글 ${x.blogHits}개`).join(", ")}`
+    ? `\n검색 노출(네이버): ${r.search.rows.map((x) => `${x.keyword}(월 검색 ${x.volume == null ? "?" : x.volume.toLocaleString("ko-KR")}) 지도 ${x.mapRank == null ? "상위5 밖" : x.mapRank + "위"}·블로그 상위30 중 우리 글 ${x.blogHits}개`).join(", ")}`
     : "";
   const memo = await generateAdStrategy(insightToPrompt(r.insight) + searchText, apiKey);
   if (!memo) return { ok: false, error: "AI 응답을 받지 못했어요. 잠시 후 다시 시도해 주세요." };
@@ -231,5 +234,21 @@ export async function checkSearchNow(storeId: string): Promise<{ ok: true; n: nu
     return { ok: true, n };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
+  }
+}
+
+/** 연관 키워드 + 월 검색량 (네이버 키워드 도구). 광고 계정이 연결된 매장만. */
+export async function findKeywords(storeId: string, hint: string): Promise<{ ok: true; ideas: KeywordIdea[] } | { ok: false; error: string }> {
+  const auth = await authStore(storeId);
+  if (auth.error !== undefined) return { ok: false, error: auth.error };
+  const h = hint.trim();
+  if (!h) return { ok: false, error: "찾을 말을 넣어 주세요 (예: 서울역 맛집)." };
+  const { data: a } = await createServiceClient().from("store_ad_accounts").select("naver_customer_id, naver_api_key, naver_secret_key").eq("store_id", storeId).eq("enabled", true).maybeSingle();
+  if (!a) return { ok: false, error: "네이버 광고 계정이 연결된 매장만 키워드 도구를 쓸 수 있어요." };
+  try {
+    const ideas = await keywordTool({ customerId: a.naver_customer_id, apiKey: a.naver_api_key, secretKey: a.naver_secret_key }, h.split(/[,\s]+/).filter(Boolean).slice(0, 5));
+    return { ok: true, ideas: ideas.slice(0, 40) };
+  } catch (e) {
+    return { ok: false, error: `네이버 키워드 도구 오류: ${(e as Error).message}` };
   }
 }

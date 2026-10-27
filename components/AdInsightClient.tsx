@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import { addSpecialDay, checkSearchNow, generateStrategyMemo, loadAdInsight, removeSpecialDay, saveCostRate, saveSearchSettings, type InsightResult, type SearchInfo } from "@/app/(app)/ad-report/insight/actions";
+import { addSpecialDay, checkSearchNow, findKeywords, generateStrategyMemo, loadAdInsight, removeSpecialDay, saveCostRate, saveSearchSettings, type InsightResult, type SearchInfo } from "@/app/(app)/ad-report/insight/actions";
+import type { KeywordIdea } from "@/lib/naverAds";
 import { won, type AdInsight, type PeriodStat } from "@/lib/adInsight";
 import { pctDelta } from "@/lib/adReport";
 import AdInsightChart from "@/components/AdInsightChart";
@@ -451,6 +452,7 @@ function SearchRank({ storeId, search, onChanged }: { storeId: string; search: S
             <span className="text-[11px] text-muted">추적 키워드 (최대 10개 · 쉼표로 구분)</span>
             <input value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="예: 서울역 맛집, 서울역 브런치, 서울역 파스타" className="rounded-lg border border-border bg-card px-2 py-1.5 text-foreground" />
           </label>
+          {search.adConnected && <KeywordFinder storeId={storeId} onPick={(kw) => setKeywords((k) => (k.split(/[,\n]/).map((x) => x.trim()).filter(Boolean).includes(kw) ? k : k.trim() ? `${k.trim()}, ${kw}` : kw))} />}
           <div className="flex gap-1.5">
             <button type="button" onClick={() => save(true)} disabled={busy} className="rounded-lg bg-brand px-3 py-1.5 font-semibold text-white disabled:opacity-50">
               {busy ? "확인 중…" : "저장하고 지금 확인"}
@@ -468,8 +470,9 @@ function SearchRank({ storeId, search, onChanged }: { storeId: string; search: S
             <thead>
               <tr className="text-left text-[11px] text-muted">
                 <th className="pb-1 font-medium">키워드</th>
+                <th className="pb-1 text-right font-medium">월 검색</th>
                 <th className="pb-1 text-right font-medium">지도 상위5</th>
-                <th className="pb-1 text-right font-medium">블로그 상위30 우리 글</th>
+                <th className="pb-1 text-right font-medium">블로그 우리 글</th>
               </tr>
             </thead>
             <tbody>
@@ -479,6 +482,7 @@ function SearchRank({ storeId, search, onChanged }: { storeId: string; search: S
                 return (
                   <tr key={r.keyword} className="border-t border-border">
                     <td className="py-1.5 font-semibold">{r.keyword}</td>
+                    <td className="py-1.5 text-right text-muted">{r.volume == null ? "-" : r.volume.toLocaleString("ko-KR")}</td>
                     <td className={`py-1.5 text-right ${r.mapRank == null ? "text-red-600" : "text-green-700"}`}>
                       {rankTxt(r.mapRank)}
                       {dm && <span className={`ml-1 text-[10px] ${dm.c}`}>{dm.t}</span>}
@@ -492,12 +496,56 @@ function SearchRank({ storeId, search, onChanged }: { storeId: string; search: S
             </tbody>
           </table>
           <p className="mt-1.5 text-[10px] text-muted">
-            {search.checkedAt ? `${new Date(search.checkedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 확인` : "아직 확인 전 — &lsquo;지금 확인&rsquo;을 눌러 주세요"} · 화살표는 일주일 전 대비. 지도 &lsquo;밖&rsquo; = 상위 5에 없음 → 플레이스 광고 유지 + 영수증 리뷰 늘리기. 블로그 0개 → 체험단 글 제목에 그 키워드 넣기.
+            {search.checkedAt ? `${new Date(search.checkedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 확인` : "아직 확인 전 — &lsquo;지금 확인&rsquo;을 눌러 주세요"} · 화살표는 일주일 전 대비. 월 검색은 PC+모바일(네이버 키워드 도구). 검색 큰데 지도 &lsquo;밖&rsquo; = 플레이스 광고 유지 + 영수증 리뷰 늘리기. 블로그 0개 → 체험단 글 제목에 그 키워드 넣기.
           </p>
         </>
       ) : (
         <p className="text-xs text-muted">추적할 키워드를 넣어 주세요. 손님이 실제로 검색할 법한 말(동네+맛집, 동네+메뉴)이 좋아요.</p>
       )}
     </section>
+  );
+}
+
+// 연관 키워드 찾기: 동네·메뉴 같은 말을 넣으면 네이버 키워드 도구에서 후보와 월 검색량을 받아 추적 목록에 바로 넣는다.
+function KeywordFinder({ storeId, onPick }: { storeId: string; onPick: (kw: string) => void }) {
+  const [hint, setHint] = useState("");
+  const [ideas, setIdeas] = useState<KeywordIdea[] | null>(null);
+  const [busy, startBusy] = useTransition();
+  const [err, setErr] = useState<string | null>(null);
+  function find() {
+    setErr(null);
+    startBusy(async () => {
+      const r = await findKeywords(storeId, hint);
+      if (!r.ok) setErr(r.error);
+      else setIdeas(r.ideas);
+    });
+  }
+  return (
+    <div className="rounded-lg border border-dashed border-border p-2">
+      <p className="mb-1 text-[11px] text-muted">연관 키워드 찾기 — 동네나 메뉴를 넣으면 손님이 실제로 검색하는 말과 월 검색량이 나와요</p>
+      <div className="flex gap-1.5">
+        <input value={hint} onChange={(e) => setHint(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), find())} placeholder="예: 서울역 맛집" className="min-w-0 flex-1 rounded-lg border border-border bg-card px-2 py-1.5 text-foreground" />
+        <button type="button" onClick={find} disabled={busy || !hint.trim()} className="rounded-lg bg-brand px-3 py-1.5 font-semibold text-white disabled:opacity-40">
+          {busy ? "찾는 중…" : "찾기"}
+        </button>
+      </div>
+      {err && <p className="mt-1 text-[11px] text-red-600">{err}</p>}
+      {ideas && (
+        <ul className="mt-2 flex max-h-56 flex-col gap-1 overflow-y-auto">
+          {ideas.map((i) => (
+            <li key={i.keyword} className="flex items-center justify-between gap-2 rounded-md bg-card px-2 py-1">
+              <span>
+                <span className="font-semibold">{i.keyword}</span>
+                <span className="ml-1.5 text-[11px] text-muted">월 {i.total.toLocaleString("ko-KR")}{i.compIdx && ` · 경쟁 ${i.compIdx === "높음" ? "높음" : i.compIdx === "중간" ? "중간" : i.compIdx === "낮음" ? "낮음" : i.compIdx}`}</span>
+              </span>
+              <button type="button" onClick={() => onPick(i.keyword)} className="shrink-0 rounded-md border border-brand px-2 py-0.5 text-[11px] font-semibold text-brand">
+                + 추적
+              </button>
+            </li>
+          ))}
+          {ideas.length === 0 && <li className="text-[11px] text-muted">결과가 없어요. 다른 말로 찾아 보세요.</li>}
+        </ul>
+      )}
+    </div>
   );
 }
