@@ -45,6 +45,15 @@ export async function GET(request: Request) {
     e_allDays_hh24: { id, fields: STAT_FIELDS, timeRange: JSON.stringify({ since: until, until }), timeIncrement: "allDays", breakdown: "hh24" },
     f_allDays_pcMbl: { id, fields: STAT_FIELDS, timeRange: JSON.stringify({ since: until, until }), timeIncrement: "allDays", breakdown: "pcMblTp" },
   };
+  // 광고그룹 타겟(노출 시간) 모양: 캠페인별 광고그룹 목록 + 첫 그룹의 targets
+  try {
+    const groups = (await callNaver<{ nccAdgroupId: string; nccCampaignId: string; name: string; status?: string; userLock?: boolean; targets?: unknown[] }[]>(acct, "/ncc/adgroups", { nccCampaignId: id })) ?? [];
+    const g = groups.find((x) => x.status !== "DELETED");
+    const detail = g ? await callNaver<Record<string, unknown>>(acct, `/ncc/adgroups/${g.nccAdgroupId}`) : null;
+    out.g_adgroups = { count: groups.length, first: g ? { id: g.nccAdgroupId, name: g.name, status: g.status, userLock: g.userLock, targets: g.targets } : null, detailKeys: detail ? Object.keys(detail) : [], detailTargets: detail?.targets ?? null };
+  } catch (e) {
+    out.g_adgroups = { error: (e as Error).message };
+  }
   for (const [name, q] of Object.entries(variants)) {
     try {
       const r = (await callNaver<{ data?: Record<string, unknown>[] }>(acct, "/stats", q)) ?? {};
