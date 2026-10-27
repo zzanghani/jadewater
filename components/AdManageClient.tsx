@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { loadCampaigns, setBudget, toggleCampaign, type CampaignRow, type ChangeRow, type ManageResult } from "@/app/(app)/ad-report/manage/actions";
+import { loadCampaigns, setBudget, setSchedule, toggleCampaign, type CampaignRow, type ChangeRow, type ManageResult } from "@/app/(app)/ad-report/manage/actions";
 import { won } from "@/lib/adInsight";
+import AdScheduleGrid, { allOn, hoursOnly, scheduleEquals, scheduleSummary, type WeekSchedule } from "@/components/AdScheduleGrid";
 
 const EFFECT = {
   pending: "bg-gray-100 text-gray-600",
@@ -74,7 +75,7 @@ export default function AdManageClient({ storeId }: { storeId: string }) {
       <section className="flex flex-col gap-2">
         {res.campaigns.length === 0 && <p className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">캠페인이 없어요.</p>}
         {res.campaigns.map((c) => (
-          <CampaignCard key={c.id} c={c} storeId={storeId} busy={loading} onToggle={() => onToggle(c)} onSaved={reload} onError={setErr} />
+          <CampaignCard key={c.id} c={c} storeId={storeId} busy={loading} onToggle={() => onToggle(c)} onSaved={reload} onError={setErr} suggest={res.suggest} />
         ))}
       </section>
 
@@ -95,7 +96,7 @@ export default function AdManageClient({ storeId }: { storeId: string }) {
   );
 }
 
-function CampaignCard({ c, storeId, busy, onToggle, onSaved, onError }: { c: CampaignRow; storeId: string; busy: boolean; onToggle: () => void; onSaved: () => void; onError: (e: string | null) => void }) {
+function CampaignCard({ c, storeId, busy, onToggle, onSaved, onError, suggest }: { c: CampaignRow; storeId: string; busy: boolean; onToggle: () => void; onSaved: () => void; onError: (e: string | null) => void; suggest: { open: number[]; focus: number[] } }) {
   const [budget, setBudgetInput] = useState(String(c.dailyBudget));
   const [saving, startSave] = useTransition();
   const changed = Number(budget) !== c.dailyBudget;
@@ -168,6 +169,78 @@ function CampaignCard({ c, storeId, busy, onToggle, onSaved, onError }: { c: Cam
         </button>
         {c.dailyBudget === 0 && <span className="text-[10px] text-muted">0 = 제한 없음</span>}
       </div>
+      {c.groups.length > 0 && (
+        <div className="mt-2 flex flex-col gap-1.5">
+          {c.groups.map((g) => (
+            <ScheduleBlock key={g.id} storeId={storeId} group={g} single={c.groups.length === 1} suggest={suggest} busy={busy} onSaved={onSaved} onError={onError} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 광고그룹 노출 시간: 요약 한 줄 + '수정'을 누르면 요일×시간 격자와 프리셋.
+function ScheduleBlock({ storeId, group, single, suggest, busy, onSaved, onError }: { storeId: string; group: CampaignRow["groups"][number]; single: boolean; suggest: { open: number[]; focus: number[] }; busy: boolean; onSaved: () => void; onError: (e: string | null) => void }) {
+  const [edit, setEdit] = useState(false);
+  const base = group.schedule ?? allOn();
+  const [draft, setDraft] = useState<WeekSchedule>(base);
+  const [saving, startSave] = useTransition();
+  const changed = !scheduleEquals(draft, base);
+  const hours = Array.from({ length: 24 }, (_, h) => h);
+  function save() {
+    const beforeText = scheduleSummary(base);
+    const afterText = scheduleSummary(draft);
+    if (!window.confirm(`'${group.name}' 노출 시간을 바꿀까요?\n${beforeText} → ${afterText}\n저장하면 네이버에 바로 적용돼요.`)) return;
+    onError(null);
+    startSave(async () => {
+      const isAll = Object.values(draft).every((h) => h.length === 24);
+      const r = await setSchedule(storeId, group.id, group.name, isAll ? null : draft, beforeText, afterText);
+      if (!r.ok) onError(r.error);
+      else {
+        setEdit(false);
+        onSaved();
+      }
+    });
+  }
+  const preset = (label: string, hs: number[]) =>
+    hs.length ? (
+      <button key={label} type="button" onClick={() => setDraft(hoursOnly(hs))} className="rounded-lg border border-border px-2 py-1 text-[11px]">
+        {label} {hs[0]}~{hs[hs.length - 1] + 1}시
+      </button>
+    ) : null;
+  return (
+    <div className="rounded-xl bg-background px-3 py-2 text-xs">
+      <div className="flex items-center justify-between gap-2">
+        <p className="min-w-0 truncate">
+          <span className="text-muted">노출 시간{!single && ` · ${group.name}`}</span> <span className="font-semibold">{scheduleSummary(base)}</span>
+          {!group.on && <span className="ml-1 rounded bg-gray-100 px-1 text-[9px] text-gray-500">그룹 꺼짐</span>}
+        </p>
+        <button type="button" onClick={() => { setDraft(base); setEdit(!edit); }} className="shrink-0 text-[11px] font-semibold text-brand">
+          {edit ? "닫기" : "수정"}
+        </button>
+      </div>
+      {edit && (
+        <div className="mt-2 flex flex-col gap-2">
+          <div className="flex flex-wrap gap-1.5">
+            <button type="button" onClick={() => setDraft(allOn())} className="rounded-lg border border-border px-2 py-1 text-[11px]">항상</button>
+            {preset("영업시간", suggest.open)}
+            {preset("추천 집중", suggest.focus)}
+            {preset("점심 앞", [10, 11, 12, 13])}
+            {preset("저녁 앞", [16, 17, 18, 19])}
+          </div>
+          <AdScheduleGrid value={draft} onChange={setDraft} hours={hours} />
+          <p className="text-[10px] text-muted">파란 칸 = 광고 나가는 시간. 요일 글자를 누르면 그 줄 전체, 시간 숫자를 누르면 그 열 전체가 바뀌어요. 지금: {scheduleSummary(draft)}</p>
+          <div className="flex gap-1.5">
+            <button type="button" onClick={save} disabled={saving || busy || !changed} className="rounded-lg bg-brand px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-40">
+              {saving ? "적용 중…" : "네이버에 적용"}
+            </button>
+            <button type="button" onClick={() => setDraft(base)} disabled={!changed} className="rounded-lg border border-border px-3 py-1.5 text-[11px] disabled:opacity-40">
+              원래대로
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
