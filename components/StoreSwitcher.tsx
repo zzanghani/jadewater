@@ -36,7 +36,8 @@ export default function StoreSwitcher({
     // 광고 효율 분석: 마스터는 매장을 바꿔가며 본다.
     pathname.startsWith("/ad-report/insight") ||
     pathname.startsWith("/ad-report/manage") ||
-    pathname.startsWith("/ad-report/hours");
+    pathname.startsWith("/ad-report/hours") ||
+    pathname.startsWith("/ad-report/search");
   if (stores.length > 1 && !showsStoreSwitcher) {
     return null;
   }

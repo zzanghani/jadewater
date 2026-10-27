@@ -283,3 +283,68 @@ export async function setAdgroupSchedule(acct: NaverAcct, adgroupId: string, sch
     return attempt("name");
   }
 }
+
+/* ---------- 키워드 도구 (연관 키워드 + 월 검색량) ---------- */
+export type KeywordIdea = { keyword: string; pc: number; mobile: number; total: number; compIdx: string | null };
+const qc = (v: unknown) => {
+  // 네이버는 10 미만을 "< 10" 문자열로 준다
+  if (typeof v === "number") return v;
+  const s = String(v ?? "").trim();
+  if (s.startsWith("<")) return 5;
+  const n = Number(s.replace(/[^0-9]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+};
+/** hintKeywords(최대 5개)로 연관 키워드와 월 검색량을 받는다. */
+export async function keywordTool(acct: NaverAcct, hints: string[]): Promise<KeywordIdea[]> {
+  const out: KeywordIdea[] = [];
+  for (let i = 0; i < hints.length; i += 5) {
+    const r = await callNaver<{ keywordList?: { relKeyword?: string; monthlyPcQcCnt?: unknown; monthlyMobileQcCnt?: unknown; compIdx?: string }[] }>(acct, "/keywordstool", {
+      hintKeywords: hints.slice(i, i + 5).map((h) => h.replace(/\s+/g, "")).join(","),
+      showDetail: "1",
+    });
+    for (const k of r?.keywordList ?? []) {
+      if (!k.relKeyword) continue;
+      const pc = qc(k.monthlyPcQcCnt);
+      const mobile = qc(k.monthlyMobileQcCnt);
+      out.push({ keyword: k.relKeyword, pc, mobile, total: pc + mobile, compIdx: k.compIdx ?? null });
+    }
+  }
+  // 중복 제거, 검색량 큰 순. 넣은 말 자체는 맨 위에 둔다.
+  const seen = new Map<string, KeywordIdea>();
+  for (const k of out) if (!seen.has(k.keyword) || seen.get(k.keyword)!.total < k.total) seen.set(k.keyword, k);
+  const hintSet = new Set(hints.map((h) => h.replace(/\s+/g, "").toLowerCase()));
+  const isHint = (k: KeywordIdea) => hintSet.has(k.keyword.replace(/\s+/g, "").toLowerCase());
+  return [...seen.values()].sort((a, b) => Number(isHint(b)) - Number(isHint(a)) || b.total - a.total);
+}
+
+/* ---------- 광고 키워드 (파워링크 광고그룹에 등록된 입찰 키워드) ---------- */
+export type NaverKeyword = {
+  nccKeywordId: string;
+  nccAdgroupId: string;
+  keyword: string;
+  bidAmt?: number;
+  useGroupBidAmt?: boolean;
+  userLock?: boolean;
+  status?: string;
+  statusReason?: string;
+};
+export const normKeyword = (k: string) => k.replace(/\s+/g, "").toLowerCase();
+
+export async function listKeywords(acct: NaverAcct, adgroupId: string): Promise<NaverKeyword[]> {
+  const rows = (await callNaver<NaverKeyword[]>(acct, "/ncc/keywords", { nccAdgroupId: adgroupId })) ?? [];
+  return rows.filter((k) => k.status !== "DELETED");
+}
+
+/** 키워드 추가 (그룹 입찰가 사용). 네이버는 띄어쓰기 없는 형태로 저장한다. */
+export async function addKeywords(acct: NaverAcct, adgroupId: string, keywords: string[]): Promise<NaverKeyword[]> {
+  const body = keywords.map((k) => ({ keyword: k.replace(/\s+/g, ""), useGroupBidAmt: true, userLock: false }));
+  return callNaverWrite<NaverKeyword[]>(acct, "POST", "/ncc/keywords", body, { nccAdgroupId: adgroupId });
+}
+
+export async function setKeywordLock(acct: NaverAcct, keywordId: string, lock: boolean): Promise<NaverKeyword> {
+  return callNaverWrite<NaverKeyword>(acct, "PUT", `/ncc/keywords/${keywordId}`, { nccKeywordId: keywordId, userLock: lock }, { fields: "userLock" });
+}
+
+export async function deleteKeywords(acct: NaverAcct, keywordIds: string[]): Promise<void> {
+  await callNaverWrite<unknown>(acct, "DELETE", "/ncc/keywords", null, { ids: keywordIds.join(",") });
+}

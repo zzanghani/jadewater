@@ -180,6 +180,9 @@ export type AdInsight = {
   /** 광고 손익분기 (원가율 기준) */
   breakeven: {
     costRate: number;
+    /** auto = 앱 코스트(입고÷매출, 최근 28일)에서 자동, manual = 직접 입력 */
+    source: "auto" | "manual" | "default";
+    autoRate: number | null;
     minRoas: number; // 광고비가 이익을 못 넘기는 선 = 100 ÷ (1 − 원가율)
     neededPer10k: number; // 광고비 1만원 늘릴 때 필요한 매출
     weekProfit: number | null; // 최근 7일: 매출×(1−원가율) − 광고비 … 광고가 남긴 이익(광고비까지 뺀 뒤)
@@ -224,13 +227,15 @@ export function analyze(input: {
   adConnected: boolean;
   weather?: Record<string, number>; // 'YYYY-MM-DD' → 강수량 mm
   specials?: Record<string, string>; // 'YYYY-MM-DD' → 특이일 메모
-  costRate?: number;
+  costRate?: number; // 직접 입력한 원가율 (있으면 우선)
+  autoCostRate?: number | null; // 앱 코스트에서 계산한 원가율
 }): AdInsight {
   const { today } = input;
   const weather = input.weather ?? {};
   const specials = input.specials ?? {};
   const hasWeather = Object.keys(weather).length > 0;
-  const costRate = input.costRate ?? 0.35;
+  const source: AdInsight["breakeven"]["source"] = input.costRate != null ? "manual" : input.autoCostRate != null ? "auto" : "default";
+  const costRate = input.costRate ?? input.autoCostRate ?? 0.35;
   // 비교에서 뺄 날: 큰비·공휴일·특이일
   const excluded = (d: string) => HOLIDAYS.has(d) || specials[d] != null || (weather[d] ?? 0) >= HEAVY_RAIN_MM;
   const byDate = new Map(input.rows.map((r) => [r.date, r]));
@@ -377,7 +382,7 @@ export function analyze(input: {
       .filter(([d]) => d >= addYmd(today, -60))
       .sort((a, b) => (a[0] < b[0] ? 1 : -1))
       .map(([date, note]) => ({ date, note })),
-    breakeven: { costRate, minRoas, neededPer10k, weekProfit: W.salesDays > 0 ? Math.round(W.sales * (1 - costRate) - W.cost) : null },
+    breakeven: { costRate, source, autoRate: input.autoCostRate ?? null, minRoas, neededPer10k, weekProfit: W.salesDays > 0 ? Math.round(W.sales * (1 - costRate) - W.cost) : null },
   };
 }
 
@@ -395,7 +400,7 @@ export function insightToPrompt(x: AdInsight): string {
 직전 28일: ${p(x.monthPrev)}
 최근 7일 매출의 평소 대비(요일·공휴일 보정): ${x.salesNorm == null ? "-" : ((x.salesNorm - 1) * 100).toFixed(1) + "%"}
 전환 추적: ${x.convTracked ? "있음" : "없음(클릭 기준으로 판단)"}
-손익분기: 원가율 ${(x.breakeven.costRate * 100).toFixed(0)}% → 광고비 대비 매출 ${won(x.breakeven.minRoas)}% 아래면 손해. 광고비 1만원 늘리면 매출 ${won(x.breakeven.neededPer10k)}원 이상 필요
+손익분기: 원가율 ${(x.breakeven.costRate * 100).toFixed(0)}%(${x.breakeven.source === "auto" ? "앱 코스트 자동" : x.breakeven.source === "manual" ? "직접 입력" : "기본값"}) → 광고비 대비 매출 ${won(x.breakeven.minRoas)}% 아래면 손해. 광고비 1만원 늘리면 매출 ${won(x.breakeven.neededPer10k)}원 이상 필요
 날씨 보정: 최근 7일 중 비 온 날 ${x.weather.rainyDays7}일, 비교에서 뺀 날(큰비·공휴일·특이일) ${x.weather.excluded7}일${x.weather.rainEffect != null ? `, 비 오는 날 매출은 평소 대비 ${(x.weather.rainEffect * 100).toFixed(0)}%` : ""}${x.weather.adjNorm != null ? `, 보정 후 평소 대비 ${((x.weather.adjNorm - 1) * 100).toFixed(1)}%` : ""}
 ${x.specialDays.length ? `특이일: ${x.specialDays.map((s) => `${s.date} ${s.note}`).join(", ")}` : ""}
 요일별(최근 28일):
