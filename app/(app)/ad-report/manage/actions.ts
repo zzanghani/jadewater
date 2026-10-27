@@ -7,7 +7,8 @@ import { createClient } from "@/lib/supabase/server";
 import { adReportAllowedFor } from "@/lib/adAccess";
 import { createServiceClient } from "@/lib/supabase/service";
 import { addYmd, kstYmd } from "@/lib/adReport";
-import { callNaver, CAMPAIGN_TP_LABEL, listCampaigns, setCampaignBudget, setCampaignLock, statsMap, type NaverAcct, type NaverCampaign } from "@/lib/naverAds";
+import { callNaver, CAMPAIGN_TP_LABEL, listAdgroups, listCampaigns, parseTimeTarget, setAdgroupSchedule, setCampaignBudget, setCampaignLock, statsMap, type NaverAcct, type NaverCampaign, type WeekSchedule } from "@/lib/naverAds";
+import { analyzeHours, hoursRange } from "@/lib/adHours";
 import type { AdChangeLog } from "@/lib/types";
 
 export type CampaignRow = {
@@ -18,6 +19,8 @@ export type CampaignRow = {
   status: string;
   dailyBudget: number; // 0 = 제한 없음
   week: { imp: number; clk: number; cost: number; conv: number };
+  /** 광고그룹별 노출 시간 (null = 항상) */
+  groups: { id: string; name: string; on: boolean; schedule: WeekSchedule | null }[];
 };
 
 export type ChangeEffect = {
@@ -30,7 +33,7 @@ export type ChangeEffect = {
 export type ChangeRow = AdChangeLog & { effect: ChangeEffect | null; label: string };
 
 export type ManageResult =
-  | { ok: true; campaigns: CampaignRow[]; changes: ChangeRow[]; bizmoney: number | null }
+  | { ok: true; campaigns: CampaignRow[]; changes: ChangeRow[]; bizmoney: number | null; suggest: { open: number[]; focus: number[] } }
   | { ok: false; error: string };
 
 type Ctx = { error: string } | { error?: undefined; userId: string; userName: string; acct: NaverAcct };
@@ -59,6 +62,7 @@ const toRow = (c: NaverCampaign, w: CampaignRow["week"]): CampaignRow => ({
   status: c.status ?? "",
   dailyBudget: c.useDailyBudget ? c.dailyBudget ?? 0 : 0,
   week: w,
+  groups: [],
 });
 
 export async function loadCampaigns(storeId: string): Promise<ManageResult> {
@@ -75,10 +79,31 @@ export async function loadCampaigns(storeId: string): Promise<ManageResult> {
       const s = stats[x.nccCampaignId];
       return toRow(x, { imp: s?.impCnt ?? 0, clk: s?.clkCnt ?? 0, cost: Math.round(s?.salesAmt ?? 0), conv: s?.ccnt ?? 0 });
     });
+    // 광고그룹과 노출 시간 (캠페인마다 한 번)
+    await Promise.all(
+      rows.map(async (r) => {
+        const groups = await listAdgroups(c.acct, r.id).catch(() => []);
+        r.groups = groups.map((g) => ({ id: g.nccAdgroupId, name: g.name, on: !g.userLock, schedule: parseTimeTarget(g.targets) }));
+      })
+    );
     const changes = await loadChanges(storeId, today);
-    return { ok: true, campaigns: rows, changes, bizmoney: biz };
+    const suggest = await suggestHours(storeId);
+    return { ok: true, campaigns: rows, changes, bizmoney: biz, suggest };
   } catch (e) {
     return { ok: false, error: `네이버에서 캠페인을 못 읽었어요: ${(e as Error).message}` };
+  }
+}
+
+// 시간·요일 분석에서 영업시간과 광고 집중 추천 시간을 가져온다 (노출 시간 프리셋용)
+async function suggestHours(storeId: string): Promise<{ open: number[]; focus: number[] }> {
+  try {
+    const service = createServiceClient();
+    const { from, to } = hoursRange(kstYmd(0));
+    const { data: sales } = await service.from("toss_daily_sales").select("date, by_hour, sales").eq("store_id", storeId).gte("date", from).lte("date", to);
+    const a = analyzeHours({ from, to, sales: (sales ?? []).map((r) => ({ date: r.date, by_hour: r.by_hour as Record<string, number> | null, sales: r.sales })), ad: [], adConnected: false });
+    return { open: a.openHours, focus: a.adFocusHours };
+  } catch {
+    return { open: [], focus: [] };
   }
 }
 
@@ -103,6 +128,30 @@ async function log(storeId: string, c: Exclude<Ctx, { error: string }>, camp: Na
     before_value: before,
     after_value: after,
   });
+}
+
+/** 광고그룹 노출 시간 변경. schedule=null 이면 항상 노출. */
+export async function setSchedule(storeId: string, adgroupId: string, adgroupName: string, schedule: WeekSchedule | null, beforeText: string, afterText: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const c = await ctx(storeId);
+  if (c.error !== undefined) return { ok: false, error: c.error };
+  if (schedule && Object.values(schedule).every((h) => !h.length)) return { ok: false, error: "모든 시간이 꺼져 있어요. 광고를 아예 멈추려면 캠페인을 끄세요." };
+  try {
+    await setAdgroupSchedule(c.acct, adgroupId, schedule);
+    await createServiceClient().from("ad_change_logs").insert({
+      store_id: storeId,
+      user_id: c.userId,
+      user_name: c.userName,
+      target_type: "adgroup",
+      target_id: adgroupId,
+      target_name: adgroupName,
+      field: "targetTime",
+      before_value: beforeText,
+      after_value: afterText,
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: `변경 실패: ${(e as Error).message}` };
+  }
 }
 
 export async function toggleCampaign(storeId: string, campaignId: string, on: boolean): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -167,7 +216,7 @@ async function loadChanges(storeId: string, today: string): Promise<ChangeRow[]>
   };
   return logs.map((l) => {
     const day = new Date(new Date(l.created_at).getTime() + 9 * 3600 * 1000).toISOString().slice(0, 10);
-    const label = l.field === "userLock" ? `${l.before_value} → ${l.after_value}` : `하루 예산 ${Number(l.before_value).toLocaleString()}원 → ${Number(l.after_value).toLocaleString()}원`;
+    const label = l.field === "userLock" ? `${l.before_value} → ${l.after_value}` : l.field === "targetTime" ? `노출 시간 ${l.before_value} → ${l.after_value}` : `하루 예산 ${Number(l.before_value).toLocaleString()}원 → ${Number(l.after_value).toLocaleString()}원`;
     const before = sum(addYmd(day, -7), addYmd(day, -1));
     const afterEnd = addYmd(day, 7) < addYmd(today, -1) ? addYmd(day, 7) : addYmd(today, -1);
     const after = sum(addYmd(day, 1), afterEnd);

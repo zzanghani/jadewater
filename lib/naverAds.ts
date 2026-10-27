@@ -203,3 +203,83 @@ export async function setCampaignBudget(acct: NaverAcct, campaignId: string, dai
     { fields: "budget" }
   );
 }
+
+/* ---------- 광고그룹 노출 시간 (요일×시간) ---------- */
+export type NaverTarget = { nccTargetId?: string; ownerId?: string; targetTp?: string; target?: unknown };
+export type NaverAdgroup = {
+  nccAdgroupId: string;
+  nccCampaignId: string;
+  name: string;
+  status?: string;
+  userLock?: boolean;
+  targets?: NaverTarget[];
+};
+export type WeekSchedule = Record<number, number[]>; // 0=일 … 6=토 → 켜진 시간(0~23)
+
+/** 네이버 요일 키(1=월 … 7=일)와 우리 요일(0=일 … 6=토) 변환 */
+const toNaverDay = (d: number) => (d === 0 ? 7 : d);
+const fromNaverDay = (k: string | number) => {
+  const n = Number(k);
+  return n === 7 ? 0 : n;
+};
+
+/** 광고그룹의 TIME_WEEKLY_TARGET를 우리 형식으로. 타겟이 없거나 비어 있으면 '항상 노출'(null). */
+export function parseTimeTarget(targets: NaverTarget[] | undefined): WeekSchedule | null {
+  const t = (targets ?? []).find((x) => x.targetTp === "TIME_WEEKLY_TARGET");
+  const raw = t?.target as Record<string, unknown> | null | undefined;
+  if (!raw || typeof raw !== "object") return null;
+  const out: WeekSchedule = {};
+  let any = false;
+  for (const [k0, v] of Object.entries(raw)) {
+    const k = /^[1-7]$/.test(k0) ? k0 : DAY_KEY_INDEX[k0.toLowerCase()] ? String(DAY_KEY_INDEX[k0.toLowerCase()]) : null;
+    if (!k || !Array.isArray(v)) continue;
+    const hours = v.map(Number).filter((h) => Number.isFinite(h) && h >= 0 && h <= 23).sort((a, b) => a - b);
+    out[fromNaverDay(k)] = hours;
+    any = true;
+  }
+  if (!any) return null;
+  for (let d = 0; d < 7; d++) out[d] ??= [];
+  // 7일 모두 24시간이면 사실상 '항상'
+  if (Object.values(out).every((h) => h.length === 24)) return null;
+  return out;
+}
+
+/** 우리 형식 → 네이버 target 객체. null(항상)은 모든 요일 0~23. 네이버 키 형식이 문서마다 달라 두 가지(숫자 1~7 / mon~sun)를 지원한다. */
+const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+export function buildTimeTarget(schedule: WeekSchedule | null, variant: "num" | "name" = "num"): Record<string, number[]> {
+  const out: Record<string, number[]> = {};
+  for (let d = 0; d < 7; d++) {
+    const key = variant === "num" ? String(toNaverDay(d)) : DAY_KEYS[toNaverDay(d) - 1];
+    out[key] = schedule ? [...(schedule[d] ?? [])].sort((a, b) => a - b) : Array.from({ length: 24 }, (_, h) => h);
+  }
+  return out;
+}
+const DAY_KEY_INDEX: Record<string, number> = { mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6, sun: 7 };
+
+export async function listAdgroups(acct: NaverAcct, campaignId: string): Promise<NaverAdgroup[]> {
+  const rows = (await callNaver<NaverAdgroup[]>(acct, "/ncc/adgroups", { nccCampaignId: campaignId })) ?? [];
+  return rows.filter((g) => g.status !== "DELETED");
+}
+
+export async function getAdgroup(acct: NaverAcct, adgroupId: string): Promise<NaverAdgroup> {
+  return callNaver<NaverAdgroup>(acct, `/ncc/adgroups/${adgroupId}`);
+}
+
+/** 광고그룹 노출 시간 저장. 기존 targets 중 TIME_WEEKLY_TARGET만 바꿔 fields=targetTime 으로 보낸다. */
+export async function setAdgroupSchedule(acct: NaverAcct, adgroupId: string, schedule: WeekSchedule | null): Promise<NaverAdgroup> {
+  const g = await getAdgroup(acct, adgroupId);
+  const attempt = (variant: "num" | "name") => {
+    const target = buildTimeTarget(schedule, variant);
+    const targets = (g.targets ?? []).map((t) => (t.targetTp === "TIME_WEEKLY_TARGET" ? { ...t, target } : t));
+    if (!targets.some((t) => t.targetTp === "TIME_WEEKLY_TARGET")) targets.push({ ownerId: adgroupId, targetTp: "TIME_WEEKLY_TARGET", target });
+    return callNaverWrite<NaverAdgroup>(acct, "PUT", `/ncc/adgroups/${adgroupId}`, { ...g, targets }, { fields: "targetTime" });
+  };
+  // 숫자 키(1~7)로 먼저, 네이버가 거부하면 요일 이름 키로 한 번 더
+  try {
+    return await attempt("num");
+  } catch (e) {
+    const err = e as NaverApiError;
+    if (err.status && err.status >= 500) throw e;
+    return attempt("name");
+  }
+}
