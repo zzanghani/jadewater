@@ -309,8 +309,10 @@ export async function keywordTool(acct: NaverAcct, hints: string[]): Promise<Key
       out.push({ keyword: k.relKeyword, pc, mobile, total: pc + mobile, compIdx: k.compIdx ?? null });
     }
   }
-  // 중복 제거, 검색량 큰 순
+  // 중복 제거, 검색량 큰 순. 넣은 말 자체는 맨 위에 둔다.
   const seen = new Map<string, KeywordIdea>();
   for (const k of out) if (!seen.has(k.keyword) || seen.get(k.keyword)!.total < k.total) seen.set(k.keyword, k);
-  return [...seen.values()].sort((a, b) => b.total - a.total);
+  const hintSet = new Set(hints.map((h) => h.replace(/\s+/g, "").toLowerCase()));
+  const isHint = (k: KeywordIdea) => hintSet.has(k.keyword.replace(/\s+/g, "").toLowerCase());
+  return [...seen.values()].sort((a, b) => Number(isHint(b)) - Number(isHint(a)) || b.total - a.total);
 }
