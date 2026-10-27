@@ -252,3 +252,34 @@ export async function findKeywords(storeId: string, hint: string): Promise<{ ok:
     return { ok: false, error: `네이버 키워드 도구 오류: ${(e as Error).message}` };
   }
 }
+
+/** 검색 노출 화면용: 설정·최근 순위만 가볍게. */
+export async function loadSearchInfo(storeId: string): Promise<{ ok: true; search: SearchInfo } | { ok: false; error: string }> {
+  const auth = await authStore(storeId);
+  if (auth.error !== undefined) return { ok: false, error: auth.error };
+  const service = createServiceClient();
+  const today = kstYmd(0);
+  const [{ data: searchSetting }, { data: rankRows }, { data: adAcct }] = await Promise.all([
+    service.from("store_search_settings").select("terms, keywords, volumes").eq("store_id", storeId).maybeSingle(),
+    service.from("search_rank_daily").select("date, keyword, map_rank, blog_hits, checked_at").eq("store_id", storeId).gte("date", addYmd(today, -8)).order("date", { ascending: false }),
+    service.from("store_ad_accounts").select("store_id").eq("store_id", storeId).eq("enabled", true).maybeSingle(),
+  ]);
+  const latestDate = rankRows?.[0]?.date ?? null;
+  const latest = (rankRows ?? []).filter((r) => r.date === latestDate);
+  const prevDate = (rankRows ?? []).map((r) => r.date).find((d) => d <= addYmd(latestDate ?? today, -6)) ?? null;
+  const prev = (rankRows ?? []).filter((r) => r.date === prevDate);
+  return {
+    ok: true,
+    search: {
+      terms: searchSetting?.terms ?? [],
+      keywords: searchSetting?.keywords ?? [],
+      rows: (searchSetting?.keywords ?? []).map((kw) => {
+        const a = latest.find((r) => r.keyword === kw);
+        const b = prev.find((r) => r.keyword === kw);
+        return { keyword: kw, volume: (searchSetting?.volumes as Record<string, number> | null)?.[kw] ?? null, mapRank: a?.map_rank ?? null, blogHits: a?.blog_hits ?? 0, mapRankPrev: b ? b.map_rank : null, blogHitsPrev: b ? b.blog_hits : null };
+      }),
+      checkedAt: latest[0]?.checked_at ?? null,
+      adConnected: !!adAcct,
+    },
+  };
+}
