@@ -47,6 +47,27 @@ export default function LiveSalesHero({
           {live.lastPayAt && ` · 마지막 결제 ${live.lastPayAt}`}
         </p>
       )}
+      {live && (live.lastWeekSameTime != null || live.estimate != null) && (
+        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+          <div className="rounded-xl bg-white/15 px-3 py-2">
+            <p className="text-white/75">지난주 같은 요일 지금 시각</p>
+            <p className="font-semibold tabular-nums">
+              {live.lastWeekSameTime != null ? formatWon(live.lastWeekSameTime) : "-"}
+              {live.lastWeekSameTime ? (
+                <span className="ml-1">
+                  {live.sales >= live.lastWeekSameTime ? "▲" : "▼"}
+                  {Math.abs(((live.sales - live.lastWeekSameTime) / live.lastWeekSameTime) * 100).toFixed(0)}%
+                </span>
+              ) : null}
+            </p>
+          </div>
+          <div className="rounded-xl bg-white/15 px-3 py-2">
+            <p className="text-white/75">마감 추정</p>
+            <p className="font-semibold tabular-nums">{live.estimate != null ? formatWon(live.estimate) : "영업 초반이라 아직"}</p>
+            {live.lastWeekTotal != null && <p className="text-[10px] text-white/70">지난주 같은 요일 {formatWon(live.lastWeekTotal)}</p>}
+          </div>
+        </div>
+      )}
       <div className="mt-4 flex items-center justify-between border-t border-white/20 pt-3">
         <span className="text-sm text-white/80">{guestsLabel}</span>
         <span className="text-lg font-semibold">{guestsText}</span>

@@ -13,6 +13,7 @@ import MultiStoreChart, { type MultiStorePoint, type StoreSeries } from "@/compo
 import QuickMenu from "@/components/QuickMenu";
 import LiveStoreSalesGrid from "@/components/LiveStoreSalesGrid";
 import LiveSalesHero from "@/components/LiveSalesHero";
+import MonthlyTargetTable from "@/components/MonthlyTargetTable";
 import { adReportAllowed } from "@/lib/adAccess";
 import MonthlyPlanCalendar from "@/components/MonthlyPlanCalendar";
 import MonthlyPlanAlerts from "@/components/MonthlyPlanAlerts";
@@ -368,6 +369,9 @@ if (isHq) {
           guestsText={isHanam ? `${todayVisitTeams.toLocaleString()}팀` : `${todayGuests.toLocaleString()}명`}
         />
       )}
+
+      {/* 월 매출 목표 — 마스터는 전 매장, 지점장은 자기 매장 */}
+      {(isMaster || (!isEmployee && !isTeamAccount)) && <MonthlyTargetTable />}
 
       {isEmployee && (
         <Link href="/schedule" className="block">

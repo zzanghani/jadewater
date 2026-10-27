@@ -39,13 +39,15 @@ export async function saveTossKeys(_prev: TossFormState, formData: FormData): Pr
   }
 
   const webhookIn = String(formData.get("webhook_secret") ?? "").trim();
+  // "서명 검증 끄기"를 체크하면 저장된 서명 키를 지운다 (토스가 만든 키는 화면에서 가려져 복사값이 달라질 수 있음)
+  const clearWebhook = formData.get("clear_webhook_secret") === "on";
   const { data: existingWh } = await supabase.from("toss_settings").select("webhook_secret").eq("id", 1).maybeSingle();
   const { error } = await supabase.from("toss_settings").upsert(
     {
       id: 1,
       access_key: accessKey,
       access_secret: secretKey,
-      webhook_secret: webhookIn || existingWh?.webhook_secret || null,
+      webhook_secret: clearWebhook ? null : webhookIn || existingWh?.webhook_secret || null,
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     },

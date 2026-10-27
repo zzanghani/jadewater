@@ -6,8 +6,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { adReportAllowedFor } from "@/lib/adAccess";
 import { weekWindows, type AdStoreReport, type AdWeeklyReport } from "@/lib/adReport";
-import AdReportClient from "@/components/AdReportClient";
-import AdPeriodClient from "@/components/AdPeriodClient";
+import AdReportShell from "@/components/AdReportShell";
 
 // 네이버 검색광고 주간 리포트 — 지점장은 자기 매장, 본사 마스터는 연결된 전 매장.
 export default async function AdReportPage() {
@@ -55,23 +54,16 @@ export default async function AdReportPage() {
       </div>
       {/* 큰 버튼 두 개 — 폰에서도 바로 누르게 */}
       <div className="grid grid-cols-2 gap-2">
-        <Link href="/ad-report/insight" className="flex flex-col items-center justify-center rounded-2xl bg-brand px-3 py-4 text-white shadow-md shadow-brand/20">
+        <Link href="/ad-report/insight" className="flex flex-col items-center justify-center rounded-2xl bg-brand px-3 py-3 text-white shadow-md shadow-brand/20">
           <span className="text-base font-bold">효율 분석</span>
           <span className="mt-0.5 text-[11px] text-white/80">실시간 매출 × 광고비 · AI 전략</span>
         </Link>
-        <Link href="/ad-report/manage" className="flex flex-col items-center justify-center rounded-2xl border-2 border-brand bg-card px-3 py-4 text-brand">
+        <Link href="/ad-report/manage" className="flex flex-col items-center justify-center rounded-2xl border-2 border-brand bg-card px-3 py-3 text-brand">
           <span className="text-base font-bold">광고 관리</span>
           <span className="mt-0.5 text-[11px] text-brand/80">캠페인 켜기/끄기 · 하루 예산</span>
         </Link>
       </div>
-      {/* 기간별 조회 — 오늘은 실시간 */}
-      <AdPeriodClient />
-
-      <div className="mt-2">
-        <h2 className="text-base font-bold">주간 리포트 · 할 일</h2>
-        <p className="text-xs text-muted">지난주(월~일) 성과와 이번 주 할 일. 매주 월요일 아침 알림으로도 보내요.</p>
-      </div>
-      <AdReportClient initial={initial} />
+      <AdReportShell initial={initial} />
     </div>
   );
 }
