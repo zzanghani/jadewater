@@ -49,6 +49,11 @@ export default function TossSettingsForm({
           웹훅 서명 키 (Secret Key){hasWebhookSecret && <span className="text-[10px]"> · 저장됨, 비워두면 유지</span>}
           <input name="webhook_secret" type="password" className={inputClass} autoComplete="off" placeholder="개발자센터 웹훅 생성 때 넣은 값" />
         </label>
+        {hasWebhookSecret && (
+          <label className="flex items-center gap-2 text-xs text-muted">
+            <input type="checkbox" name="clear_webhook_secret" /> 서명 검증 끄기 (키가 안 맞아 설치 알림이 안 들어올 때)
+          </label>
+        )}
         <p className="rounded-lg bg-background px-3 py-2 text-[11px] text-muted">
           웹훅 수신 주소: <span className="break-all font-mono text-foreground">{webhookUrl}</span>
         </p>
