@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import { addSpecialDay, generateStrategyMemo, loadAdInsight, removeSpecialDay, saveCostRate, type InsightResult } from "@/app/(app)/ad-report/insight/actions";
+import { addSpecialDay, checkSearchNow, generateStrategyMemo, loadAdInsight, removeSpecialDay, saveCostRate, saveSearchSettings, type InsightResult, type SearchInfo } from "@/app/(app)/ad-report/insight/actions";
 import { won, type AdInsight, type PeriodStat } from "@/lib/adInsight";
 import { pctDelta } from "@/lib/adReport";
 import AdInsightChart from "@/components/AdInsightChart";
@@ -148,6 +148,9 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
           ))}
         </ul>
       </section>
+
+      {/* 검색 노출 */}
+      <SearchRank storeId={storeId} search={res.search} onChanged={() => start(async () => setRes(await loadAdInsight(storeId)))} />
 
       {/* AI 전략 */}
       <section className="rounded-2xl border border-brand bg-card p-4">
@@ -379,6 +382,118 @@ function SpecialDays({ storeId, days, onChanged }: { storeId: string; days: { da
             </li>
           ))}
         </ul>
+      )}
+    </section>
+  );
+}
+
+// 검색 노출: 키워드마다 네이버 지도 상위5 순위와 블로그 상위30 중 우리 글 수. 매일 새벽 자동 확인.
+function SearchRank({ storeId, search, onChanged }: { storeId: string; search: SearchInfo; onChanged: () => void }) {
+  const [edit, setEdit] = useState(search.keywords.length === 0);
+  const [terms, setTerms] = useState(search.terms.join(", "));
+  const [keywords, setKeywords] = useState(search.keywords.join(", "));
+  const [busy, startBusy] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  function save(thenCheck: boolean) {
+    setMsg(null);
+    startBusy(async () => {
+      const r = await saveSearchSettings(storeId, terms, keywords);
+      if (!r.ok) return setMsg(r.error);
+      if (thenCheck) {
+        const c = await checkSearchNow(storeId);
+        if (!c.ok) return setMsg(c.error);
+      }
+      setEdit(false);
+      onChanged();
+    });
+  }
+  function checkNow() {
+    setMsg(null);
+    startBusy(async () => {
+      const c = await checkSearchNow(storeId);
+      if (!c.ok) setMsg(c.error);
+      else onChanged();
+    });
+  }
+  const rankTxt = (r: number | null) => (r == null ? "밖" : `${r}위`);
+  const delta = (cur: number | null, prev: number | null, lowerBetter: boolean) => {
+    if (prev == null || cur == null) return null;
+    if (cur === prev) return { t: "=", c: "text-muted" };
+    const better = lowerBetter ? cur < prev : cur > prev;
+    return { t: better ? "▲" : "▼", c: better ? "text-green-700" : "text-red-600" };
+  };
+  return (
+    <section className="rounded-2xl border border-border bg-card p-4">
+      <div className="mb-1 flex items-center justify-between">
+        <h2 className="text-sm font-bold">검색 노출 (네이버)</h2>
+        <div className="flex gap-1.5">
+          {search.keywords.length > 0 && !edit && (
+            <button type="button" onClick={checkNow} disabled={busy} className="rounded-lg border border-border px-2 py-1 text-[11px] disabled:opacity-50">
+              {busy ? "확인 중…" : "지금 확인"}
+            </button>
+          )}
+          <button type="button" onClick={() => setEdit(!edit)} className="rounded-lg border border-border px-2 py-1 text-[11px]">
+            {edit ? "닫기" : "키워드 설정"}
+          </button>
+        </div>
+      </div>
+      <p className="mb-2 text-[11px] text-muted">손님이 검색하는 말로 네이버 지도 상위 5에 우리 가게가 있는지, 블로그 상위 30에 우리 글이 몇 개인지 매일 새벽에 확인해요.</p>
+      {edit && (
+        <div className="mb-3 flex flex-col gap-1.5 rounded-xl bg-background p-3 text-xs">
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] text-muted">매장 식별어 (쉼표로 구분 · 검색 결과에서 우리 가게/우리 글을 알아보는 말)</span>
+            <input value={terms} onChange={(e) => setTerms(e.target.value)} placeholder="예: 제이드앤워터, 서울역점" className="rounded-lg border border-border bg-card px-2 py-1.5 text-foreground" />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] text-muted">추적 키워드 (최대 10개 · 쉼표로 구분)</span>
+            <input value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="예: 서울역 맛집, 서울역 브런치, 서울역 파스타" className="rounded-lg border border-border bg-card px-2 py-1.5 text-foreground" />
+          </label>
+          <div className="flex gap-1.5">
+            <button type="button" onClick={() => save(true)} disabled={busy} className="rounded-lg bg-brand px-3 py-1.5 font-semibold text-white disabled:opacity-50">
+              {busy ? "확인 중…" : "저장하고 지금 확인"}
+            </button>
+            <button type="button" onClick={() => save(false)} disabled={busy} className="rounded-lg border border-border px-3 py-1.5 disabled:opacity-50">
+              저장만
+            </button>
+          </div>
+        </div>
+      )}
+      {msg && <p className="mb-2 text-xs text-red-600">{msg}</p>}
+      {search.rows.length > 0 ? (
+        <>
+          <table className="w-full text-xs tabular-nums">
+            <thead>
+              <tr className="text-left text-[11px] text-muted">
+                <th className="pb-1 font-medium">키워드</th>
+                <th className="pb-1 text-right font-medium">지도 상위5</th>
+                <th className="pb-1 text-right font-medium">블로그 상위30 우리 글</th>
+              </tr>
+            </thead>
+            <tbody>
+              {search.rows.map((r) => {
+                const dm = delta(r.mapRank ?? 99, r.mapRankPrev ?? (r.mapRankPrev === null && r.blogHitsPrev != null ? 99 : null), true);
+                const db = delta(r.blogHits, r.blogHitsPrev, false);
+                return (
+                  <tr key={r.keyword} className="border-t border-border">
+                    <td className="py-1.5 font-semibold">{r.keyword}</td>
+                    <td className={`py-1.5 text-right ${r.mapRank == null ? "text-red-600" : "text-green-700"}`}>
+                      {rankTxt(r.mapRank)}
+                      {dm && <span className={`ml-1 text-[10px] ${dm.c}`}>{dm.t}</span>}
+                    </td>
+                    <td className={`py-1.5 text-right ${r.blogHits === 0 ? "text-red-600" : ""}`}>
+                      {r.blogHits}개{db && <span className={`ml-1 text-[10px] ${db.c}`}>{db.t}</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="mt-1.5 text-[10px] text-muted">
+            {search.checkedAt ? `${new Date(search.checkedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 확인` : "아직 확인 전 — '지금 확인'을 눌러 주세요"} · 화살표는 일주일 전 대비. 지도 '밖' = 상위 5에 없음 → 플레이스 광고 유지 + 영수증 리뷰 늘리기. 블로그 0개 → 체험단 글 제목에 그 키워드 넣기.
+          </p>
+        </>
+      ) : (
+        <p className="text-xs text-muted">추적할 키워드를 넣어 주세요. 손님이 실제로 검색할 법한 말(동네+맛집, 동네+메뉴)이 좋아요.</p>
       )}
     </section>
   );

@@ -969,6 +969,18 @@ export type Database = {
         Update: Partial<{ store_id: string; date: string; name: string; category: string; qty: number; amount: number; orders: number; synced_at: string }>
         Relationships: []
       }
+      store_search_settings: {
+        Row: { store_id: string; terms: string[]; keywords: string[]; updated_by: string | null; updated_at: string }
+        Insert: { store_id: string; terms?: string[]; keywords?: string[]; updated_by?: string | null; updated_at?: string }
+        Update: Partial<{ store_id: string; terms: string[]; keywords: string[]; updated_by: string | null; updated_at: string }>
+        Relationships: []
+      }
+      search_rank_daily: {
+        Row: { store_id: string; date: string; keyword: string; map_rank: number | null; blog_hits: number; checked_at: string }
+        Insert: { store_id: string; date: string; keyword: string; map_rank?: number | null; blog_hits?: number; checked_at?: string }
+        Update: Partial<{ store_id: string; date: string; keyword: string; map_rank: number | null; blog_hits: number; checked_at: string }>
+        Relationships: []
+      }
       ad_store_settings: {
         Row: { store_id: string; cost_rate: number; updated_by: string | null; updated_at: string }
         Insert: { store_id: string; cost_rate?: number; updated_by?: string | null; updated_at?: string }
