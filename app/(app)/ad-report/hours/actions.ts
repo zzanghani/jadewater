@@ -21,12 +21,13 @@ export async function loadHours(storeId: string): Promise<HoursResult> {
   const service = createServiceClient();
   const today = kstYmd(0);
   const { from, to } = hoursRange(today);
-  const [{ data: store }, { data: acct }, { data: sales }, { data: ad }] = await Promise.all([
+  const [{ data: store }, { data: acct }, { data: sales }, { data: ad }, { data: adDaily }] = await Promise.all([
     supabase.from("stores").select("name").eq("id", storeId).maybeSingle(),
     service.from("store_ad_accounts").select("store_id").eq("store_id", storeId).eq("enabled", true).maybeSingle(),
     service.from("toss_daily_sales").select("date, by_hour, sales").eq("store_id", storeId).gte("date", from).lte("date", to),
     service.from("ad_hourly_stats").select("date, hour, imp, clk, cost").eq("store_id", storeId).gte("date", from).lte("date", to),
+    service.from("ad_daily_stats").select("date, cost, clk").eq("store_id", storeId).gte("date", from).lte("date", to),
   ]);
-  const analysis = analyzeHours({ from, to, sales: (sales ?? []).map((r) => ({ date: r.date, by_hour: r.by_hour as Record<string, number> | null, sales: r.sales })), ad: ad ?? [], adConnected: !!acct });
+  const analysis = analyzeHours({ from, to, sales: (sales ?? []).map((r) => ({ date: r.date, by_hour: r.by_hour as Record<string, number> | null, sales: r.sales })), ad: ad ?? [], adDaily: adDaily ?? [], adConnected: !!acct });
   return { ok: true, storeName: store?.name ?? "매장", analysis };
 }

@@ -51,7 +51,7 @@ export default function AdHoursClient({ storeId }: { storeId: string }) {
       {/* 시간대별 매출 vs 광고비 */}
       <section className="rounded-2xl border border-border bg-card p-4">
         <h2 className="mb-1 text-sm font-bold">시간대별 매출과 광고비</h2>
-        <p className="mb-2 text-[11px] text-muted">막대 = 매출(28일 합), 빨간 선 = 광고비. 광고가 매출 피크보다 1~3시간 앞서 나가야 해요.</p>
+        <p className="mb-2 text-[11px] text-muted">막대 = 매출(28일 합), 빨간 점 = 시간대 광고비{a.adHourDays > 0 && ` (최근 ${a.adHourDays}일, 네이버가 주는 범위)`}. 광고가 매출 피크보다 1~3시간 앞서 나가야 해요.</p>
         <HourBars a={a} />
       </section>
 
@@ -92,7 +92,7 @@ export default function AdHoursClient({ storeId }: { storeId: string }) {
                   {w.lowEff && <span className="ml-1 rounded bg-amber-50 px-1 text-[9px] font-bold text-amber-700">효율 낮음</span>}
                 </td>
                 <td className="py-1.5 text-right">{w.days ? man(w.sales / w.days) : "-"}</td>
-                <td className="py-1.5 text-right">{w.days ? won(w.cost / w.days) : "-"}</td>
+                <td className="py-1.5 text-right">{w.adDays ? won(w.cost / w.adDays) : "-"}</td>
                 <td className="py-1.5 text-right">{w.roas == null ? "-" : won(w.roas) + "%"}</td>
                 <td className="py-1.5 text-right">{won(w.cpc)}</td>
               </tr>
