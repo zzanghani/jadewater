@@ -34,13 +34,15 @@ export async function syncTossDaily(
   merchantId: string,
   from: string,
   to: string,
-  { force = false } = {}
+  { force = false, maxDays = 35 } = {}
 ): Promise<number> {
   // 시간대(by_hour)가 아직 없는 옛 행은 다시 받아 채운다 (마감 추정에 필요).
   const { data: have } = await service.from("toss_daily_sales").select("date, by_hour").eq("store_id", storeId).gte("date", from).lte("date", to);
   const haveSet = new Set((have ?? []).filter((r) => r.by_hour != null).map((r) => r.date));
-  const days: string[] = [];
+  let days: string[] = [];
   for (let d = from; d <= to; d = addYmd(d, 1)) if (force || !haveSet.has(d) || d >= addYmd(to, -1)) days.push(d);
+  // 한 번에 너무 많으면(옛 자료 다시 받기) 최근 날짜부터 maxDays만 — 나머지는 다음 동기화·크론이 채운다
+  if (days.length > maxDays) days = days.slice(-maxDays);
   let n = 0;
   await pool(days, 3, async (d) => {
     const c = await fetchTossClosing(keys, merchantId, d);

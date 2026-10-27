@@ -70,6 +70,10 @@ export async function POST(request: Request) {
     );
   } else if (event.type === "app.installation.deleted.v1" && merchantId) {
     await supabase.from("toss_installations").update({ removed_at: event.createdAt ?? new Date().toISOString() }).eq("merchant_id", merchantId);
+  } else if (merchantId) {
+    // 설치 알림을 놓쳤어도(서명 거절 등) 주문·결제 알림이 오면 그 가맹점을 목록에 올려 설정 화면에서 고를 수 있게 한다.
+    const { data: known } = await supabase.from("toss_installations").select("merchant_id").eq("merchant_id", merchantId).maybeSingle();
+    if (!known) await supabase.from("toss_installations").insert({ merchant_id: merchantId, merchant_name: null, installed_at: event.createdAt ?? new Date().toISOString() });
   }
 
   return NextResponse.json({ ok: true });
