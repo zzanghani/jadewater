@@ -9,7 +9,7 @@ import { analyze, insightToPrompt, syncAdDaily, syncAdHourly, syncTossDaily, typ
 import { fetchTossClosing } from "@/lib/tossClosing";
 import { syncWeather } from "@/lib/weather";
 import { syncSearchRanks } from "@/lib/searchRank";
-import { keywordTool, type KeywordIdea } from "@/lib/naverAds";
+import { addKeywords, deleteKeywords, keywordTool, listAdgroups, listCampaigns, listKeywords, normKeyword, setKeywordLock, type KeywordIdea } from "@/lib/naverAds";
 
 export type SearchInfo = {
   terms: string[];
@@ -297,4 +297,130 @@ export async function loadSearchInfo(storeId: string): Promise<{ ok: true; searc
       adConnected: !!adAcct,
     },
   };
+}
+
+/* ---------- 광고 키워드 ---------- */
+export type AdKeywordGroup = { campaignId: string; campaignName: string; adgroupId: string; adgroupName: string; on: boolean; keywords: { id: string; keyword: string; on: boolean; status: string }[] };
+
+async function acctFor(storeId: string) {
+  const { data: a } = await createServiceClient().from("store_ad_accounts").select("naver_customer_id, naver_api_key, naver_secret_key").eq("store_id", storeId).eq("enabled", true).maybeSingle();
+  return a ? { customerId: a.naver_customer_id, apiKey: a.naver_api_key, secretKey: a.naver_secret_key } : null;
+}
+
+/** 파워링크(WEB_SITE) 캠페인의 광고그룹과 등록 키워드. */
+export async function loadAdKeywords(storeId: string): Promise<{ ok: true; groups: AdKeywordGroup[] } | { ok: false; error: string }> {
+  const auth = await authStore(storeId);
+  if (auth.error !== undefined) return { ok: false, error: auth.error };
+  const acct = await acctFor(storeId);
+  if (!acct) return { ok: false, error: "네이버 광고 계정이 연결된 매장만 광고 키워드를 볼 수 있어요." };
+  try {
+    const camps = (await listCampaigns(acct)).filter((c) => c.campaignTp === "WEB_SITE");
+    const groups: AdKeywordGroup[] = [];
+    for (const c of camps) {
+      const ags = await listAdgroups(acct, c.nccCampaignId);
+      for (const g of ags) {
+        const kws = await listKeywords(acct, g.nccAdgroupId);
+        groups.push({ campaignId: c.nccCampaignId, campaignName: c.name, adgroupId: g.nccAdgroupId, adgroupName: g.name, on: !g.userLock, keywords: kws.map((k) => ({ id: k.nccKeywordId, keyword: k.keyword, on: !k.userLock, status: k.status ?? "" })) });
+      }
+    }
+    return { ok: true, groups };
+  } catch (e) {
+    return { ok: false, error: `네이버에서 키워드를 못 읽었어요: ${(e as Error).message}` };
+  }
+}
+
+async function logKeywordChange(storeId: string, supabase: Awaited<ReturnType<typeof createClient>>, adgroupId: string, adgroupName: string, field: string, before: string, after: string) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: p } = user ? await supabase.from("profiles").select("name").eq("id", user.id).maybeSingle() : { data: null };
+  await createServiceClient().from("ad_change_logs").insert({ store_id: storeId, user_id: user?.id ?? null, user_name: p?.name ?? null, target_type: "adgroup", target_id: adgroupId, target_name: adgroupName, field, before_value: before, after_value: after });
+}
+
+export async function addAdKeyword(storeId: string, adgroupId: string, adgroupName: string, keyword: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const auth = await authStore(storeId);
+  if (auth.error !== undefined) return { ok: false, error: auth.error };
+  const acct = await acctFor(storeId);
+  if (!acct) return { ok: false, error: "광고 계정이 없어요." };
+  const kw = keyword.trim();
+  if (!kw) return { ok: false, error: "키워드가 비어 있어요." };
+  try {
+    await addKeywords(acct, adgroupId, [kw]);
+    await logKeywordChange(storeId, auth.supabase, adgroupId, adgroupName, "keyword", "", `추가 ${kw.replace(/\s+/g, "")}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: `추가 실패: ${(e as Error).message}` };
+  }
+}
+
+export async function toggleAdKeyword(storeId: string, keywordId: string, keyword: string, adgroupId: string, adgroupName: string, on: boolean): Promise<{ ok: true } | { ok: false; error: string }> {
+  const auth = await authStore(storeId);
+  if (auth.error !== undefined) return { ok: false, error: auth.error };
+  const acct = await acctFor(storeId);
+  if (!acct) return { ok: false, error: "광고 계정이 없어요." };
+  try {
+    await setKeywordLock(acct, keywordId, !on);
+    await logKeywordChange(storeId, auth.supabase, adgroupId, adgroupName, "keyword", keyword, on ? "켜짐" : "꺼짐");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: `변경 실패: ${(e as Error).message}` };
+  }
+}
+
+export async function removeAdKeyword(storeId: string, keywordId: string, keyword: string, adgroupId: string, adgroupName: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const auth = await authStore(storeId);
+  if (auth.error !== undefined) return { ok: false, error: auth.error };
+  const acct = await acctFor(storeId);
+  if (!acct) return { ok: false, error: "광고 계정이 없어요." };
+  try {
+    await deleteKeywords(acct, [keywordId]);
+    await logKeywordChange(storeId, auth.supabase, adgroupId, adgroupName, "keyword", keyword, "삭제");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: `삭제 실패: ${(e as Error).message}` };
+  }
+}
+
+/** 조합 검색: 지역 × 메뉴 × 수식어 조합의 월 검색량을 한 번에. 내 광고에 등록된 키워드 표시. */
+export type ComboRow = { keyword: string; total: number | null; pc: number | null; mobile: number | null; compIdx: string | null; registered: boolean };
+export async function comboSearch(
+  storeId: string,
+  regions: string[],
+  menus: string[],
+  modifiers: string[],
+  opts: { swap?: boolean; triple?: boolean } = {}
+): Promise<{ ok: true; rows: ComboRow[]; combos: number } | { ok: false; error: string }> {
+  const auth = await authStore(storeId);
+  if (auth.error !== undefined) return { ok: false, error: auth.error };
+  const acct = await acctFor(storeId);
+  if (!acct) return { ok: false, error: "네이버 광고 계정이 연결된 매장만 쓸 수 있어요." };
+  const R = regions.map((x) => x.trim()).filter(Boolean);
+  const M = menus.map((x) => x.trim()).filter(Boolean);
+  const X = modifiers.map((x) => x.trim()).filter(Boolean);
+  if (!R.length || !M.length) return { ok: false, error: "지역과 메뉴를 하나 이상 넣어 주세요." };
+  const combos = new Set<string>();
+  for (const r of R)
+    for (const m of M) {
+      combos.add(`${r}${m}`);
+      if (opts.swap) combos.add(`${m}${r}`);
+      if (opts.triple) for (const x of X) combos.add(`${r}${m}${x}`);
+    }
+  if (!opts.triple) for (const r of R) for (const x of X) combos.add(`${r}${x}`);
+  const list = [...combos].slice(0, 60);
+  try {
+    const ideas = await keywordTool(acct, list);
+    const byNorm = new Map(ideas.map((i) => [normKeyword(i.keyword), i]));
+    // 내 광고 등록 여부
+    const registered = new Set<string>();
+    const camps = (await listCampaigns(acct)).filter((c) => c.campaignTp === "WEB_SITE");
+    for (const c of camps) for (const g of await listAdgroups(acct, c.nccCampaignId)) for (const k of await listKeywords(acct, g.nccAdgroupId)) registered.add(normKeyword(k.keyword));
+    const rows: ComboRow[] = list.map((kw) => {
+      const i = byNorm.get(normKeyword(kw));
+      return { keyword: kw, total: i ? i.total : null, pc: i ? i.pc : null, mobile: i ? i.mobile : null, compIdx: i?.compIdx ?? null, registered: registered.has(normKeyword(kw)) };
+    });
+    rows.sort((a, b) => (b.total ?? -1) - (a.total ?? -1));
+    return { ok: true, rows, combos: list.length };
+  } catch (e) {
+    return { ok: false, error: `네이버 키워드 도구 오류: ${(e as Error).message}` };
+  }
 }
