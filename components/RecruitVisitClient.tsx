@@ -84,6 +84,7 @@ export default function RecruitVisitClient({
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   // 화면이 열린 시각 기준으로 "예정/지남"을 가른다 (렌더 중 시계를 읽지 않도록 한 번만).
   const [nowMs] = useState(() => Date.now());
 
@@ -140,6 +141,23 @@ export default function RecruitVisitClient({
         </div>
         {round && <MacminiNote note={round.macmini_note} at={round.macmini_at} />}
         <p className="mt-1 text-[11px] text-muted">리뷰 등록 여부는 맥미니가 30분마다 리뷰노트에서 확인해요. 방문 예약·완료만 여기서 적어주세요.</p>
+        {round?.booking_token && (
+          <div className="mt-3 rounded-xl bg-background p-3">
+            <p className="text-xs font-semibold">선정자가 직접 예약하게 하기</p>
+            <p className="mt-1 text-[11px] text-muted">아래 링크를 리뷰노트 선정 안내(또는 쪽지)에 붙여 넣으세요. 블로거가 날짜·시간·인원을 적으면 여기 자동으로 들어오고, 지점장에게 알림이 와요.</p>
+            <button
+              onClick={async () => {
+                const url = `${window.location.origin}/visit/${round.booking_token}`;
+                await navigator.clipboard.writeText(url);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              }}
+              className="mt-2 w-full rounded-xl border border-brand bg-brand-light py-2 text-xs font-semibold text-brand"
+            >
+              {copied ? "복사됨 ✓" : "방문 예약 링크 복사"}
+            </button>
+          </div>
+        )}
       </div>
 
       {err && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{err}</p>}
@@ -164,6 +182,8 @@ export default function RecruitVisitClient({
                   </div>
                   <p className="mt-1 text-[11px] text-muted">
                     {r.visit_at ? `${visitLabel(r.visit_at)}${r.visit_party ? ` · ${r.visit_party}명` : ""}` : "방문 일시 미정"}
+                    {r.visit_at && r.visit_source === "reviewer" && <span className="ml-1 rounded-md bg-violet-50 px-1 py-0.5 text-[10px] font-semibold text-violet-700">본인 예약</span>}
+                    {r.visit_contact && ` · ${r.visit_contact}`}
                     {r.visit_note && ` · ${r.visit_note}`}
                     {r.visited_at && ` · 방문 ${kstParts(r.visited_at).date.slice(5).replace("-", "/")}`}
                     {rankText && ` · 검색 ${rankText}`}

@@ -803,6 +803,9 @@ export type RecruitApplicant = {
   review_at: string | null
   review_ranks: Record<string, number | null> | null
   rn_status: string | null
+  visit_source: string | null
+  visit_contact: string | null
+  visit_updated_at: string | null
   created_by: string | null
   created_at: string
 }
@@ -834,6 +837,8 @@ export type RecruitRound = {
   // 리뷰 마감(리뷰노트 reviewEndAt)과 맥미니가 리뷰 현황을 마지막으로 맞춘 시각
   review_end_at: string | null
   progress_synced_at: string | null
+  // 선정자 셀프 방문 예약 공개 링크 토큰 (/visit/<token>)
+  booking_token: string
   created_at: string
   updated_at: string
 }

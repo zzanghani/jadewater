@@ -47,6 +47,9 @@ export type ApplicantRow = {
   review_at: string | null;
   review_ranks: Record<string, number | null> | null;
   rn_status: string | null;
+  visit_source: string | null;
+  visit_contact: string | null;
+  visit_updated_at: string | null;
 };
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
@@ -66,7 +69,7 @@ async function authStore(storeId: string): Promise<{ error: string } | { supabas
 }
 
 const COLS =
-  "id, campaign_id, campaign_title, blog_id, applicant_name, rn, metrics, score, grade, flags, checked_at, selected, created_at, visit_at, visit_party, visit_note, visited_at, no_show, review_url, review_at, review_ranks, rn_status";
+  "id, campaign_id, campaign_title, blog_id, applicant_name, rn, metrics, score, grade, flags, checked_at, selected, created_at, visit_at, visit_party, visit_note, visited_at, no_show, review_url, review_at, review_ranks, rn_status, visit_source, visit_contact, visit_updated_at";
 
 export async function loadApplicants(storeId: string): Promise<{ ok: true; rows: ApplicantRow[] } | { ok: false; error: string }> {
   const auth = await authStore(storeId);
@@ -357,6 +360,10 @@ export async function updateVisit(
     if (patch.no_show) update.visited_at = null;
   }
   if (Object.keys(update).length === 0) return { ok: false, error: "바꿀 내용이 없어요." };
+  if ("visit_at" in update) {
+    update.visit_source = "manager";
+    update.visit_updated_at = new Date().toISOString();
+  }
   const { data, error } = await auth.supabase
     .from("recruit_applicants")
     .update(update)
