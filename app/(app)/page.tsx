@@ -339,6 +339,10 @@ if (isHq) {
     <div className="flex flex-col gap-5">
       <PushSubscribeButton storeId={isMaster ? null : storeId} />
 
+      {/* 월 매출 목표 — 지점장·직원은 홈 맨 위에서 같은 숫자를 본다. 지점장이 정하고 직원은 보기만.
+          마스터는 실시간매출 매장 타일 안의 달성률로 본다. */}
+      {!isMaster && !isTeamAccount && <MonthlyTargetTable />}
+
       {isMaster && (
         <>
           <MonthlyPlanAlerts plans={monthlyPlans} />
@@ -369,9 +373,6 @@ if (isHq) {
           guestsText={isHanam ? `${todayVisitTeams.toLocaleString()}팀` : `${todayGuests.toLocaleString()}명`}
         />
       )}
-
-      {/* 월 매출 목표 — 마스터는 전 매장, 지점장은 자기 매장 */}
-      {(isMaster || (!isEmployee && !isTeamAccount)) && <MonthlyTargetTable />}
 
       {isEmployee && (
         <Link href="/schedule" className="block">
