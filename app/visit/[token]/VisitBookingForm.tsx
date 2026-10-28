@@ -25,6 +25,10 @@ export default function VisitBookingForm({ token }: { token: string }) {
         네이버 블로그 주소 또는 아이디 <span className="font-normal">(리뷰노트에 등록한 블로그)</span>
         <input name="blog" required placeholder="blog.naver.com/abcd 또는 abcd" autoComplete="off" className={inputClass} />
       </label>
+      <label className="flex flex-col gap-1 text-xs font-medium text-muted">
+        리뷰노트에 등록한 이름 <span className="font-normal">(선정 명단과 대조해요)</span>
+        <input name="name" required placeholder="홍길동" autoComplete="off" className={inputClass} />
+      </label>
       <div className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1 text-xs font-medium text-muted">
           방문 날짜
@@ -55,7 +59,9 @@ export default function VisitBookingForm({ token }: { token: string }) {
       <button type="submit" disabled={pending} className="rounded-xl bg-brand py-3 text-sm font-semibold text-white disabled:opacity-60">
         {pending ? "접수 중..." : "방문 예약하기"}
       </button>
-      <p className="text-[11px] text-muted">입력한 블로그가 이번 체험단 선정 명단에 있어야 접수돼요. 연락처는 방문 안내에만 쓰고 체험이 끝나면 지워요.</p>
+      <p className="text-[11px] text-muted">
+        블로그와 이름이 이번 체험단 선정 명단과 맞아야 접수돼요. 방문 당일 매장에서 네이버 블로그 앱(또는 리뷰노트 선정 내역)으로 본인 확인을 해요. 연락처는 방문 안내에만 쓰고 체험이 끝나면 지워요.
+      </p>
     </form>
   );
 }

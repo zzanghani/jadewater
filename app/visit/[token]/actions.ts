@@ -42,6 +42,7 @@ export async function loadBookingInfo(token: string): Promise<BookingInfo | null
 export async function submitBooking(_prev: BookingState, formData: FormData): Promise<BookingState> {
   const token = String(formData.get("token") ?? "");
   const blogRaw = String(formData.get("blog") ?? "").trim();
+  const nameRaw = String(formData.get("name") ?? "").trim();
   const date = String(formData.get("date") ?? "");
   const time = String(formData.get("time") ?? "");
   const party = Number(String(formData.get("party") ?? "").replace(/[^\d]/g, ""));
@@ -51,6 +52,8 @@ export async function submitBooking(_prev: BookingState, formData: FormData): Pr
   if (!/^[a-f0-9]{32}$/.test(token)) return { error: "링크가 올바르지 않아요." };
   const blogId = (extractBlogIds(blogRaw)[0] ?? blogRaw).toLowerCase().replace(/^@/, "");
   if (!/^[a-z0-9_-]{3,30}$/.test(blogId)) return { error: "네이버 블로그 주소나 아이디를 적어 주세요." };
+  const norm = (v: string) => v.replace(/\s+/g, "").toLowerCase();
+  if (norm(nameRaw).length < 2) return { error: "리뷰노트에 등록한 이름을 적어 주세요." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) return { error: "방문 날짜와 시간을 골라 주세요." };
   if (!party || party < 1 || party > 20) return { error: "인원을 1~20명 사이로 적어 주세요." };
   const visitAt = new Date(`${date}T${time}:00+09:00`);
@@ -79,6 +82,10 @@ export async function submitBooking(_prev: BookingState, formData: FormData): Pr
     .eq("selected", true)
     .maybeSingle();
   if (!applicant) return { error: "이번 체험단 선정 명단에서 이 블로그를 찾지 못했어요. 리뷰노트에 등록된 블로그 아이디로 다시 적어 주세요." };
+  // 블로그 아이디는 공개 정보라, 리뷰노트에 등록된 이름까지 맞아야 받는다 (명단 밖 사람이 남의 아이디로 예약하는 걸 막음).
+  if (applicant.applicant_name && norm(applicant.applicant_name) !== norm(nameRaw)) {
+    return { error: "이름이 선정 명단과 달라요. 리뷰노트 프로필에 등록한 이름 그대로 적어 주세요." };
+  }
 
   const now = new Date().toISOString();
   const { error } = await supabase

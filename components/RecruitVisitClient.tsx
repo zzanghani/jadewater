@@ -140,6 +140,7 @@ export default function RecruitVisitClient({
         </div>
         {round && <MacminiNote note={round.macmini_note} at={round.macmini_at} />}
         <p className="mt-1 text-[11px] text-muted">리뷰 등록 여부는 맥미니가 30분마다 리뷰노트에서 확인해요. 방문 예약·완료만 여기서 적어주세요.</p>
+        <p className="mt-1 text-[11px] text-amber-700">방문 당일: 손님의 네이버 블로그 앱(로그인 화면) 또는 리뷰노트 앱 &lsquo;선정 내역&rsquo;으로 본인 확인 후 방문 완료를 눌러 주세요.</p>
         {round?.booking_token && (
           <BookingLinkCard token={round.booking_token} />
         )}
