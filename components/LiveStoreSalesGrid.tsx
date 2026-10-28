@@ -3,14 +3,22 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { loadLiveSales, type LiveSales } from "@/app/(app)/live/actions";
+import { loadMonthlyTargets, type TargetRow } from "@/app/(app)/targets/actions";
 import { formatWon } from "@/lib/format";
 
 type StoreCard = { id: string; name: string; color: string; sales: number };
 
 // 마스터·마케팅팀 홈의 매장 카드. 토스가 연결된 매장은 실시간 결제 합계로 바꿔 보여주고,
 // 화면이 열려 있는 동안 2분마다 다시 읽는다. 연결 안 된 매장은 마감입력 금액 그대로.
+// 타일 아래에는 그 매장의 이번 달 목표 달성률(지점장이 정한 목표 기준)을 얇은 바로 보여준다.
 export default function LiveStoreSalesGrid({ stores }: { stores: StoreCard[] }) {
   const [live, setLive] = useState<Record<string, LiveSales>>({});
+  const [targets, setTargets] = useState<Record<string, TargetRow>>({});
+  useEffect(() => {
+    loadMonthlyTargets()
+      .then((r) => r.ok && setTargets(Object.fromEntries(r.rows.map((row) => [row.storeId, row]))))
+      .catch(() => null);
+  }, []);
   useEffect(() => {
     let alive = true;
     const tick = () =>
@@ -66,6 +74,8 @@ export default function LiveStoreSalesGrid({ stores }: { stores: StoreCard[] }) 
         {stores.map((s) => {
           const l = live[s.id];
           const ld = l && l.lastWeekSameTime ? ((l.sales - l.lastWeekSameTime) / l.lastWeekSameTime) * 100 : null;
+          const t = targets[s.id];
+          const tPct = t?.rate == null ? 0 : Math.min(100, t.rate);
           return (
             <Link key={s.id} href={`/store/${s.id}`} style={{ backgroundColor: s.color }} className="rounded-2xl p-4 text-white shadow-lg transition-opacity active:opacity-80">
               <p className="text-xs leading-tight text-white/85">{s.name}</p>
@@ -86,6 +96,23 @@ export default function LiveStoreSalesGrid({ stores }: { stores: StoreCard[] }) 
                   {ld != null && l.estimate != null && " · "}
                   {l.estimate != null && <>마감 추정 {formatWon(l.estimate)}</>}
                 </p>
+              )}
+              {t && (
+                <div className="mt-2">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-white/30">
+                    <div className={`h-full rounded-full ${t.status === "behind" ? "bg-red-300" : t.status === "close" ? "bg-amber-300" : "bg-white"}`} style={{ width: `${tPct}%` }} />
+                  </div>
+                  <p className="mt-1 text-[10px] text-white/85 tabular-nums">
+                    {t.target ? (
+                      <>
+                        {Number(t.target) >= 10000 ? `목표 ${Math.round(t.target / 10000).toLocaleString()}만` : `목표 ${formatWon(t.target)}`} · 달성 {t.rate!.toFixed(0)}%
+                        {t.projectedRate != null && <> · 월말 예상 {t.projectedRate.toFixed(0)}%</>}
+                      </>
+                    ) : (
+                      "이달 목표 없음 (지점장이 정함)"
+                    )}
+                  </p>
+                </div>
               )}
             </Link>
           );

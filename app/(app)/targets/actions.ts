@@ -2,6 +2,7 @@
 
 // 월 매출 목표 표 (운영관리 앱 B 블록): 목표 · 누적(어제까지) · 달성률 · 월말 예상 · 예상 달성률 ·
 // 남은 날 하루 필요 · 평소 하루 페이스 · 상태. 매출은 토스가 연결된 매장은 토스, 아니면 마감입력.
+// 목표 금액은 지점장이 정하고 마스터·직원은 본다.
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { addYmd, kstYmd } from "@/lib/adReport";
@@ -33,7 +34,8 @@ export async function loadMonthlyTargets(): Promise<TargetsResult> {
   if (!user) return { ok: false, error: "로그인이 필요합니다." };
   const { data: p } = await supabase.from("profiles").select("role, store_id, department, status").eq("id", user.id).maybeSingle();
   if (!p || p.status !== "approved") return { ok: false, error: "권한이 없어요." };
-  const canEdit = p.role === "owner" && !p.store_id && !p.department;
+  // 목표는 지점장(매장 소속 owner)이 정하고, 마스터·직원은 정해진 금액을 본다.
+  const canEdit = p.role === "owner" && !!p.store_id && !p.department;
 
   let sq = supabase.from("stores").select("id, name").order("name");
   if (p.store_id) sq = sq.eq("id", p.store_id);
@@ -111,7 +113,7 @@ export async function saveMonthlyTarget(storeId: string, month: string, target: 
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "로그인이 필요합니다." };
   const { data: p } = await supabase.from("profiles").select("role, store_id, department, status").eq("id", user.id).maybeSingle();
-  if (!p || p.status !== "approved" || p.role !== "owner" || p.store_id || p.department) return { ok: false, error: "목표는 본사 마스터만 바꿀 수 있어요." };
+  if (!p || p.status !== "approved" || p.role !== "owner" || p.department || p.store_id !== storeId) return { ok: false, error: "목표는 그 매장 지점장만 바꿀 수 있어요." };
   if (!/^\d{4}-\d{2}$/.test(month)) return { ok: false, error: "월이 올바르지 않아요." };
   const t = Math.round(Number(target));
   if (!isFinite(t) || t < 0) return { ok: false, error: "목표 금액을 숫자로 넣어 주세요." };
