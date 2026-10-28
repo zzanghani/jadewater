@@ -1375,6 +1375,7 @@ export type Database = {
     Views: Record<string, never>
     Functions: {
       attendance_cron_token: { Args: Record<string, never>; Returns: string | null }
+      health_snapshot: { Args: Record<string, never>; Returns: Record<string, unknown> | null }
       store_ad_account_status: {
         Args: { target_store_id: string }
         Returns: { connected: boolean; monthly_budget: number | null; target_cpa: number | null; naver_customer_id: string }[]
