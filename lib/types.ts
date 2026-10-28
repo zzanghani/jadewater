@@ -1037,15 +1037,15 @@ export type Database = {
         Relationships: []
       }
       store_search_settings: {
-        Row: { store_id: string; terms: string[]; keywords: string[]; volumes: Record<string, number>; updated_by: string | null; updated_at: string }
+        Row: { store_id: string; terms: string[]; keywords: string[]; volumes: Record<string, number>; updated_by: string | null; updated_at: string; map_note: string | null; map_at: string | null }
         Insert: { store_id: string; terms?: string[]; keywords?: string[]; volumes?: Record<string, number>; updated_by?: string | null; updated_at?: string }
-        Update: Partial<{ store_id: string; terms: string[]; keywords: string[]; volumes: Record<string, number>; updated_by: string | null; updated_at: string }>
+        Update: Partial<{ store_id: string; terms: string[]; keywords: string[]; volumes: Record<string, number>; updated_by: string | null; updated_at: string; map_note: string | null; map_at: string | null }>
         Relationships: []
       }
       search_rank_daily: {
-        Row: { store_id: string; date: string; keyword: string; map_rank: number | null; blog_hits: number; blog_posts: Record<string, unknown>[]; checked_at: string }
-        Insert: { store_id: string; date: string; keyword: string; map_rank?: number | null; blog_hits?: number; blog_posts?: Record<string, unknown>[]; checked_at?: string }
-        Update: Partial<{ store_id: string; date: string; keyword: string; map_rank: number | null; blog_hits: number; blog_posts: Record<string, unknown>[]; checked_at: string }>
+        Row: { store_id: string; date: string; keyword: string; map_rank: number | null; blog_hits: number; blog_posts: Record<string, unknown>[]; checked_at: string; map_deep_rank: number | null; map_pos: number | null; map_checked: number | null; map_name: string | null; map_deep_at: string | null }
+        Insert: { store_id: string; date: string; keyword: string; map_rank?: number | null; blog_hits?: number; blog_posts?: Record<string, unknown>[]; checked_at?: string; map_deep_rank?: number | null; map_pos?: number | null; map_checked?: number | null; map_name?: string | null; map_deep_at?: string | null }
+        Update: Partial<{ store_id: string; date: string; keyword: string; map_rank: number | null; blog_hits: number; blog_posts: Record<string, unknown>[]; checked_at: string; map_deep_rank: number | null; map_pos: number | null; map_checked: number | null; map_name: string | null; map_deep_at: string | null }>
         Relationships: []
       }
       ad_store_settings: {

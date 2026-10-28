@@ -127,7 +127,14 @@ function TrackPanel({ storeId, search, onChanged }: { storeId: string; search: S
       else onChanged();
     });
   }
-  const rankTxt = (r: number | null) => (r == null ? "밖" : `${r}위`);
+  // 지도 순위 표시: 맥미니가 읽은 깊은 순위(광고 제외) > 확인했는데 없음(N위 밖) > 네이버 공식 상위5 > 밖
+  const mapCell = (r: SearchInfo["rows"][number]) => {
+    if (r.mapDeepRank != null) return { t: `${r.mapDeepRank}위`, c: r.mapDeepRank <= 5 ? "text-green-700" : r.mapDeepRank <= 20 ? "text-amber-700" : "text-foreground", sub: r.mapPos != null && r.mapPos !== r.mapDeepRank ? `광고 포함 ${r.mapPos}번째` : null };
+    if (r.mapChecked) return { t: `${r.mapChecked}위 밖`, c: "text-red-600", sub: null };
+    if (r.mapRank != null) return { t: `${r.mapRank}위`, c: "text-green-700", sub: null };
+    return { t: "밖", c: "text-red-600", sub: null };
+  };
+  const effRank = (deep: number | null, api: number | null) => deep ?? api;
   const delta = (cur: number | null, prev: number | null, lowerBetter: boolean) => {
     if (prev == null || cur == null) return null;
     if (cur === prev) return { t: "=", c: "text-muted" };
@@ -137,7 +144,7 @@ function TrackPanel({ storeId, search, onChanged }: { storeId: string; search: S
   return (
     <section className="rounded-2xl border border-border bg-card p-4">
       <div className="mb-1 flex items-center justify-between">
-        <h2 className="text-sm font-bold">추적 키워드 (지도 상위5 · 블로그 상위30)</h2>
+        <h2 className="text-sm font-bold">추적 키워드 (지도 순위 · 블로그 상위30)</h2>
         <div className="flex gap-1.5">
           {search.keywords.length > 0 && !edit && (
             <button type="button" onClick={checkNow} disabled={busy} className="rounded-lg border border-border px-2 py-1 text-[11px] disabled:opacity-50">
@@ -178,21 +185,25 @@ function TrackPanel({ storeId, search, onChanged }: { storeId: string; search: S
               <tr className="text-left text-[11px] text-muted">
                 <th className="pb-1 font-medium">키워드</th>
                 <th className="pb-1 text-right font-medium">월 검색</th>
-                <th className="pb-1 text-right font-medium">지도 상위5</th>
+                <th className="pb-1 text-right font-medium">지도 순위</th>
                 <th className="pb-1 text-right font-medium">블로그 우리 글</th>
               </tr>
             </thead>
             <tbody>
               {search.rows.map((r) => {
-                const dm = delta(r.mapRank ?? 99, r.mapRankPrev ?? (r.mapRankPrev === null && r.blogHitsPrev != null ? 99 : null), true);
+                const curRank = effRank(r.mapDeepRank, r.mapRank);
+                const prevRank = effRank(r.mapDeepRankPrev, r.mapRankPrev);
+                const dm = delta(curRank ?? 999, prevRank ?? (r.blogHitsPrev != null ? 999 : null), true);
                 const db = delta(r.blogHits, r.blogHitsPrev, false);
+                const mc = mapCell(r);
                 return (
                   <tr key={r.keyword} className="border-t border-border">
                     <td className="py-1.5 font-semibold">{r.keyword}</td>
                     <td className="py-1.5 text-right text-muted">{fmt(r.volume)}</td>
-                    <td className={`py-1.5 text-right ${r.mapRank == null ? "text-red-600" : "text-green-700"}`}>
-                      {rankTxt(r.mapRank)}
+                    <td className={`py-1.5 text-right ${mc.c}`} title={r.mapName ? `지도 목록 이름: ${r.mapName}` : undefined}>
+                      {mc.t}
                       {dm && <span className={`ml-1 text-[10px] ${dm.c}`}>{dm.t}</span>}
+                      {mc.sub && <span className="block text-[9px] font-normal text-muted">{mc.sub}</span>}
                     </td>
                     <td className={`py-1.5 text-right ${r.blogHits === 0 ? "text-red-600" : ""}`}>
                       {r.blogHits}개{db && <span className={`ml-1 text-[10px] ${db.c}`}>{db.t}</span>}
@@ -203,7 +214,13 @@ function TrackPanel({ storeId, search, onChanged }: { storeId: string; search: S
             </tbody>
           </table>
           <p className="mt-1.5 text-[10px] text-muted">
-            {search.checkedAt ? `${new Date(search.checkedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 확인` : "아직 확인 전 — &lsquo;지금 확인&rsquo;을 눌러 주세요"} · 화살표는 일주일 전 대비. 검색 큰데 지도 &lsquo;밖&rsquo; = 플레이스 광고 유지 + 영수증 리뷰 늘리기. 블로그 0개 → 체험단 글 제목에 그 키워드 넣기.
+            {search.checkedAt ? `${new Date(search.checkedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 확인` : "아직 확인 전 — &lsquo;지금 확인&rsquo;을 눌러 주세요"} · 화살표는 일주일 전 대비. 지도 순위는 맥미니가 매일 새벽 네이버 지도에서 광고를 빼고 센 순위(약 100개까지)이고, 맥미니 확인 전에는 네이버 공식 상위5만 보여요. 검색 큰데 지도 뒤쪽 = 플레이스 광고 유지 + 영수증 리뷰 늘리기. 블로그 0개 → 체험단 글 제목에 그 키워드 넣기.
+            {search.mapAt && (
+              <>
+                {" "}· 맥미니 {new Date(search.mapAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                {search.mapNote ? ` (${search.mapNote})` : " 확인"}
+              </>
+            )}
           </p>
           <BlogPostsBox rows={search.rows} />
         </>

@@ -14,7 +14,9 @@ import { addKeywords, deleteKeywords, keywordTool, listAdgroups, listCampaigns, 
 export type SearchInfo = {
   terms: string[];
   keywords: string[];
-  rows: { keyword: string; volume: number | null; mapRank: number | null; blogHits: number; blogPosts: BlogPost[]; mapRankPrev: number | null; blogHitsPrev: number | null }[];
+  rows: { keyword: string; volume: number | null; mapRank: number | null; mapDeepRank: number | null; mapPos: number | null; mapChecked: number | null; mapName: string | null; blogHits: number; blogPosts: BlogPost[]; mapRankPrev: number | null; mapDeepRankPrev: number | null; blogHitsPrev: number | null }[];
+  mapNote: string | null;
+  mapAt: string | null;
   checkedAt: string | null;
   adConnected: boolean;
 };
@@ -98,8 +100,8 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = 
     service.from("weather_daily").select("date, precip_mm").gte("date", addYmd(today, -370)).lte("date", today),
     service.from("ad_special_days").select("date, note").eq("store_id", storeId).gte("date", addYmd(today, -370)),
     service.from("ad_store_settings").select("cost_rate").eq("store_id", storeId).maybeSingle(),
-    service.from("store_search_settings").select("terms, keywords, volumes").eq("store_id", storeId).maybeSingle(),
-    service.from("search_rank_daily").select("date, keyword, map_rank, blog_hits, blog_posts, checked_at").eq("store_id", storeId).gte("date", addYmd(today, -8)).order("date", { ascending: false }),
+    service.from("store_search_settings").select("terms, keywords, volumes, map_note, map_at").eq("store_id", storeId).maybeSingle(),
+    service.from("search_rank_daily").select("date, keyword, map_rank, blog_hits, blog_posts, checked_at, map_deep_rank, map_pos, map_checked, map_name, map_deep_at").eq("store_id", storeId).gte("date", addYmd(today, -8)).order("date", { ascending: false }),
     service.from("receipts").select("amount, category").eq("store_id", storeId).gte("date", addYmd(today, -28)).lte("date", addYmd(today, -1)),
     service.from("daily_closings").select("food_sales, beverage_sales, wine_sales, coupang_eats_sales, baemin_sales").eq("store_id", storeId).gte("date", addYmd(today, -28)).lte("date", addYmd(today, -1)),
   ]);
@@ -121,9 +123,11 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = 
     rows: (searchSetting?.keywords ?? []).map((kw) => {
       const a = latest.find((r) => r.keyword === kw);
       const b = prev.find((r) => r.keyword === kw);
-      return { keyword: kw, volume: (searchSetting?.volumes as Record<string, number> | null)?.[kw] ?? null, mapRank: a?.map_rank ?? null, blogHits: a?.blog_hits ?? 0, blogPosts: Array.isArray(a?.blog_posts) ? (a!.blog_posts as unknown as BlogPost[]) : [], mapRankPrev: b ? b.map_rank : null, blogHitsPrev: b ? b.blog_hits : null };
+      return { keyword: kw, volume: (searchSetting?.volumes as Record<string, number> | null)?.[kw] ?? null, mapRank: a?.map_rank ?? null, mapDeepRank: a?.map_deep_rank ?? null, mapPos: a?.map_pos ?? null, mapChecked: a?.map_checked ?? null, mapName: a?.map_name ?? null, blogHits: a?.blog_hits ?? 0, blogPosts: Array.isArray(a?.blog_posts) ? (a!.blog_posts as unknown as BlogPost[]) : [], mapRankPrev: b ? b.map_rank : null, mapDeepRankPrev: b ? b.map_deep_rank : null, blogHitsPrev: b ? b.blog_hits : null };
     }),
     checkedAt: latest[0]?.checked_at ?? null,
+    mapNote: searchSetting?.map_note ?? null,
+    mapAt: searchSetting?.map_at ?? null,
     adConnected: !!adAcct,
   };
   const weather: Record<string, number> = {};
@@ -170,7 +174,7 @@ export async function generateStrategyMemo(storeId: string): Promise<{ ok: true;
   const r = await loadAdInsight(storeId);
   if (!r.ok) return r;
   const searchText = r.search.rows.length
-    ? `\n검색 노출(네이버): ${r.search.rows.map((x) => `${x.keyword}(월 검색 ${x.volume == null ? "?" : x.volume.toLocaleString("ko-KR")}) 지도 ${x.mapRank == null ? "상위5 밖" : x.mapRank + "위"}·블로그 상위30 중 우리 글 ${x.blogHits}개`).join(", ")}`
+    ? `\n검색 노출(네이버): ${r.search.rows.map((x) => `${x.keyword}(월 검색 ${x.volume == null ? "?" : x.volume.toLocaleString("ko-KR")}) 지도 ${x.mapDeepRank != null ? x.mapDeepRank + "위(광고 제외)" : x.mapChecked ? x.mapChecked + "위 밖" : x.mapRank == null ? "상위5 밖" : x.mapRank + "위"}·블로그 상위30 중 우리 글 ${x.blogHits}개`).join(", ")}`
     : "";
   const memo = await generateAdStrategy(insightToPrompt(r.insight) + searchText, apiKey);
   if (!memo) return { ok: false, error: "AI 응답을 받지 못했어요. 잠시 후 다시 시도해 주세요." };
@@ -275,8 +279,8 @@ export async function loadSearchInfo(storeId: string): Promise<{ ok: true; searc
   const service = createServiceClient();
   const today = kstYmd(0);
   const [{ data: searchSetting }, { data: rankRows }, { data: adAcct }] = await Promise.all([
-    service.from("store_search_settings").select("terms, keywords, volumes").eq("store_id", storeId).maybeSingle(),
-    service.from("search_rank_daily").select("date, keyword, map_rank, blog_hits, blog_posts, checked_at").eq("store_id", storeId).gte("date", addYmd(today, -8)).order("date", { ascending: false }),
+    service.from("store_search_settings").select("terms, keywords, volumes, map_note, map_at").eq("store_id", storeId).maybeSingle(),
+    service.from("search_rank_daily").select("date, keyword, map_rank, blog_hits, blog_posts, checked_at, map_deep_rank, map_pos, map_checked, map_name, map_deep_at").eq("store_id", storeId).gte("date", addYmd(today, -8)).order("date", { ascending: false }),
     service.from("store_ad_accounts").select("store_id").eq("store_id", storeId).eq("enabled", true).maybeSingle(),
   ]);
   const latestDate = rankRows?.[0]?.date ?? null;
@@ -291,9 +295,11 @@ export async function loadSearchInfo(storeId: string): Promise<{ ok: true; searc
       rows: (searchSetting?.keywords ?? []).map((kw) => {
         const a = latest.find((r) => r.keyword === kw);
         const b = prev.find((r) => r.keyword === kw);
-        return { keyword: kw, volume: (searchSetting?.volumes as Record<string, number> | null)?.[kw] ?? null, mapRank: a?.map_rank ?? null, blogHits: a?.blog_hits ?? 0, blogPosts: Array.isArray(a?.blog_posts) ? (a!.blog_posts as unknown as BlogPost[]) : [], mapRankPrev: b ? b.map_rank : null, blogHitsPrev: b ? b.blog_hits : null };
+        return { keyword: kw, volume: (searchSetting?.volumes as Record<string, number> | null)?.[kw] ?? null, mapRank: a?.map_rank ?? null, mapDeepRank: a?.map_deep_rank ?? null, mapPos: a?.map_pos ?? null, mapChecked: a?.map_checked ?? null, mapName: a?.map_name ?? null, blogHits: a?.blog_hits ?? 0, blogPosts: Array.isArray(a?.blog_posts) ? (a!.blog_posts as unknown as BlogPost[]) : [], mapRankPrev: b ? b.map_rank : null, mapDeepRankPrev: b ? b.map_deep_rank : null, blogHitsPrev: b ? b.blog_hits : null };
       }),
       checkedAt: latest[0]?.checked_at ?? null,
+      mapNote: searchSetting?.map_note ?? null,
+      mapAt: searchSetting?.map_at ?? null,
       adConnected: !!adAcct,
     },
   };
