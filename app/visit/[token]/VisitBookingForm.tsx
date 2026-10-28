@@ -22,35 +22,43 @@ export default function VisitBookingForm({ token }: { token: string }) {
     <form action={formAction} className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
       <input type="hidden" name="token" value={token} />
       <label className="flex flex-col gap-1 text-xs font-medium text-muted">
-        네이버 블로그 주소 또는 아이디 <span className="font-normal">(리뷰노트에 등록한 블로그)</span>
+        <span>
+          네이버 블로그 주소 또는 아이디 <span className="font-normal text-muted/80">(리뷰노트에 등록한 블로그)</span>
+        </span>
         <input name="blog" required placeholder="blog.naver.com/abcd 또는 abcd" autoComplete="off" className={inputClass} />
       </label>
       <label className="flex flex-col gap-1 text-xs font-medium text-muted">
-        리뷰노트에 등록한 이름 <span className="font-normal">(선정 명단과 대조해요)</span>
+        <span>
+          리뷰노트에 등록한 이름 <span className="font-normal text-muted/80">(선정 명단과 대조해요)</span>
+        </span>
         <input name="name" required placeholder="홍길동" autoComplete="off" className={inputClass} />
       </label>
       <div className="grid grid-cols-2 gap-2">
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted">
-          방문 날짜
+        <label className="flex flex-col justify-end gap-1 text-xs font-medium text-muted">
+          <span className="whitespace-nowrap">방문 날짜</span>
           <input type="date" name="date" required className={inputClass} />
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted">
-          시간
+        <label className="flex flex-col justify-end gap-1 text-xs font-medium text-muted">
+          <span className="whitespace-nowrap">시간</span>
           <input type="time" name="time" required step={600} className={inputClass} />
         </label>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted">
-          인원
+        <label className="flex flex-col justify-end gap-1 text-xs font-medium text-muted">
+          <span className="whitespace-nowrap">인원</span>
           <input type="number" name="party" required min={1} max={20} defaultValue={2} inputMode="numeric" className={inputClass} />
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted">
-          연락처 <span className="font-normal">(선택)</span>
+        <label className="flex flex-col justify-end gap-1 text-xs font-medium text-muted">
+          <span className="whitespace-nowrap">
+            연락처 <span className="font-normal">(선택)</span>
+          </span>
           <input type="tel" name="contact" placeholder="010-0000-0000" autoComplete="tel" className={inputClass} />
         </label>
       </div>
       <label className="flex flex-col gap-1 text-xs font-medium text-muted">
-        요청사항 <span className="font-normal">(선택)</span>
+        <span className="whitespace-nowrap">
+          요청사항 <span className="font-normal">(선택)</span>
+        </span>
         <input name="note" placeholder="예: 아기의자 1개, 창가 자리" className={inputClass} />
       </label>
 
