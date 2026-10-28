@@ -59,9 +59,6 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
         <button type="button" onClick={sync} disabled={loading} className="rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
           {loading ? "동기화 중..." : "최근 8주 동기화"}
         </button>
-        <Link href="/ad-report/manage" className="rounded-xl border-2 border-brand px-4 py-2.5 text-sm font-semibold text-brand">
-          광고 관리
-        </Link>
         <Link href="/ad-report/hours" className="rounded-xl border-2 border-brand px-4 py-2.5 text-sm font-semibold text-brand">
           시간·요일 분석
         </Link>
