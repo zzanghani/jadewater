@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { fetchBlogMetrics, scoreBlog, type BlogMetrics, type ReviewnoteInfo } from "@/lib/blogCheck";
 import { draftRecruitPost } from "@/lib/claude";
-import type { RecruitRound } from "@/lib/types";
+import type { RecruitApplicant, RecruitRound } from "@/lib/types";
 
 export type IncomingApplicant = { blogId: string; name?: string | null; rn?: ReviewnoteInfo | null };
 // 리뷰노트 버튼이 보내는 캠페인 정보. 모집글 항목도 같이 오면 다음 회차 초안의 바탕이 된다.
@@ -37,6 +37,16 @@ export type ApplicantRow = {
   checked_at: string | null;
   selected: boolean;
   created_at: string;
+  // 체험 진행
+  visit_at: string | null;
+  visit_party: number | null;
+  visit_note: string | null;
+  visited_at: string | null;
+  no_show: boolean;
+  review_url: string | null;
+  review_at: string | null;
+  review_ranks: Record<string, number | null> | null;
+  rn_status: string | null;
 };
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
@@ -55,7 +65,8 @@ async function authStore(storeId: string): Promise<{ error: string } | { supabas
   return { supabase, userId: user.id };
 }
 
-const COLS = "id, campaign_id, campaign_title, blog_id, applicant_name, rn, metrics, score, grade, flags, checked_at, selected, created_at";
+const COLS =
+  "id, campaign_id, campaign_title, blog_id, applicant_name, rn, metrics, score, grade, flags, checked_at, selected, created_at, visit_at, visit_party, visit_note, visited_at, no_show, review_url, review_at, review_ranks, rn_status";
 
 export async function loadApplicants(storeId: string): Promise<{ ok: true; rows: ApplicantRow[] } | { ok: false; error: string }> {
   const auth = await authStore(storeId);
@@ -309,4 +320,50 @@ export async function approveSelection(
     .single();
   if (error) return { ok: false, error: error.message };
   return { ok: true, round: data as RecruitRound };
+}
+
+// ─── 체험 진행 (선정 이후) ──────────────────────────────────────────
+
+export type VisitPatch = {
+  visit_at?: string | null;
+  visit_party?: number | null;
+  visit_note?: string | null;
+  /** true면 지금 방문 완료, false면 완료 취소 */
+  visited?: boolean;
+  no_show?: boolean;
+};
+
+/** 선정자의 방문 예약·방문 완료·노쇼를 점장이 기록한다. 리뷰 등록 여부는 맥미니가 리뷰노트에서 읽어온다. */
+export async function updateVisit(
+  storeId: string,
+  applicantId: string,
+  patch: VisitPatch
+): Promise<{ ok: true; row: ApplicantRow } | { ok: false; error: string }> {
+  const auth = await authStore(storeId);
+  if ("error" in auth) return { ok: false, error: auth.error };
+  const update: Partial<RecruitApplicant> = {};
+  if ("visit_at" in patch) {
+    if (patch.visit_at && Number.isNaN(new Date(patch.visit_at).getTime())) return { ok: false, error: "방문 일시가 올바르지 않아요." };
+    update.visit_at = patch.visit_at ? new Date(patch.visit_at).toISOString() : null;
+  }
+  if ("visit_party" in patch) update.visit_party = patch.visit_party && patch.visit_party > 0 ? Math.min(20, Math.round(patch.visit_party)) : null;
+  if ("visit_note" in patch) update.visit_note = patch.visit_note?.trim() || null;
+  if (patch.visited !== undefined) {
+    update.visited_at = patch.visited ? new Date().toISOString() : null;
+    if (patch.visited) update.no_show = false;
+  }
+  if (patch.no_show !== undefined) {
+    update.no_show = patch.no_show;
+    if (patch.no_show) update.visited_at = null;
+  }
+  if (Object.keys(update).length === 0) return { ok: false, error: "바꿀 내용이 없어요." };
+  const { data, error } = await auth.supabase
+    .from("recruit_applicants")
+    .update(update)
+    .eq("id", applicantId)
+    .eq("store_id", storeId)
+    .select(COLS)
+    .single();
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, row: data as unknown as ApplicantRow };
 }

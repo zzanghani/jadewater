@@ -21,7 +21,7 @@ async function authorized(request: Request, supabase: Supa): Promise<boolean> {
 }
 
 const ROUND_COLS =
-  "id, store_id, status, campaign_id, title, offer, keywords, information, possible_days, possible_time, schedule_information, inf_num, macmini_note, macmini_at, approved_at";
+  "id, store_id, status, campaign_id, title, offer, keywords, information, possible_days, possible_time, schedule_information, inf_num, macmini_note, macmini_at, approved_at, review_end_at, progress_synced_at";
 
 export async function GET(request: Request) {
   const supabase = createServiceClient();
@@ -29,18 +29,27 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const [{ data: stores }, { data: rounds, error }] = await Promise.all([
+  // done(선정 끝) 회차도 리뷰 마감 + 7일까지는 리뷰 등록 현황을 계속 맞춘다.
+  const cutoff = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const [{ data: stores }, { data: active, error }, { data: finished }] = await Promise.all([
     supabase.from("stores").select("id, name"),
     supabase
       .from("recruit_rounds")
       .select(ROUND_COLS)
       .in("status", ["confirmed", "registered", "selecting", "approved"])
       .order("created_at"),
+    supabase
+      .from("recruit_rounds")
+      .select(ROUND_COLS)
+      .eq("status", "done")
+      .or(`review_end_at.is.null,review_end_at.gte.${cutoff}`)
+      .order("created_at"),
   ]);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const rounds = [...(active ?? []), ...(finished ?? [])];
 
   // 선정 승인된 회차의 선정자 (리뷰노트 applyId 포함)
-  const approved = (rounds ?? []).filter((r) => r.status === "approved" && r.campaign_id);
+  const approved = rounds.filter((r) => r.status === "approved" && r.campaign_id);
   const selections: Record<string, { apply_id: string | null; blog_id: string; name: string | null }[]> = {};
   for (const r of approved) {
     const { data: rows } = await supabase
@@ -58,7 +67,7 @@ export async function GET(request: Request) {
 
   // 지원자 가져오기 대상 회차는 "아직 점수 안 매긴 지원자"도 같이 알려준다(작업기가 check를 돌림).
   const unchecked: Record<string, string[]> = {};
-  for (const r of (rounds ?? []).filter((x) => (x.status === "registered" || x.status === "selecting") && x.campaign_id)) {
+  for (const r of rounds.filter((x) => (x.status === "registered" || x.status === "selecting") && x.campaign_id)) {
     const { data: rows } = await supabase
       .from("recruit_applicants")
       .select("id")
@@ -69,7 +78,7 @@ export async function GET(request: Request) {
     unchecked[r.id] = (rows ?? []).map((x) => x.id);
   }
 
-  return NextResponse.json({ ok: true, stores: stores ?? [], rounds: rounds ?? [], selections, unchecked });
+  return NextResponse.json({ ok: true, stores: stores ?? [], rounds, selections, unchecked });
 }
 
 type IncomingApplicant = { blogId: string; name?: string | null; rn?: (ReviewnoteInfo & { applyId?: number | string }) | null };
@@ -170,6 +179,80 @@ export async function POST(request: Request) {
         .eq("id", round.id);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       return NextResponse.json({ ok: true });
+    }
+
+    // 리뷰노트 '진행 중' 목록을 그대로 반영: 선정자 확정(selected), 리뷰 URL·등록 시각·키워드 순위.
+    // 리뷰노트에서 이미 선정이 끝난 회차(approved인데 progress 목록이 있음)는 done으로 맞춘다.
+    case "progress": {
+      if (!round || !round.campaign_id) return NextResponse.json({ error: "회차/캠페인 없음" }, { status: 409 });
+      const items = (Array.isArray(body.applies) ? body.applies : []) as {
+        applyId: string | number;
+        blogId: string | null;
+        name?: string | null;
+        status?: string | null;
+        reviewUrl?: string | null;
+        reviewAt?: string | null;
+        ranks?: Record<string, number | null> | null;
+        rn?: ReviewnoteInfo | null;
+      }[];
+      const reviewEndAt = typeof body.reviewEndAt === "string" ? body.reviewEndAt : null;
+      let matched = 0;
+      for (const it of items) {
+        const blogId = (it.blogId ?? "").trim().toLowerCase();
+        const patch = {
+          selected: true,
+          apply_id: String(it.applyId),
+          rn_status: it.status ?? null,
+          review_url: it.reviewUrl ?? null,
+          review_at: it.reviewAt ?? null,
+          review_ranks: it.ranks ?? null,
+        };
+        // apply_id로 먼저, 없으면 블로그 아이디로 맞춘다. 둘 다 없으면 새로 만든다(앱 밖에서 선정된 사람).
+        let { data: hit } = await supabase
+          .from("recruit_applicants")
+          .select("id")
+          .eq("store_id", round.store_id)
+          .eq("campaign_id", round.campaign_id)
+          .eq("apply_id", String(it.applyId))
+          .maybeSingle();
+        if (!hit && blogId) {
+          ({ data: hit } = await supabase
+            .from("recruit_applicants")
+            .select("id")
+            .eq("store_id", round.store_id)
+            .eq("campaign_id", round.campaign_id)
+            .eq("blog_id", blogId)
+            .maybeSingle());
+        }
+        if (hit) {
+          await supabase.from("recruit_applicants").update(patch).eq("id", hit.id);
+          matched++;
+        } else if (/^[a-z0-9_-]{3,30}$/.test(blogId)) {
+          await supabase.from("recruit_applicants").insert({
+            store_id: round.store_id,
+            campaign_id: round.campaign_id,
+            campaign_title: round.title,
+            blog_id: blogId,
+            applicant_name: it.name ?? null,
+            rn: it.rn ?? null,
+            ...patch,
+          });
+          matched++;
+        }
+      }
+      const reviewed = items.filter((it) => it.reviewUrl).length;
+      const becomesDone = round.status === "approved" && items.length > 0;
+      const { error } = await supabase
+        .from("recruit_rounds")
+        .update({
+          ...(becomesDone ? { status: "done" } : {}),
+          ...(reviewEndAt ? { review_end_at: reviewEndAt } : {}),
+          progress_synced_at: now,
+          ...note(`체험 진행 ${items.length}명 · 리뷰 등록 ${reviewed}명 확인`),
+        })
+        .eq("id", round.id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ ok: true, matched, reviewed, done: becomesDone });
     }
 
     // 실패 메모 (상태는 안 바꾼다 — 다음 주기에 다시 시도)

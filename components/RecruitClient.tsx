@@ -15,6 +15,7 @@ import {
 } from "@/app/(app)/recruit/actions";
 import type { RecruitRound } from "@/lib/types";
 import RecruitPostClient from "@/components/RecruitPostClient";
+import RecruitVisitClient from "@/components/RecruitVisitClient";
 import { extractBlogIds, type BlogMetrics } from "@/lib/blogCheck";
 import { buildBookmarklet, REVIEWNOTE_ORIGINS } from "@/lib/reviewnoteBookmarklet";
 
@@ -55,7 +56,7 @@ export default function RecruitClient({ stores, defaultStoreId }: { stores: Stor
   const [gradeFilter, setGradeFilter] = useState<"all" | "A" | "B" | "C">("all");
   const [open, setOpen] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
-  const [tab, setTab] = useState<"select" | "post">("select");
+  const [tab, setTab] = useState<"select" | "visit" | "post">("select");
   const [rounds, setRounds] = useState<RecruitRound[]>([]);
   // 캠페인별로 점장이 고른 선정 대상 (아직 손대지 않은 캠페인은 추천값을 쓴다)
   const [picksByCampaign, setPicksByCampaign] = useState<Record<string, string[]>>({});
@@ -238,6 +239,7 @@ export default function RecruitClient({ stores, defaultStoreId }: { stores: Stor
         {(
           [
             ["select", "지원자·선정"],
+            ["visit", "체험 진행"],
             ["post", "모집글"],
           ] as const
         ).map(([k, label]) => (
@@ -253,6 +255,31 @@ export default function RecruitClient({ stores, defaultStoreId }: { stores: Stor
 
       {tab === "post" ? (
         <RecruitPostClient key={storeId} storeId={storeId} storeName={stores.find((x) => x.id === storeId)?.name ?? ""} />
+      ) : tab === "visit" ? (
+        <>
+          {campaigns.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {campaigns.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setCampaignId(c.id)}
+                  className={`shrink-0 rounded-full border px-3 py-1.5 text-xs ${
+                    c.id === campaignId ? "border-brand bg-brand text-white" : "border-border bg-card text-foreground"
+                  }`}
+                >
+                  {new Date(c.at).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric" })} {c.title ?? c.id}
+                </button>
+              ))}
+            </div>
+          )}
+          <RecruitVisitClient
+            key={campaignId ?? "none"}
+            storeId={storeId}
+            round={round}
+            rows={list.filter((r) => r.selected)}
+            onUpdated={(row) => setRows((prev) => (prev ?? []).map((x) => (x.id === row.id ? row : x)))}
+          />
+        </>
       ) : (
         <>
           {/* 가져오기 */}
@@ -390,7 +417,9 @@ export default function RecruitClient({ stores, defaultStoreId }: { stores: Stor
                       {picks.size > round.inf_num && <p className="mt-1 text-[11px] text-red-600">모집 인원보다 {picks.size - round.inf_num}명 많아요.</p>}
                     </>
                   ) : (
-                    <p className="mt-1 text-[11px] text-muted">리뷰노트에 선정이 끝난 회차예요.</p>
+                    <button onClick={() => setTab("visit")} className="mt-2 w-full rounded-xl border border-brand bg-brand-light py-2 text-sm font-semibold text-brand">
+                      선정 끝 → 체험 진행 탭에서 방문·리뷰 관리
+                    </button>
                   )}
                 </div>
               )}

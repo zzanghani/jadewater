@@ -793,6 +793,16 @@ export type RecruitApplicant = {
   selected: boolean
   // 리뷰노트 지원 번호(applyId) — 선정 반영할 때 씀
   apply_id: string | null
+  // 선정 이후(체험 진행) — migration_recruit_visits.sql
+  visit_at: string | null
+  visit_party: number | null
+  visit_note: string | null
+  visited_at: string | null
+  no_show: boolean
+  review_url: string | null
+  review_at: string | null
+  review_ranks: Record<string, number | null> | null
+  rn_status: string | null
   created_by: string | null
   created_at: string
 }
@@ -821,6 +831,9 @@ export type RecruitRound = {
   // 맥미니 작업기가 마지막으로 한 일/오류 (migration_recruit_macmini.sql)
   macmini_note: string | null
   macmini_at: string | null
+  // 리뷰 마감(리뷰노트 reviewEndAt)과 맥미니가 리뷰 현황을 마지막으로 맞춘 시각
+  review_end_at: string | null
+  progress_synced_at: string | null
   created_at: string
   updated_at: string
 }
