@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { updateVisit, type ApplicantRow, type VisitPatch } from "@/app/(app)/recruit/actions";
 import type { RecruitRound } from "@/lib/types";
 import MacminiNote from "@/components/MacminiNote";
@@ -290,11 +290,18 @@ function VisitEditor({
 // 막히는 경우가 있어 조용히 실패하지 않게 한다.
 function BookingLinkCard({ token }: { token: string }) {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
-  const [url, setUrl] = useState("");
-  useEffect(() => {
-    setUrl(`${window.location.origin}/visit/${token}`);
-  }, [token]);
-  const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+  // 서버 렌더 땐 주소를 모르니 빈 값, 브라우저에선 현재 주소(그린/블루에 따라 다름).
+  const origin = useSyncExternalStore(
+    () => () => {},
+    () => window.location.origin,
+    () => ""
+  );
+  const url = origin ? `${origin}/visit/${token}` : "";
+  const canShare = useSyncExternalStore(
+    () => () => {},
+    () => typeof navigator.share === "function",
+    () => false
+  );
 
   async function copy() {
     try {
