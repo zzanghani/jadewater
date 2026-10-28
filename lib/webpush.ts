@@ -5,7 +5,23 @@ let configError: string | null = null;
 // web-push는 URL-safe base64(패딩 없음)만 받으므로 여기서 맞춰 준다.
 function normalizeVapidKey(raw: string | undefined): string | undefined {
   if (!raw) return raw;
-  return raw.trim().replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  return raw
+    .replace(/["'\s]/g, "") // 따옴표·공백·줄바꿈이 섞여 들어간 경우
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+// 키 값은 절대 드러내지 않고 "모양"만 설명한다 — 환경변수가 잘못 들어갔을 때 원인을 찾기 위함.
+function describeKeyShape(label: string, key: string): string {
+  const bad = key.replace(/[A-Za-z0-9_-]/g, "");
+  let decodedLen = -1;
+  try {
+    decodedLen = Buffer.from(key, "base64url").length;
+  } catch {
+    // 디코딩 불가
+  }
+  return `${label}: 길이 ${key.length}, 디코딩 ${decodedLen}바이트${bad ? `, 허용되지 않는 문자 ${bad.length}개` : ""}`;
 }
 
 export type PushSubscriptionKeys = {
@@ -46,7 +62,10 @@ async function loadConfiguredWebPush() {
     }
     return webpush;
   } catch (err) {
-    configError = `VAPID 설정 실패: ${err instanceof Error ? err.message : String(err)}`;
+    configError = `VAPID 설정 실패: ${err instanceof Error ? err.message : String(err)} (${describeKeyShape(
+      "공개키",
+      publicKey
+    )}; ${describeKeyShape("개인키", privateKey)}; 정상은 공개키 65바이트·개인키 32바이트)`;
     console.error("[webpush] VAPID 설정 실패", err);
     return null;
   }
