@@ -84,7 +84,8 @@ export default function RecruitVisitClient({
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const nowMs = Date.now();
+  // 화면이 열린 시각 기준으로 "예정/지남"을 가른다 (렌더 중 시계를 읽지 않도록 한 번만).
+  const [nowMs] = useState(() => Date.now());
 
   const staged = useMemo(() => {
     const withStage = rows.map((r) => ({ r, stage: stageOf(r, nowMs) }));
