@@ -1,7 +1,10 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_PATHS = ['/login', '/signup', '/reset-password', '/auth/confirm', '/visit']
+const PUBLIC_PATHS = ['/login', '/signup', '/reset-password', '/auth/confirm']
+// 로그인 여부와 상관없이 누구나 그대로 보는 화면 (체험단 선정자 방문 예약 페이지).
+// 직원이 로그인된 폰으로 열어도 앱 홈으로 튕기면 안 된다.
+const OPEN_PATHS = ['/visit']
 
 // Next.js 16: `middleware.ts`/`middleware()`는 `proxy.ts`/`proxy()`로 이름이 바뀌었다.
 // 여기서는 Supabase 세션 쿠키를 갱신하고, 비로그인 사용자를 /login으로 보낸다.
@@ -39,6 +42,9 @@ export async function proxy(request: NextRequest) {
   const user = session?.user ?? null
 
   const path = request.nextUrl.pathname
+  if (OPEN_PATHS.some((p) => path.startsWith(p))) {
+    return response
+  }
   const isPublicPath = PUBLIC_PATHS.some((p) => path.startsWith(p))
 
   if (!user && !isPublicPath) {
