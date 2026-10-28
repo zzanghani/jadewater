@@ -791,6 +791,8 @@ export type RecruitApplicant = {
   flags: string[]
   checked_at: string | null
   selected: boolean
+  // 리뷰노트 지원 번호(applyId) — 선정 반영할 때 씀
+  apply_id: string | null
   created_by: string | null
   created_at: string
 }
@@ -816,6 +818,9 @@ export type RecruitRound = {
   confirmed_at: string | null
   approved_by: string | null
   approved_at: string | null
+  // 맥미니 작업기가 마지막으로 한 일/오류 (migration_recruit_macmini.sql)
+  macmini_note: string | null
+  macmini_at: string | null
   created_at: string
   updated_at: string
 }
