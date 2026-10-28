@@ -165,3 +165,61 @@ ${dataText}
   const parsed = parseAdStrategyMemo(text);
   return parsed ? JSON.stringify(parsed) : text;
 }
+
+// 체험단(리뷰노트) 모집글 초안 — 키워드 3개와 블로거용 제목·본문 작성 가이드.
+// 지난 회차 가이드의 톤과 매장 특징은 살리되, 같은 키워드만 반복하지 않게
+// 회차마다 조합을 바꾼다. 매장에 대한 사실은 입력에 있는 것만 쓴다.
+export type RecruitPostInput = {
+  storeName: string;
+  offer: string;
+  currentKeywords: string[];
+  currentInformation: string;
+  previous: { keywords: string[]; information: string }[];
+};
+
+export async function draftRecruitPost(
+  input: RecruitPostInput,
+  apiKey: string
+): Promise<{ keywords: string[]; information: string } | null> {
+  const prevText = input.previous
+    .map((p, i) => `[${i + 1}회 전] 키워드: ${p.keywords.join(", ") || "-"}\n${p.information || "(가이드 없음)"}`)
+    .join("\n\n");
+  const prompt = `너는 레스토랑의 블로그 체험단(리뷰노트) 모집글을 쓰는 마케터야.
+
+매장: ${input.storeName}
+제공 내역: ${input.offer || "-"}
+지금 입력된 키워드: ${input.currentKeywords.join(", ") || "-"}
+지금 입력된 작성 가이드:
+${input.currentInformation || "(없음)"}
+
+지난 회차 모집글:
+${prevText || "(없음)"}
+
+이번 회차 모집글을 새로 써줘. 규칙:
+- 매장 특징·메뉴·수상 이력 같은 사실은 위 글에 있는 것만 써. 새로 지어내지 마.
+- 키워드는 손님이 네이버에서 실제로 칠 만한 "지역+상황+맛집" 형태로 3개. 지난 회차와 같은 조합만 반복하지 말고 최소 1개는 바꿔.
+- 작성 가이드는 [제목 가이드] / [본문 작성 가이드] 구조로, 블로거가 바로 따라 쓸 수 있게 짧은 줄로.
+- 광고 문구처럼 과장하지 말고, 블로거가 솔직한 후기를 쓰게 유도해.
+
+아래 JSON 형식 그대로만 출력해. 설명이나 코드 블록 없이 JSON만:
+{ "keywords": ["키워드1", "키워드2", "키워드3"], "information": "작성 가이드 전문 (줄바꿈은 \\n)" }`;
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 1500, thinking: { type: "disabled" }, messages: [{ role: "user", content: prompt }] }),
+  });
+  if (!res.ok) return null;
+  const data = (await res.json()) as { content?: { type: string; text?: string }[] };
+  const text = data.content?.find((c) => c.type === "text")?.text?.trim();
+  if (!text) return null;
+  try {
+    const json = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)) as { keywords?: unknown; information?: unknown };
+    const keywords = Array.isArray(json.keywords) ? json.keywords.filter((k): k is string => typeof k === "string").slice(0, 3) : [];
+    const information = typeof json.information === "string" ? json.information : "";
+    if (!information) return null;
+    return { keywords, information };
+  } catch {
+    return null;
+  }
+}

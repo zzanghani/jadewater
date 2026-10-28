@@ -790,8 +790,34 @@ export type RecruitApplicant = {
   grade: string | null
   flags: string[]
   checked_at: string | null
+  selected: boolean
   created_by: string | null
   created_at: string
+}
+
+export type RecruitRoundStatus = 'draft' | 'confirmed' | 'registered' | 'selecting' | 'approved' | 'done'
+
+// 체험단 모집 회차 (supabase/migration_recruit_rounds.sql)
+export type RecruitRound = {
+  id: string
+  store_id: string
+  status: RecruitRoundStatus
+  campaign_id: string | null
+  title: string | null
+  offer: string | null
+  keywords: string[]
+  information: string | null
+  possible_days: string | null
+  possible_time: string | null
+  schedule_information: string | null
+  inf_num: number
+  ai_drafted: boolean
+  created_by: string | null
+  confirmed_at: string | null
+  approved_by: string | null
+  approved_at: string | null
+  created_at: string
+  updated_at: string
 }
 
 export type AdChangeLog = {
@@ -1027,6 +1053,12 @@ export type Database = {
         Row: { store_id: string; date: string; memo: string; generated_at: string }
         Insert: { store_id: string; date: string; memo: string; generated_at?: string }
         Update: Partial<{ store_id: string; date: string; memo: string; generated_at: string }>
+        Relationships: []
+      }
+      recruit_rounds: {
+        Row: RecruitRound
+        Insert: Partial<RecruitRound> & { store_id: string }
+        Update: Partial<RecruitRound>
         Relationships: []
       }
       recruit_applicants: {

@@ -2,18 +2,29 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  approveSelection,
   checkApplicant,
   deleteCampaign,
   loadApplicants,
+  loadRounds,
   saveApplicants,
   type ApplicantRow,
   type IncomingApplicant,
+  type IncomingCampaign,
 } from "@/app/(app)/recruit/actions";
+import type { RecruitRound } from "@/lib/types";
+import RecruitPostClient from "@/components/RecruitPostClient";
 import { extractBlogIds, type BlogMetrics } from "@/lib/blogCheck";
 import { buildBookmarklet, REVIEWNOTE_ORIGINS } from "@/lib/reviewnoteBookmarklet";
 
 type StoreOption = { id: string; name: string; keywords: string[] };
-type Incoming = { campaign: { id: string; title: string | null }; applicants: IncomingApplicant[] };
+type Incoming = { campaign: IncomingCampaign; applicants: IncomingApplicant[] };
+
+const ROUND_STATUS: Record<string, string> = {
+  selecting: "선정 전",
+  approved: "선정 승인됨 · 리뷰노트 반영 대기",
+  done: "리뷰노트 선정 완료",
+};
 
 const fmt = (n: number | null | undefined) => (n == null ? "-" : n.toLocaleString("ko-KR"));
 const pct = (x: number | null | undefined) => (x == null ? "-" : `${Math.round(x * 100)}%`);
@@ -39,6 +50,11 @@ export default function RecruitClient({ stores, defaultStoreId }: { stores: Stor
   const [gradeFilter, setGradeFilter] = useState<"all" | "A" | "B" | "C">("all");
   const [open, setOpen] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
+  const [tab, setTab] = useState<"select" | "post">("select");
+  const [rounds, setRounds] = useState<RecruitRound[]>([]);
+  // 캠페인별로 점장이 고른 선정 대상 (아직 손대지 않은 캠페인은 추천값을 쓴다)
+  const [picksByCampaign, setPicksByCampaign] = useState<Record<string, string[]>>({});
+  const [approving, setApproving] = useState(false);
   const bookmarkRef = useRef<HTMLAnchorElement>(null);
   const storeIdRef = useRef(storeId);
 
@@ -49,11 +65,12 @@ export default function RecruitClient({ stores, defaultStoreId }: { stores: Stor
 
   useEffect(() => {
     let alive = true;
-    loadApplicants(storeId).then((r) => {
+    Promise.all([loadApplicants(storeId), loadRounds(storeId)]).then(([r, rr]) => {
       if (!alive) return;
       if (!r.ok) return setErr(r.error);
       setErr(null);
       setRows(r.rows);
+      setRounds(rr.ok ? rr.rounds : []);
       setCampaignId(r.rows[0]?.campaign_id ?? null);
     });
     return () => {
@@ -87,8 +104,9 @@ export default function RecruitClient({ stores, defaultStoreId }: { stores: Stor
     const r = await saveApplicants(targetStoreId, data.campaign, data.applicants);
     if (!r.ok) return setErr(r.error);
     if (targetStoreId !== storeIdRef.current) setStoreId(targetStoreId);
-    const fresh = await loadApplicants(targetStoreId);
+    const [fresh, rr] = await Promise.all([loadApplicants(targetStoreId), loadRounds(targetStoreId)]);
     if (fresh.ok) setRows(fresh.rows);
+    if (rr.ok) setRounds(rr.rounds);
     setCampaignId(data.campaign.id);
     setMsg(`${r.rows.length}명을 가져왔어요. 블로그를 하나씩 확인하는 중이에요.`);
     await runChecks(targetStoreId, r.rows.map((x) => x.id));
@@ -155,6 +173,36 @@ export default function RecruitClient({ stores, defaultStoreId }: { stores: Stor
     return m;
   }, [rows, campaignId]);
 
+  // 선정: 이 캠페인의 회차(리뷰노트에서 가져온 캠페인만 있음)와 고른 사람들.
+  const round = rounds.find((x) => x.campaign_id === campaignId) ?? null;
+  const canSelect = !!round && round.status !== "done";
+  const suggested = useMemo(() => {
+    const already = list.filter((r) => r.selected).map((r) => r.id);
+    if (already.length) return already;
+    const n = round?.inf_num ?? 20;
+    return list.filter((r) => r.grade === "A" || r.grade === "B").slice(0, n).map((r) => r.id);
+  }, [list, round]);
+  const picks = new Set(campaignId ? (picksByCampaign[campaignId] ?? suggested) : []);
+  function togglePick(id: string) {
+    if (!campaignId) return;
+    const next = new Set(picks);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setPicksByCampaign((m) => ({ ...m, [campaignId]: [...next] }));
+  }
+  async function approve() {
+    if (!campaignId || !round) return;
+    if (!window.confirm(`${picks.size}명을 선정 승인할까요? 승인하면 리뷰노트에 선정 처리돼요.`)) return;
+    setApproving(true);
+    setErr(null);
+    const r = await approveSelection(storeId, campaignId, [...picks]);
+    setApproving(false);
+    if (!r.ok) return setErr(r.error);
+    setRounds((prev) => prev.map((x) => (x.id === r.round.id ? r.round : x)));
+    setRows((prev) => (prev ?? []).map((x) => (x.campaign_id === campaignId ? { ...x, selected: picks.has(x.id) } : x)));
+    setMsg(`${picks.size}명 선정을 승인했어요. 맥미니가 리뷰노트에 선정 처리해요.`);
+  }
+
   async function copyNames() {
     const names = list.filter((r) => r.grade === "A").map((r) => `${r.applicant_name ?? ""} (${r.blog_id})`.trim());
     await navigator.clipboard.writeText(names.join("\n"));
@@ -181,198 +229,259 @@ export default function RecruitClient({ stores, defaultStoreId }: { stores: Stor
         </select>
       )}
 
-      {/* 가져오기 */}
-      <section className="rounded-2xl border border-border bg-card p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">지원자 가져오기</h2>
-          <button onClick={() => setShowGuide((v) => !v)} className="text-xs text-brand">
-            {showGuide ? "접기" : "리뷰노트에서 바로 가져오기"}
+      <div className="flex rounded-xl border border-border bg-card p-1 text-sm">
+        {(
+          [
+            ["select", "지원자·선정"],
+            ["post", "모집글"],
+          ] as const
+        ).map(([k, label]) => (
+          <button
+            key={k}
+            onClick={() => setTab(k)}
+            className={`flex-1 rounded-lg py-1.5 ${tab === k ? "bg-brand font-semibold text-white" : "text-foreground"}`}
+          >
+            {label}
           </button>
-        </div>
-        {showGuide && (
-          <div className="mt-3 rounded-xl bg-brand-light/60 p-3 text-xs leading-relaxed text-foreground">
-            <p className="font-semibold">처음 한 번만 (PC 크롬)</p>
-            <p className="mt-1">
-              아래 버튼을 브라우저 위쪽 <b>즐겨찾기 막대로 끌어다 놓으세요.</b>
-            </p>
-            <a
-              ref={bookmarkRef}
-              onClick={(e) => {
-                e.preventDefault();
-                setMsg("이 버튼은 여기서 누르는 게 아니라, 즐겨찾기 막대로 끌어다 놓은 뒤 리뷰노트 화면에서 눌러요.");
-              }}
-              className="mt-2 inline-block cursor-grab rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-white"
-            >
-              체험단 검증 보내기
-            </a>
-            <p className="mt-3 font-semibold">모집할 때마다</p>
-            <p className="mt-1">리뷰노트 → 체험단 관리 → 이번 캠페인을 연 화면에서 즐겨찾기의 <b>체험단 검증 보내기</b>를 누르면, 이 화면이 새 창으로 열리면서 지원자 전원을 자동으로 확인해요.</p>
-            <p className="mt-2 text-muted">연락처·주소는 가져오지 않고 이름·블로그·리뷰노트 점수만 가져와요.</p>
-            <div>
-              <button
-                onClick={async () => {
-                  await navigator.clipboard.writeText(buildBookmarklet(window.location.origin));
-                  setMsg("버튼 코드를 복사했어요. 즐겨찾기를 새로 만들고 주소 칸에 붙여넣으세요.");
-                }}
-                className="mt-2 text-[11px] text-muted underline"
-              >
-                끌어다 놓기가 안 되면: 버튼 코드 복사
-              </button>
-            </div>
-          </div>
-        )}
-        <p className="mt-3 text-xs text-muted">또는 블로그 주소를 붙여넣기 (여러 명 한 번에, 다른 글자가 섞여도 괜찮아요)</p>
-        <textarea
-          value={paste}
-          onChange={(e) => setPaste(e.target.value)}
-          rows={3}
-          placeholder={"https://blog.naver.com/abcd\nhttps://blog.naver.com/efgh"}
-          className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-        />
-        <button
-          onClick={importPasted}
-          disabled={!paste.trim()}
-          className="mt-2 w-full rounded-xl bg-brand py-2 text-sm font-semibold text-white disabled:opacity-40"
-        >
-          확인 시작
-        </button>
-      </section>
+        ))}
+      </div>
 
-      {err && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{err}</p>}
-      {msg && <p className="rounded-xl bg-brand-light px-4 py-3 text-sm text-brand-dark">{msg}</p>}
-
-      {rows === null ? (
-        <p className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">불러오는 중...</p>
-      ) : campaigns.length === 0 ? (
-        <p className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">아직 확인한 지원자가 없어요.</p>
+      {tab === "post" ? (
+        <RecruitPostClient key={storeId} storeId={storeId} storeName={stores.find((x) => x.id === storeId)?.name ?? ""} />
       ) : (
-        <section className="flex flex-col gap-3">
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {campaigns.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setCampaignId(c.id)}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs ${
-                  c.id === campaignId ? "border-brand bg-brand text-white" : "border-border bg-card text-foreground"
-                }`}
-              >
-                {new Date(c.at).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric" })} {c.title ?? c.id} · {c.count}명
+        <>
+          {/* 가져오기 */}
+          <section className="rounded-2xl border border-border bg-card p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold">지원자 가져오기</h2>
+              <button onClick={() => setShowGuide((v) => !v)} className="text-xs text-brand">
+                {showGuide ? "접기" : "리뷰노트에서 바로 가져오기"}
               </button>
-            ))}
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card p-4">
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              {(["all", "A", "B", "C"] as const).map((g) => (
-                <button
-                  key={g}
-                  onClick={() => setGradeFilter(g)}
-                  className={`rounded-full px-3 py-1 ${gradeFilter === g ? "bg-foreground text-background" : "bg-background text-foreground"}`}
+            </div>
+            {showGuide && (
+              <div className="mt-3 rounded-xl bg-brand-light/60 p-3 text-xs leading-relaxed text-foreground">
+                <p className="font-semibold">처음 한 번만 (PC 크롬)</p>
+                <p className="mt-1">
+                  아래 버튼을 브라우저 위쪽 <b>즐겨찾기 막대로 끌어다 놓으세요.</b>
+                </p>
+                <a
+                  ref={bookmarkRef}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setMsg("이 버튼은 여기서 누르는 게 아니라, 즐겨찾기 막대로 끌어다 놓은 뒤 리뷰노트 화면에서 눌러요.");
+                  }}
+                  className="mt-2 inline-block cursor-grab rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-white"
                 >
-                  {g === "all" ? `전체 ${list.length}` : `${g} ${counts[g]}`}
-                </button>
-              ))}
-              {checking.size > 0 && <span className="text-muted">확인 중 {checking.size}명 남음…</span>}
-            </div>
-            <p className="mt-2 text-[11px] leading-relaxed text-muted">
-              A 80점↑ 추천 · B 60점↑ 고려 · C 비추천. 맛집 비중 30 · 검색 노출 35 · 협찬 과다 15 · 방문자·활동 20, 리뷰노트 페널티·취소는 감점.
-            </p>
-            <div className="mt-3 flex gap-2">
-              <button onClick={copyNames} className="flex-1 rounded-xl border border-border py-2 text-xs">
-                A등급 이름 복사
-              </button>
-              <button
-                onClick={() => runChecks(storeId, list.map((r) => r.id))}
-                disabled={checking.size > 0}
-                className="flex-1 rounded-xl border border-border py-2 text-xs disabled:opacity-40"
-              >
-                전체 다시 확인
-              </button>
-              <button onClick={removeCampaign} className="rounded-xl border border-border px-3 py-2 text-xs text-red-600">
-                삭제
-              </button>
-            </div>
-          </div>
+                  체험단 검증 보내기
+                </a>
+                <p className="mt-3 font-semibold">모집할 때마다</p>
+                <p className="mt-1">리뷰노트 → 체험단 관리 → 이번 캠페인을 연 화면에서 즐겨찾기의 <b>체험단 검증 보내기</b>를 누르면, 이 화면이 새 창으로 열리면서 지원자 전원을 자동으로 확인해요.</p>
+                <p className="mt-2 text-muted">연락처·주소는 가져오지 않고 이름·블로그·리뷰노트 점수만 가져와요.</p>
+                <div>
+                  <button
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(buildBookmarklet(window.location.origin));
+                      setMsg("버튼 코드를 복사했어요. 즐겨찾기를 새로 만들고 주소 칸에 붙여넣으세요.");
+                    }}
+                    className="mt-2 text-[11px] text-muted underline"
+                  >
+                    끌어다 놓기가 안 되면: 버튼 코드 복사
+                  </button>
+                </div>
+              </div>
+            )}
+            <p className="mt-3 text-xs text-muted">또는 블로그 주소를 붙여넣기 (여러 명 한 번에, 다른 글자가 섞여도 괜찮아요)</p>
+            <textarea
+              value={paste}
+              onChange={(e) => setPaste(e.target.value)}
+              rows={3}
+              placeholder={"https://blog.naver.com/abcd\nhttps://blog.naver.com/efgh"}
+              className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            />
+            <button
+              onClick={importPasted}
+              disabled={!paste.trim()}
+              className="mt-2 w-full rounded-xl bg-brand py-2 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              확인 시작
+            </button>
+          </section>
 
-          <ul className="flex flex-col gap-2">
-            {shown.map((r, i) => {
-              const m = r.metrics as BlogMetrics | null;
-              const isChecking = checking.has(r.id);
-              const before = seenBefore.get(r.blog_id);
-              return (
-                <li key={r.id} className="rounded-2xl border border-border bg-card p-3">
-                  <button onClick={() => setOpen(open === r.id ? null : r.id)} className="flex w-full items-start gap-3 text-left">
-                    <span className="w-5 shrink-0 pt-0.5 text-xs text-muted">{gradeFilter === "all" ? i + 1 : ""}</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-semibold">{r.applicant_name ?? r.blog_id}</span>
-                        {r.applicant_name && <span className="truncate text-xs text-muted">{r.blog_id}</span>}
+          {err && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{err}</p>}
+          {msg && <p className="rounded-xl bg-brand-light px-4 py-3 text-sm text-brand-dark">{msg}</p>}
+
+          {rows === null ? (
+            <p className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">불러오는 중...</p>
+          ) : campaigns.length === 0 ? (
+            <p className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">아직 확인한 지원자가 없어요.</p>
+          ) : (
+            <section className="flex flex-col gap-3">
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {campaigns.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setCampaignId(c.id)}
+                    className={`shrink-0 rounded-full border px-3 py-1.5 text-xs ${
+                      c.id === campaignId ? "border-brand bg-brand text-white" : "border-border bg-card text-foreground"
+                    }`}
+                  >
+                    {new Date(c.at).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric" })} {c.title ?? c.id} · {c.count}명
+                  </button>
+                ))}
+              </div>
+
+              <div className="rounded-2xl border border-border bg-card p-4">
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  {(["all", "A", "B", "C"] as const).map((g) => (
+                    <button
+                      key={g}
+                      onClick={() => setGradeFilter(g)}
+                      className={`rounded-full px-3 py-1 ${gradeFilter === g ? "bg-foreground text-background" : "bg-background text-foreground"}`}
+                    >
+                      {g === "all" ? `전체 ${list.length}` : `${g} ${counts[g]}`}
+                    </button>
+                  ))}
+                  {checking.size > 0 && <span className="text-muted">확인 중 {checking.size}명 남음…</span>}
+                </div>
+                <p className="mt-2 text-[11px] leading-relaxed text-muted">
+                  A 80점↑ 추천 · B 60점↑ 고려 · C 비추천. 맛집 비중 30 · 검색 노출 35 · 협찬 과다 15 · 방문자·활동 20, 리뷰노트 페널티·취소는 감점.
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button onClick={copyNames} className="flex-1 rounded-xl border border-border py-2 text-xs">
+                    A등급 이름 복사
+                  </button>
+                  <button
+                    onClick={() => runChecks(storeId, list.map((r) => r.id))}
+                    disabled={checking.size > 0}
+                    className="flex-1 rounded-xl border border-border py-2 text-xs disabled:opacity-40"
+                  >
+                    전체 다시 확인
+                  </button>
+                  <button onClick={removeCampaign} className="rounded-xl border border-border px-3 py-2 text-xs text-red-600">
+                    삭제
+                  </button>
+                </div>
+              </div>
+
+              {round && (
+                <div className="sticky top-2 z-10 rounded-2xl border border-brand bg-card p-4 shadow-sm">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-semibold">
+                      선정 {picks.size} / {round.inf_num}명
+                    </span>
+                    <span className="text-xs text-muted">{ROUND_STATUS[round.status] ?? ""}</span>
+                  </div>
+                  {canSelect ? (
+                    <>
+                      <p className="mt-1 text-[11px] text-muted">점수 높은 A·B를 먼저 골라 뒀어요. 빼거나 넣을 사람만 체크를 바꾸세요.</p>
+                      <button
+                        onClick={approve}
+                        disabled={approving || picks.size === 0 || picks.size > round.inf_num || checking.size > 0}
+                        className="mt-2 w-full rounded-xl bg-brand py-2 text-sm font-semibold text-white disabled:opacity-40"
+                      >
+                        {approving ? "승인 중…" : round.status === "approved" ? "선정 다시 승인" : `${picks.size}명 선정 승인`}
+                      </button>
+                      {picks.size > round.inf_num && <p className="mt-1 text-[11px] text-red-600">모집 인원보다 {picks.size - round.inf_num}명 많아요.</p>}
+                    </>
+                  ) : (
+                    <p className="mt-1 text-[11px] text-muted">리뷰노트에 선정이 끝난 회차예요.</p>
+                  )}
+                </div>
+              )}
+
+              <ul className="flex flex-col gap-2">
+                {shown.map((r, i) => {
+                  const m = r.metrics as BlogMetrics | null;
+                  const isChecking = checking.has(r.id);
+                  const before = seenBefore.get(r.blog_id);
+                  return (
+                    <li key={r.id} className="rounded-2xl border border-border bg-card p-3">
+                      <div className="flex items-start gap-3">
+                        {canSelect ? (
+                          <input
+                            type="checkbox"
+                            checked={picks.has(r.id)}
+                            onChange={() => togglePick(r.id)}
+                            className="mt-1 h-4 w-4 shrink-0 accent-brand"
+                            aria-label="선정"
+                          />
+                        ) : (
+                          <span className="w-5 shrink-0 pt-0.5 text-xs text-muted">{r.selected ? "✓" : gradeFilter === "all" ? i + 1 : ""}</span>
+                        )}
+                      <button onClick={() => setOpen(open === r.id ? null : r.id)} className="flex min-w-0 flex-1 items-start gap-3 text-left">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate text-sm font-semibold">{r.applicant_name ?? r.blog_id}</span>
+                            {r.applicant_name && <span className="truncate text-xs text-muted">{r.blog_id}</span>}
+                          </div>
+                          {m ? (
+                            <p className="mt-1 text-[11px] leading-relaxed text-muted">
+                              맛집 {pct(m.foodRatio)} · 검색 {m.searchChecked ? `${m.searchExposed}/${m.searchChecked}` : "-"} · 협찬 {pct(m.sponsoredRatio)} · 방문자{" "}
+                              {fmt((r.rn as { avgVisit?: number } | null)?.avgVisit ?? m.dayVisitors)} · 이웃 {fmt(m.subscribers)} · 30일 글 {m.posts30d}
+                              {m.directory ? ` · ${m.directory}` : ""}
+                              {(r.rn as { exposureScore?: number } | null)?.exposureScore != null && ` · 리뷰노트 ${(r.rn as { exposureScore: number }).exposureScore}`}
+                            </p>
+                          ) : (
+                            <p className="mt-1 text-[11px] text-muted">{isChecking ? "확인 중…" : "아직 확인 전"}</p>
+                          )}
+                          {(r.flags.length > 0 || before) && (
+                            <div className="mt-1.5 flex flex-wrap gap-1">
+                              {r.flags.map((f) => (
+                                <span key={f} className="rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] text-red-600">
+                                  {f}
+                                </span>
+                              ))}
+                              {before && <span className="rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] text-sky-700">이전 회차에도 지원 {before}회</span>}
+                            </div>
+                          )}
+                        </div>
+                        {r.grade ? (
+                          <span className={`shrink-0 rounded-lg px-2 py-1 text-xs font-bold ${GRADE_STYLE[r.grade] ?? ""}`}>
+                            {r.grade} {r.score}
+                          </span>
+                        ) : (
+                          <span className="shrink-0 text-xs text-muted">{isChecking ? "…" : ""}</span>
+                        )}
+                      </button>
                       </div>
-                      {m ? (
-                        <p className="mt-1 text-[11px] leading-relaxed text-muted">
-                          맛집 {pct(m.foodRatio)} · 검색 {m.searchChecked ? `${m.searchExposed}/${m.searchChecked}` : "-"} · 협찬 {pct(m.sponsoredRatio)} · 방문자{" "}
-                          {fmt((r.rn as { avgVisit?: number } | null)?.avgVisit ?? m.dayVisitors)} · 이웃 {fmt(m.subscribers)} · 30일 글 {m.posts30d}
-                          {m.directory ? ` · ${m.directory}` : ""}
-                          {(r.rn as { exposureScore?: number } | null)?.exposureScore != null && ` · 리뷰노트 ${(r.rn as { exposureScore: number }).exposureScore}`}
-                        </p>
-                      ) : (
-                        <p className="mt-1 text-[11px] text-muted">{isChecking ? "확인 중…" : "아직 확인 전"}</p>
-                      )}
-                      {(r.flags.length > 0 || before) && (
-                        <div className="mt-1.5 flex flex-wrap gap-1">
-                          {r.flags.map((f) => (
-                            <span key={f} className="rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] text-red-600">
-                              {f}
-                            </span>
-                          ))}
-                          {before && <span className="rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] text-sky-700">이전 회차에도 지원 {before}회</span>}
+                      {open === r.id && (
+                        <div className="mt-3 border-t border-border pt-3 text-xs">
+                          <a href={`https://blog.naver.com/${r.blog_id}`} target="_blank" rel="noreferrer" className="text-brand underline">
+                            블로그 열기{m?.blogName ? ` · ${m.blogName}` : ""}
+                          </a>
+                          {m?.error && <p className="mt-2 text-red-600">{m.error}</p>}
+                          {m && m.samplePosts.length > 0 && (
+                            <ul className="mt-2 flex flex-col gap-1.5">
+                              {m.samplePosts.map((p) => (
+                                <li key={p.url} className="flex items-start gap-1.5">
+                                  <span className="shrink-0 text-[10px] text-muted">
+                                    {p.food ? "🍽" : "·"}
+                                    {p.sponsored ? " 협찬" : ""}
+                                    {p.exposed === true ? " 검색✓" : p.exposed === false ? " 검색✗" : ""}
+                                  </span>
+                                  <a href={p.url} target="_blank" rel="noreferrer" className="truncate text-foreground underline-offset-2 hover:underline">
+                                    {p.title}
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          <p className="mt-2 text-[10px] text-muted">
+                            최근 글 {m?.postsChecked ?? 0}개 기준 · 마지막 글 {m?.lastPostDays != null ? `${m.lastPostDays}일 전` : "-"}
+                            {r.checked_at && ` · ${new Date(r.checked_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 확인`}
+                          </p>
+                          <button onClick={() => runChecks(storeId, [r.id])} className="mt-2 text-[11px] text-brand">
+                            이 사람만 다시 확인
+                          </button>
                         </div>
                       )}
-                    </div>
-                    {r.grade ? (
-                      <span className={`shrink-0 rounded-lg px-2 py-1 text-xs font-bold ${GRADE_STYLE[r.grade] ?? ""}`}>
-                        {r.grade} {r.score}
-                      </span>
-                    ) : (
-                      <span className="shrink-0 text-xs text-muted">{isChecking ? "…" : ""}</span>
-                    )}
-                  </button>
-                  {open === r.id && (
-                    <div className="mt-3 border-t border-border pt-3 text-xs">
-                      <a href={`https://blog.naver.com/${r.blog_id}`} target="_blank" rel="noreferrer" className="text-brand underline">
-                        블로그 열기{m?.blogName ? ` · ${m.blogName}` : ""}
-                      </a>
-                      {m?.error && <p className="mt-2 text-red-600">{m.error}</p>}
-                      {m && m.samplePosts.length > 0 && (
-                        <ul className="mt-2 flex flex-col gap-1.5">
-                          {m.samplePosts.map((p) => (
-                            <li key={p.url} className="flex items-start gap-1.5">
-                              <span className="shrink-0 text-[10px] text-muted">
-                                {p.food ? "🍽" : "·"}
-                                {p.sponsored ? " 협찬" : ""}
-                                {p.exposed === true ? " 검색✓" : p.exposed === false ? " 검색✗" : ""}
-                              </span>
-                              <a href={p.url} target="_blank" rel="noreferrer" className="truncate text-foreground underline-offset-2 hover:underline">
-                                {p.title}
-                              </a>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      <p className="mt-2 text-[10px] text-muted">
-                        최근 글 {m?.postsChecked ?? 0}개 기준 · 마지막 글 {m?.lastPostDays != null ? `${m.lastPostDays}일 전` : "-"}
-                        {r.checked_at && ` · ${new Date(r.checked_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 확인`}
-                      </p>
-                      <button onClick={() => runChecks(storeId, [r.id])} className="mt-2 text-[11px] text-brand">
-                        이 사람만 다시 확인
-                      </button>
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+        </>
       )}
     </div>
   );

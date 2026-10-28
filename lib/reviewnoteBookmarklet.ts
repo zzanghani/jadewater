@@ -26,7 +26,7 @@ let stage='applied';
 if(!list.length){const r=await fetch('/api/applies/progress?campaignId='+id+'&campaignCurrentTurn='+turn);if(r.ok){list=await r.json();stage='selected'}}
 const applicants=list.filter(a=>a&&a.user&&(a.user.blogId||a.user.blog)).map(a=>{const u=a.user;let b=u.blogId;if(!b){const mm=String(u.blog).match(/blog\\.naver\\.com\\/([A-Za-z0-9_-]+)/);b=mm&&mm[1]}return{blogId:b,name:u.name||null,rn:{applyId:a.id,exposureScore:u.exposureScore,avgVisit:u.blogAvgFiveDailyVisit,penaltyCount:u.penaltyCount,cancelCount:u.cancelCount,valuation:u.valuation,isInfluence:u.isInfluence}}}).filter(a=>a.blogId);
 if(!applicants.length){alert('지원자 블로그를 찾지 못했어요.');return}
-const msg={type:'reviewnote-applicants',campaign:{id:String(id),title:c.title||null,infNum:c.infNum||null,stage},applicants};
+const msg={type:'reviewnote-applicants',campaign:{id:String(id),title:c.title||null,infNum:c.infNum||null,stage,offer:c.offer||null,keywords:[c.keyword1,c.keyword2,c.keyword3].filter(Boolean),information:c.information||null,possibleDays:c.possibleDays||null,possibleTime:c.possibleTime||null,scheduleInformation:c.scheduleInformation||null},applicants};
 let done=false;const onAck=e=>{if(e.origin===APP&&e.data==='reviewnote-ack'){done=true;window.removeEventListener('message',onAck)}};
 window.addEventListener('message',onAck);
 for(let i=0;i<60&&!done;i++){w.postMessage(msg,APP);await new Promise(r=>setTimeout(r,500))}
