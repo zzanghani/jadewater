@@ -1025,9 +1025,9 @@ export type Database = {
         Relationships: []
       }
       search_rank_daily: {
-        Row: { store_id: string; date: string; keyword: string; map_rank: number | null; blog_hits: number; checked_at: string }
-        Insert: { store_id: string; date: string; keyword: string; map_rank?: number | null; blog_hits?: number; checked_at?: string }
-        Update: Partial<{ store_id: string; date: string; keyword: string; map_rank: number | null; blog_hits: number; checked_at: string }>
+        Row: { store_id: string; date: string; keyword: string; map_rank: number | null; blog_hits: number; blog_posts: Record<string, unknown>[]; checked_at: string }
+        Insert: { store_id: string; date: string; keyword: string; map_rank?: number | null; blog_hits?: number; blog_posts?: Record<string, unknown>[]; checked_at?: string }
+        Update: Partial<{ store_id: string; date: string; keyword: string; map_rank: number | null; blog_hits: number; blog_posts: Record<string, unknown>[]; checked_at: string }>
         Relationships: []
       }
       ad_store_settings: {
