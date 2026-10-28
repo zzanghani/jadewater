@@ -149,7 +149,9 @@ export default async function AppLayout({
   const name = isTeamAccount
     ? profile?.name ?? "팀 계정"
     : isMaster
-      ? "제이드앤워터대표"
+      // 마스터는 브랜드(제이드앤워터/정다미)가 아니라 운영사 전체를 보는 계정이라
+      // 베메컴 기준으로 부른다.
+      ? "베메컴대표"
       : profile?.name ?? user.email?.split("@")[0] ?? "사용자";
 
   const desktopMode = isDesktopMode((await cookies()).get(LAYOUT_MODE_COOKIE)?.value);
