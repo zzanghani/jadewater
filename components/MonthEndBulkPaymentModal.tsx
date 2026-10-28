@@ -111,7 +111,7 @@ export default function MonthEndBulkPaymentModal({ storeId }: { storeId: string 
 
             {rows.length === 0 ? (
               <p className="rounded-xl border border-dashed border-border py-6 text-center text-sm text-muted">
-                아래 "업체 추가"로 항목을 만들어 주세요.
+                아래 &quot;업체 추가&quot;로 항목을 만들어 주세요.
               </p>
             ) : (
               <div className="flex flex-col gap-2 overflow-y-auto pr-1">
