@@ -1,5 +1,6 @@
 "use client";
 
+import MacminiNote from "@/components/MacminiNote";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   approveSelection,
@@ -21,10 +22,14 @@ type StoreOption = { id: string; name: string; keywords: string[] };
 type Incoming = { campaign: IncomingCampaign; applicants: IncomingApplicant[] };
 
 const ROUND_STATUS: Record<string, string> = {
+  draft: "모집글 작성 중",
+  confirmed: "모집글 확정 · 리뷰노트 등록 대기",
+  registered: "리뷰노트 등록됨 · 지원자 대기",
   selecting: "선정 전",
   approved: "선정 승인됨 · 리뷰노트 반영 대기",
   done: "리뷰노트 선정 완료",
 };
+
 
 const fmt = (n: number | null | undefined) => (n == null ? "-" : n.toLocaleString("ko-KR"));
 const pct = (x: number | null | undefined) => (x == null ? "-" : `${Math.round(x * 100)}%`);
@@ -371,6 +376,7 @@ export default function RecruitClient({ stores, defaultStoreId }: { stores: Stor
                     </span>
                     <span className="text-xs text-muted">{ROUND_STATUS[round.status] ?? ""}</span>
                   </div>
+                  <MacminiNote note={round.macmini_note} at={round.macmini_at} />
                   {canSelect ? (
                     <>
                       <p className="mt-1 text-[11px] text-muted">점수 높은 A·B를 먼저 골라 뒀어요. 빼거나 넣을 사람만 체크를 바꾸세요.</p>

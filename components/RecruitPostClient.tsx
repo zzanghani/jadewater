@@ -1,5 +1,6 @@
 "use client";
 
+import MacminiNote from "@/components/MacminiNote";
 import { useEffect, useState } from "react";
 import { deleteRound, draftPostWithAI, loadRounds, saveRound, type RoundFields } from "@/app/(app)/recruit/actions";
 import type { RecruitRound } from "@/lib/types";
@@ -128,6 +129,7 @@ export default function RecruitPostClient({ storeId, storeName }: { storeId: str
             <h2 className="text-sm font-semibold">{editing ? "이번 회차 모집글" : "새 모집글"}</h2>
             {editing && <span className="text-xs text-muted">{STATUS_LABEL[editing.status]}</span>}
           </div>
+          {editing && <MacminiNote note={editing.macmini_note} at={editing.macmini_at} />}
 
           <button
             onClick={aiDraft}
@@ -228,6 +230,7 @@ export default function RecruitPostClient({ storeId, storeName }: { storeId: str
                       {new Date(r.created_at).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric" })} · {r.offer ?? "-"} · {r.inf_num}명
                     </span>
                     <span className="text-muted">{STATUS_LABEL[r.status]}</span>
+                    <MacminiNote note={r.macmini_note} at={r.macmini_at} />
                   </div>
                   <p className="mt-0.5 text-muted">{r.keywords.join(" · ") || "-"}</p>
                 </li>
