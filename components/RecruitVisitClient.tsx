@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { updateVisit, type ApplicantRow, type VisitPatch } from "@/app/(app)/recruit/actions";
 import type { RecruitRound } from "@/lib/types";
 import MacminiNote from "@/components/MacminiNote";
@@ -84,7 +84,6 @@ export default function RecruitVisitClient({
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   // 화면이 열린 시각 기준으로 "예정/지남"을 가른다 (렌더 중 시계를 읽지 않도록 한 번만).
   const [nowMs] = useState(() => Date.now());
 
@@ -142,21 +141,7 @@ export default function RecruitVisitClient({
         {round && <MacminiNote note={round.macmini_note} at={round.macmini_at} />}
         <p className="mt-1 text-[11px] text-muted">리뷰 등록 여부는 맥미니가 30분마다 리뷰노트에서 확인해요. 방문 예약·완료만 여기서 적어주세요.</p>
         {round?.booking_token && (
-          <div className="mt-3 rounded-xl bg-background p-3">
-            <p className="text-xs font-semibold">선정자가 직접 예약하게 하기</p>
-            <p className="mt-1 text-[11px] text-muted">아래 링크를 리뷰노트 선정 안내(또는 쪽지)에 붙여 넣으세요. 블로거가 날짜·시간·인원을 적으면 여기 자동으로 들어오고, 지점장에게 알림이 와요.</p>
-            <button
-              onClick={async () => {
-                const url = `${window.location.origin}/visit/${round.booking_token}`;
-                await navigator.clipboard.writeText(url);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
-              }}
-              className="mt-2 w-full rounded-xl border border-brand bg-brand-light py-2 text-xs font-semibold text-brand"
-            >
-              {copied ? "복사됨 ✓" : "방문 예약 링크 복사"}
-            </button>
-          </div>
+          <BookingLinkCard token={round.booking_token} />
         )}
       </div>
 
@@ -295,6 +280,74 @@ function VisitEditor({
           </a>
         )}
         {row.rn_status && <span className="text-muted">리뷰노트 {row.rn_status}</span>}
+      </div>
+    </div>
+  );
+}
+
+// 선정자용 예약 링크 — 주소를 그대로 보여주고, 복사(클립보드 → 안 되면 선택해서 복사)와
+// 공유(폰의 공유 시트: 카카오톡 등)를 둔다. 앱(PWA)·인앱 브라우저에선 클립보드 API가
+// 막히는 경우가 있어 조용히 실패하지 않게 한다.
+function BookingLinkCard({ token }: { token: string }) {
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    setUrl(`${window.location.origin}/visit/${token}`);
+  }, [token]);
+  const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+
+  async function copy() {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        throw new Error("no clipboard api");
+      }
+      setState("copied");
+    } catch {
+      // 구형/인앱 브라우저: 숨은 입력칸을 선택해서 복사 명령
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      setState(ok ? "copied" : "failed");
+    }
+    setTimeout(() => setState("idle"), 2000);
+  }
+
+  async function share() {
+    try {
+      await navigator.share({ title: "체험단 방문 예약", text: "선정되신 분은 아래 링크에서 방문 일정을 예약해 주세요.", url });
+    } catch {
+      /* 사용자가 취소 */
+    }
+  }
+
+  return (
+    <div className="mt-3 rounded-xl bg-background p-3">
+      <p className="text-xs font-semibold">선정자가 직접 예약하게 하기</p>
+      <p className="mt-1 text-[11px] text-muted">아래 링크를 리뷰노트 선정 안내(또는 쪽지)에 붙여 넣으세요. 블로거가 날짜·시간·인원을 적으면 여기 자동으로 들어오고, 지점장에게 알림이 와요.</p>
+      <input
+        readOnly
+        value={url}
+        onFocus={(e) => e.currentTarget.select()}
+        className="mt-2 w-full rounded-lg border border-border bg-card px-2 py-1.5 text-[11px] text-foreground"
+        aria-label="예약 링크"
+      />
+      <div className="mt-2 flex gap-2">
+        <button onClick={copy} className="flex-1 rounded-xl border border-brand bg-brand-light py-2 text-xs font-semibold text-brand">
+          {state === "copied" ? "복사됨 ✓" : state === "failed" ? "위 칸을 길게 눌러 복사하세요" : "링크 복사"}
+        </button>
+        {canShare && (
+          <button onClick={share} className="flex-1 rounded-xl bg-brand py-2 text-xs font-semibold text-white">
+            카톡 등으로 공유
+          </button>
+        )}
       </div>
     </div>
   );
