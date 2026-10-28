@@ -225,7 +225,11 @@ export async function POST(request: Request) {
             .maybeSingle());
         }
         if (hit) {
-          await supabase.from("recruit_applicants").update(patch).eq("id", hit.id);
+          // 리뷰노트가 주는 이름이 있으면 같이 채운다(앱엔 블로그 아이디만 있는 경우가 많다).
+          await supabase
+            .from("recruit_applicants")
+            .update({ ...patch, ...(it.name ? { applicant_name: it.name } : {}) })
+            .eq("id", hit.id);
           matched++;
         } else if (/^[a-z0-9_-]{3,30}$/.test(blogId)) {
           await supabase.from("recruit_applicants").insert({
