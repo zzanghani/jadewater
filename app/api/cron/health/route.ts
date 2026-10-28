@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { sendPush } from "@/lib/webpush";
+import { sendPush, webPushStatus } from "@/lib/webpush";
 
 // 앱 자동 점검(헬스체크).
 // - 매일 아침 루틴(클라우드 에이전트)과 pg_cron(점심, supabase/migration_health_check.sql)이 호출한다.
@@ -191,8 +191,9 @@ export async function GET(request: Request) {
   }
 
   // 4) 푸시 설정
-  const vapidOk = Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
-  if (!vapidOk) problems.push("웹푸시 VAPID 환경변수 없음 — 알림이 전혀 안 나감");
+  const push = await webPushStatus();
+  const vapidOk = push.ok;
+  if (!vapidOk) problems.push(`웹푸시 설정 오류 (${push.reason}) — 알림이 전혀 안 나감`);
 
   // 5) 대표 계정 푸시 구독 (알림 수신처)
   let ownerSubs: { id: string; endpoint: string; p256dh: string; auth: string }[] = [];
@@ -235,12 +236,12 @@ export async function GET(request: Request) {
     const expiredIds: string[] = [];
     await Promise.all(
       ownerSubs.map(async (s) => {
-        const { expired } = await sendPush(
+        const { expired, sent } = await sendPush(
           { endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth },
           { title, body: body.slice(0, 180), url: "/" }
         );
         if (expired) expiredIds.push(s.id);
-        else notified++;
+        else if (sent) notified++;
       })
     );
     if (expiredIds.length > 0) {

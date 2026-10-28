@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
-import { saveInventoryItem } from "@/app/(app)/inventory/actions";
+import { saveInventoryItem, type InventoryFormState } from "@/app/(app)/inventory/actions";
 import type { InventoryItem, InventorySection } from "@/lib/types";
 
 export default function InventoryItemForm({
@@ -17,22 +17,23 @@ export default function InventoryItemForm({
   existing?: InventoryItem;
 }) {
   const router = useRouter();
-  const [state, formAction, pending] = useActionState(saveInventoryItem, undefined);
   const [resetKey, setResetKey] = useState(0);
   const isEditing = Boolean(existing);
   const backHref = `/inventory?section=${encodeURIComponent(section)}&date=${date}`;
 
   // 새 품목 등록 성공 시 다음 품목을 바로 입력할 수 있도록 폼을 비우고,
   // 수정 성공 시에는 목록으로 돌아간다.
-  useEffect(() => {
-    if (!state?.success) return;
-    if (isEditing) {
-      router.push(backHref);
-      return;
-    }
-    setResetKey((k) => k + 1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state]);
+  const [state, formAction, pending] = useActionState<InventoryFormState, FormData>(
+    async (prev, formData) => {
+      const next = await saveInventoryItem(prev, formData);
+      if (next?.success) {
+        if (isEditing) router.push(backHref);
+        else setResetKey((k) => k + 1);
+      }
+      return next;
+    },
+    undefined
+  );
 
   return (
     <form key={resetKey} action={formAction} className="flex flex-col gap-3">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState } from "react";
 import { unlockSettlement } from "@/app/(app)/settlement/actions";
 
 export default function SettlementPasswordGate({
@@ -9,11 +9,8 @@ export default function SettlementPasswordGate({
   children: React.ReactNode;
 }) {
   const [state, formAction, pending] = useActionState(unlockSettlement, undefined);
-  const [unlocked, setUnlocked] = useState(false);
-
-  useEffect(() => {
-    if (state?.success) setUnlocked(true);
-  }, [state]);
+  // 잠금 해제 여부는 서버 액션 결과에서 바로 읽는다(별도 state 불필요).
+  const unlocked = Boolean(state?.success);
 
   if (unlocked) {
     return <>{children}</>;

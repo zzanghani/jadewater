@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import InventoryItemForm from "@/components/InventoryItemForm";
 import type { InventoryItem, InventorySection } from "@/lib/types";
 
@@ -17,10 +17,13 @@ export default function InventoryItemPopup({
 }) {
   const [open, setOpen] = useState(Boolean(existing));
 
-  // URL의 edit 파라미터가 사라지면(수정 완료/취소) 팝업도 같이 닫는다.
-  useEffect(() => {
+  // URL의 edit 파라미터가 바뀌면(수정 시작/완료/취소) 팝업 열림도 따라간다.
+  // 렌더 중에 직전 prop과 비교해 state를 맞추는 React 권장 패턴.
+  const [prevExisting, setPrevExisting] = useState(existing);
+  if (existing !== prevExisting) {
+    setPrevExisting(existing);
     setOpen(Boolean(existing));
-  }, [existing]);
+  }
 
   return (
     <>

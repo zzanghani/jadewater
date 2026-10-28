@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { saveFieldExpense, updateFieldExpense } from "@/app/(app)/payment/actions";
+import { saveFieldExpense, updateFieldExpense, type PaymentFormState } from "@/app/(app)/payment/actions";
 import { kstDateString } from "@/lib/date";
 import type { FieldExpense, FieldExpenseCategory, FieldExpensePaymentMethod, Store } from "@/lib/types";
 
@@ -31,7 +31,6 @@ export default function FieldExpenseForm({
   onDone?: () => void;
 }) {
   const action = expense ? updateFieldExpense : saveFieldExpense;
-  const [state, formAction, pending] = useActionState(action, undefined);
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -53,17 +52,23 @@ export default function FieldExpenseForm({
   const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(
     expense?.photoUrl ?? null
   );
-
-  useEffect(() => {
-    if (!state?.success || expense) return;
-    formRef.current?.reset();
-    setDate(kstDateString(0));
-    setCategory("식자재");
-    setDescription("");
-    setAmountRaw("");
-    setPaymentMethod("법인카드");
-    setPhotoPreview(null);
-  }, [state?.success, expense]);
+  const [state, formAction, pending] = useActionState<PaymentFormState, FormData>(
+    async (prev, formData) => {
+      const next = await action(prev, formData);
+      if (next?.success && !expense) {
+        // 신규 등록 성공 → 다음 입력을 위해 폼 비우기 (수정 모드는 아래 onDone 으로 닫힘)
+        formRef.current?.reset();
+        setDate(kstDateString(0));
+        setCategory("식자재");
+        setDescription("");
+        setAmountRaw("");
+        setPaymentMethod("법인카드");
+        setPhotoPreview(null);
+      }
+      return next;
+    },
+    undefined
+  );
 
   useEffect(() => {
     if (state?.success && expense) onDone?.();

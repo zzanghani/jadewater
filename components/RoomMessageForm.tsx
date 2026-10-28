@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { sendRoomMessage, type SendRoomMessageState } from "@/app/(app)/messages/rooms/actions";
 import MediaInsertButton from "@/components/MediaInsertButton";
 import { makeInlineUploader } from "@/lib/uploadToStorage";
@@ -10,21 +10,23 @@ const uploadInlineChatFile = makeInlineUploader("chat");
 type Member = { id: string; name: string };
 
 export default function RoomMessageForm({ roomId, members }: { roomId: string; members: Member[] }) {
-  const [state, formAction, pending] = useActionState<SendRoomMessageState, FormData>(
-    sendRoomMessage,
-    undefined
-  );
   const formRef = useRef<HTMLFormElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [body, setBody] = useState("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionStart, setMentionStart] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!state?.success) return;
-    formRef.current?.reset();
-    setBody("");
-  }, [state]);
+  const [state, formAction, pending] = useActionState<SendRoomMessageState, FormData>(
+    async (prev, formData) => {
+      const next = await sendRoomMessage(prev, formData);
+      if (next?.success) {
+        // 전송 성공 → 입력칸 비우기
+        formRef.current?.reset();
+        setBody("");
+      }
+      return next;
+    },
+    undefined
+  );
 
   function handleBodyChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const value = e.target.value;

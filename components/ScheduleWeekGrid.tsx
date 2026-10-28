@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { deleteEmployeeShifts, unlockScheduleAdmin } from "@/app/(app)/schedule/actions";
@@ -35,7 +35,9 @@ export default function ScheduleWeekGrid({
     unlockScheduleAdmin,
     undefined
   );
-  const [unlocked, setUnlocked] = useState(false);
+  // 잠금 해제 여부는 서버 액션 결과에서 바로 읽는다. 해제되면 입력 폼은
+  // 아래 렌더 조건(showUnlockForm && !unlocked)으로 자연히 사라진다.
+  const unlocked = Boolean(unlockState?.success);
   const [showUnlockForm, setShowUnlockForm] = useState(false);
   const [extraNames, setExtraNames] = useState<string[]>([]);
   const [newName, setNewName] = useState("");
@@ -45,13 +47,6 @@ export default function ScheduleWeekGrid({
     date: string;
     shift: ScheduleShift | null;
   } | null>(null);
-
-  useEffect(() => {
-    if (unlockState?.success) {
-      setUnlocked(true);
-      setShowUnlockForm(false);
-    }
-  }, [unlockState]);
 
   const existingNames = new Set(rows.map((r) => r.employeeName));
   const pendingRows: WeekGridRow[] = extraNames

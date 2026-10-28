@@ -381,8 +381,9 @@ export default function SettlementForm({
 }
 
 function stripKey<T extends { key: number }>(item: T): Omit<T, "key"> {
-  const { key: _key, ...rest } = item;
-  return rest;
+  const rest: Partial<T> = { ...item };
+  delete rest.key;
+  return rest as Omit<T, "key">;
 }
 
 function SummaryRow({
