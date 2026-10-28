@@ -12,6 +12,19 @@ function urlBase64ToUint8Array(base64String: string) {
   return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
 }
 
+// 브라우저에 남아 있는 구독이 "지금 서버가 쓰는 공개키"로 만든 것인지 확인한다.
+// 그린/블루 키가 다르거나 키를 바꾼 뒤에는 옛 구독으로 보낸 푸시가 전부 거절되므로,
+// 다르면 지우고 같은 키로 다시 구독해야 한다.
+function subscriptionMatchesKey(sub: PushSubscription, publicKey: string): boolean {
+  const current = sub.options?.applicationServerKey;
+  if (!current) return true; // 브라우저가 키를 안 알려주면 그대로 둔다
+  const a = new Uint8Array(current);
+  const b = urlBase64ToUint8Array(publicKey);
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
 export default function PushSubscribeButton({
   storeId,
 }: {
@@ -31,10 +44,22 @@ export default function PushSubscribeButton({
   useEffect(() => {
     if (!supported) return;
 
+    const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
     navigator.serviceWorker
       .register("/sw.js")
       .then(async (reg) => {
-        const sub = await reg.pushManager.getSubscription();
+        let sub = await reg.pushManager.getSubscription();
+        if (sub && !subscriptionMatchesKey(sub, publicKey)) {
+          // 다른 키로 만든 구독 — 지우고, 알림 권한이 이미 있으면 조용히 다시 구독한다.
+          await sub.unsubscribe().catch(() => {});
+          sub = null;
+          if (Notification.permission === "granted") {
+            sub = await reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(publicKey),
+            });
+          }
+        }
         if (!sub) {
           setStatus("idle");
           return;
