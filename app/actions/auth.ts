@@ -28,7 +28,6 @@ export async function login(
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    console.error("[login debug]", error.status, error.code, error.message); // TEMP-DEBUG
     // 가입 확인 메일을 안 누른 계정은 비밀번호가 맞아도 여기로 떨어진다.
     // "비밀번호가 틀렸다"고 하면 본인도 관리자도 원인을 못 찾는다.
     if (error.code === "email_not_confirmed") {

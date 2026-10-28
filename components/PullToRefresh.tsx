@@ -25,7 +25,9 @@ export default function PullToRefresh({
   const [refreshing, setRefreshing] = useState(false);
   const refreshingRef = useRef(false);
   const pathnameRef = useRef(pathname);
-  pathnameRef.current = pathname;
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
 
   useEffect(() => {
     let startY = 0;

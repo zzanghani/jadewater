@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { createPlanComment, type PlanFormState } from "@/app/(app)/plan/actions";
 
 type Profile = { id: string; name: string };
@@ -12,10 +12,6 @@ export default function MonthlyPlanCommentForm({
   planId: string;
   profiles?: Profile[];
 }) {
-  const [state, formAction, pending] = useActionState<PlanFormState, FormData>(
-    createPlanComment,
-    undefined
-  );
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -23,13 +19,19 @@ export default function MonthlyPlanCommentForm({
   const [body, setBody] = useState("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionStart, setMentionStart] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!state?.success) return;
-    formRef.current?.reset();
-    setFileNames([]);
-    setBody("");
-  }, [state]);
+  const [state, formAction, pending] = useActionState<PlanFormState, FormData>(
+    async (prev, formData) => {
+      const next = await createPlanComment(prev, formData);
+      if (next?.success) {
+        // 등록 성공 → 입력칸·파일 목록 비우기
+        formRef.current?.reset();
+        setFileNames([]);
+        setBody("");
+      }
+      return next;
+    },
+    undefined
+  );
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     setFileNames(Array.from(e.target.files ?? []).map((f) => f.name));

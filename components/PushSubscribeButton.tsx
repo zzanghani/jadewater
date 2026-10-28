@@ -17,18 +17,19 @@ export default function PushSubscribeButton({
 }: {
   storeId: string | null;
 }) {
-  const [status, setStatus] = useState<Status>("checking");
+  // 브라우저가 푸시를 지원하는지는 첫 렌더에서 한 번만 판단한다.
+  // (서버에서는 window 가 없어 false → "checking"/"unsupported" 둘 다 아무것도 안 그리므로 hydration 차이 없음)
+  const [supported] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      "serviceWorker" in navigator &&
+      "PushManager" in window &&
+      Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
+  );
+  const [status, setStatus] = useState<Status>(supported ? "checking" : "unsupported");
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      setStatus("unsupported");
-      return;
-    }
-    if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
-      setStatus("unsupported");
-      return;
-    }
+    if (!supported) return;
 
     navigator.serviceWorker
       .register("/sw.js")
@@ -58,7 +59,7 @@ export default function PushSubscribeButton({
         setStatus(result.error ? "error" : "subscribed");
       })
       .catch(() => setStatus("error"));
-  }, [storeId]);
+  }, [storeId, supported]);
 
   async function handleSubscribe() {
     try {

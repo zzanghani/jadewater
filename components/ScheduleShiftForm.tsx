@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { addShift, type ScheduleFormState } from "@/app/(app)/schedule/actions";
 import { BREAK_MINUTE_OPTIONS, SCHEDULE_ROLES, roleColor } from "@/lib/scheduleColors";
 import AmPmTimeSelect from "@/components/AmPmTimeSelect";
@@ -8,18 +8,18 @@ import ScheduleMultiDatePicker from "@/components/ScheduleMultiDatePicker";
 import type { ScheduleRole } from "@/lib/types";
 
 export default function ScheduleShiftForm({ date }: { date: string }) {
-  const [state, formAction, pending] = useActionState<ScheduleFormState, FormData>(
-    addShift,
-    undefined
-  );
   const [role, setRole] = useState<ScheduleRole>(SCHEDULE_ROLES[0]);
   const [dates, setDates] = useState<string[]>([date]);
   const [resetKey, setResetKey] = useState(0);
-
-  useEffect(() => {
-    if (!state?.success) return;
-    setResetKey((k) => k + 1);
-  }, [state]);
+  const [state, formAction, pending] = useActionState<ScheduleFormState, FormData>(
+    async (prev, formData) => {
+      const next = await addShift(prev, formData);
+      // 등록 성공 → 폼을 새로 그려 입력칸을 비운다.
+      if (next?.success) setResetKey((k) => k + 1);
+      return next;
+    },
+    undefined
+  );
 
   return (
     <form

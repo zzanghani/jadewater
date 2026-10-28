@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
-import { saveReceipt } from "@/app/(app)/receipts/actions";
+import { saveReceipt, type ReceiptFormState } from "@/app/(app)/receipts/actions";
 import { kstDateString } from "@/lib/date";
 import SingleDatePicker from "@/components/SingleDatePicker";
 import RecentSuppliersButton from "@/components/RecentSuppliersButton";
@@ -25,7 +25,9 @@ export default function ReceiptForm({
   recentSuppliers?: RecentSupplier[];
 }) {
   const router = useRouter();
-  const [state, formAction, pending] = useActionState(saveReceipt, undefined);
+  // 신규 등록 성공 시 다음 항목을 바로 입력할 수 있도록 폼을 비우되, 날짜는
+  // (누락된 날짜를 몰아서 입력하는 경우가 많아서) 그대로 유지한다.
+  // 수정 성공 시에는 목록 화면으로 돌아간다.
   const [category, setCategory] = useState<ReceiptCategory>(
     existing?.category ?? "식재료"
   );
@@ -38,22 +40,23 @@ export default function ReceiptForm({
     existing?.date ?? defaultDate ?? kstDateString(0)
   );
   const isEditing = Boolean(existing);
-
-  // 신규 등록 성공 시 다음 항목을 바로 입력할 수 있도록 폼을 비우되, 날짜는
-  // (누락된 날짜를 몰아서 입력하는 경우가 많아서) 그대로 유지한다.
-  // 수정 성공 시에는 목록 화면으로 돌아간다.
-  useEffect(() => {
-    if (!state?.success) return;
-    if (isEditing) {
-      router.push(cancelHref);
-      return;
-    }
-    setAmountRaw("");
-    setCategory("식재료");
-    setSupplier("");
-    setResetKey((k) => k + 1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state]);
+  const [state, formAction, pending] = useActionState<ReceiptFormState, FormData>(
+    async (prev, formData) => {
+      const next = await saveReceipt(prev, formData);
+      if (next?.success) {
+        if (existing) {
+          router.push(cancelHref);
+        } else {
+          setAmountRaw("");
+          setCategory("식재료");
+          setSupplier("");
+          setResetKey((k) => k + 1);
+        }
+      }
+      return next;
+    },
+    undefined
+  );
 
   return (
     <form key={resetKey} action={formAction} className="flex flex-col gap-3">

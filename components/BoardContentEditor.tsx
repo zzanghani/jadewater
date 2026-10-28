@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import MediaInsertButton from "@/components/MediaInsertButton";
 import { makeInlineUploader } from "@/lib/uploadToStorage";
 
@@ -22,6 +22,12 @@ function sanitizeCell(value: string): string {
 // 사이사이를 채우는 텍스트 세그먼트가 된다(표 앞뒤에 글이 있으면
 // 텍스트 세그먼트가 여러 개로 나뉜다). 토글(▶/◀)이나 사진·파일 참조는
 // 표가 아니므로 전부 텍스트 세그먼트 안에 그대로 남는다.
+// 세그먼트 id — 컴포넌트 밖 카운터를 쓰면 렌더 중에 ref 를 읽을 일이 없다.
+let segmentSeq = 0;
+function makeId() {
+  return `seg-${++segmentSeq}`;
+}
+
 function segmentsFromBody(body: string, makeId: () => string): Segment[] {
   const lines = body.split("\n");
   const segments: Segment[] = [];
@@ -176,8 +182,6 @@ export default function BoardContentEditor({
   onSerializedChange?: (body: string) => void;
   onUploaded?: (path: string, url: string) => void;
 }) {
-  const idCounter = useRef(0);
-  const makeId = () => `seg-${idCounter.current++}`;
   const [segments, setSegments] = useState<Segment[]>(() => segmentsFromBody(initialBody, makeId));
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
   const [activeTextId, setActiveTextId] = useState<string | null>(
@@ -197,9 +201,13 @@ export default function BoardContentEditor({
     );
   }
 
-  function activeTextareaRef() {
-    return { current: activeTextId ? textareaRefs.current[activeTextId] ?? null : null };
-  }
+  // 삽입 버튼들이 "클릭한 시점"의 활성 textarea 를 찾도록 getter 로 넘긴다
+  // (렌더 중에 ref.current 를 읽지 않기 위함).
+  const activeTextareaRef: RefObject<HTMLTextAreaElement | null> = {
+    get current() {
+      return activeTextId ? textareaRefs.current[activeTextId] ?? null : null;
+    },
+  };
 
   // 현재 포커스돼 있던(또는 마지막으로 포커스됐던) 텍스트 세그먼트를
   // 커서 위치에서 둘로 쪼개고, 그 사이에 빈 표를 끼워 넣는다.
@@ -311,10 +319,10 @@ export default function BoardContentEditor({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <ToggleInsertButton textareaRef={activeTextareaRef()} />
+        <ToggleInsertButton textareaRef={activeTextareaRef} />
         {onUploaded && (
           <MediaInsertButton
-            textareaRef={activeTextareaRef()}
+            textareaRef={activeTextareaRef}
             onUploaded={onUploaded}
             uploadAction={uploadInlineBoardFile}
           />

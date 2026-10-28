@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { createBoardComment, type BoardFormState } from "@/app/(app)/board/actions";
 import { makeInlineUploader } from "@/lib/uploadToStorage";
 
@@ -16,10 +16,6 @@ export default function BoardCommentForm({
   postId: string;
   profiles: Profile[];
 }) {
-  const [state, formAction, pending] = useActionState<BoardFormState, FormData>(
-    createBoardComment,
-    undefined
-  );
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -29,14 +25,20 @@ export default function BoardCommentForm({
   const [body, setBody] = useState("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionStart, setMentionStart] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!state?.success) return;
-    formRef.current?.reset();
-    setAttachments([]);
-    setUploadError(null);
-    setBody("");
-  }, [state]);
+  const [state, formAction, pending] = useActionState<BoardFormState, FormData>(
+    async (prev, formData) => {
+      const next = await createBoardComment(prev, formData);
+      if (next?.success) {
+        // 등록 성공 → 입력칸·첨부 목록 비우기
+        formRef.current?.reset();
+        setAttachments([]);
+        setUploadError(null);
+        setBody("");
+      }
+      return next;
+    },
+    undefined
+  );
 
   // 채팅과 같은 방식 — 고르는 즉시 올려서 결과(성공/사진인지)를 바로
   // 확인할 수 있게 하고, 댓글 등록 시점엔 이미 올라간 경로만 넘긴다.

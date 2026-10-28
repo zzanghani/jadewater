@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { unlockScheduleAdmin } from "@/app/(app)/schedule/actions";
 import { roleColor } from "@/lib/scheduleColors";
 import DeleteShiftButton from "@/components/DeleteShiftButton";
@@ -18,16 +18,11 @@ export default function ScheduleShiftList({
     unlockScheduleAdmin,
     undefined
   );
-  const [unlocked, setUnlocked] = useState(false);
+  // 잠금 해제 여부는 서버 액션 결과에서 바로 읽는다. 해제되면 입력 폼은
+  // 아래 렌더 조건(showUnlockForm && !unlocked)으로 자연히 사라진다.
+  const unlocked = Boolean(unlockState?.success);
   const [showUnlockForm, setShowUnlockForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (unlockState?.success) {
-      setUnlocked(true);
-      setShowUnlockForm(false);
-    }
-  }, [unlockState]);
 
   return (
     <div className="flex flex-col gap-2">

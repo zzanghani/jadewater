@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import DeleteInventoryItemButton from "@/components/DeleteInventoryItemButton";
 import type { InventoryItem, InventorySection } from "@/lib/types";
@@ -20,9 +20,12 @@ export default function InventoryManagePopup({
 
   // "수정"으로 이동하면(edit 파라미터가 생기면) 이 팝업은 닫고
   // 품목 추가/수정 팝업 쪽이 열리도록 넘겨준다.
-  useEffect(() => {
+  // (렌더 중에 직전 prop과 비교해 state를 맞추는 React 권장 패턴)
+  const [prevEditingId, setPrevEditingId] = useState(editingId);
+  if (editingId !== prevEditingId) {
+    setPrevEditingId(editingId);
     if (editingId) setOpen(false);
-  }, [editingId]);
+  }
 
   return (
     <>
