@@ -97,7 +97,6 @@ export default function ChatMessageList({
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]);
 
   // 메시지가 늘어날 때마다 가장 아래(최신 메시지)로 자동 스크롤한다.

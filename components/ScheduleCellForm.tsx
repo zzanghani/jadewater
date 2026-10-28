@@ -141,7 +141,7 @@ export default function ScheduleCellForm({
           </div>
           {presets.length === 0 ? (
             <p className="text-xs text-muted">
-              등록된 빠른입력이 없어요. "빠른입력 관리"에서 오픈조·미들조·마감조를 만들어보세요.
+              등록된 빠른입력이 없어요. &quot;빠른입력 관리&quot;에서 오픈조·미들조·마감조를 만들어보세요.
             </p>
           ) : (
             <div className="flex flex-wrap gap-1.5">
