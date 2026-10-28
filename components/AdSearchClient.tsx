@@ -236,14 +236,16 @@ function BlogPostsBox({ rows }: { rows: SearchInfo["rows"] }) {
               <ul className="flex flex-col gap-0.5">
                 {r.blogPosts.map((p) => (
                   <li key={`${r.keyword}-${p.rank}`} className="flex items-start gap-1.5 text-[11px]">
-                    <span className="shrink-0 rounded bg-green-50 px-1 font-bold tabular-nums text-green-700">{p.rank}위</span>
-                    <a href={p.link} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate underline-offset-2 hover:underline">
-                      {p.title}
-                    </a>
-                    <span className="shrink-0 text-[10px] text-muted">
-                      {p.blogger}
-                      {p.date && ` · ${p.date.slice(5).replace("-", "/")}`}
-                    </span>
+                    <span className="mt-0.5 shrink-0 rounded bg-green-50 px-1 font-bold tabular-nums text-green-700">{p.rank}위</span>
+                    <div className="min-w-0 flex-1">
+                      <a href={p.link} target="_blank" rel="noreferrer" className="block truncate underline-offset-2 hover:underline">
+                        {p.title}
+                      </a>
+                      <p className="truncate text-[10px] text-muted">
+                        {p.blogger}
+                        {p.date && ` · ${p.date.slice(5).replace("-", "/")}`}
+                      </p>
+                    </div>
                   </li>
                 ))}
               </ul>
