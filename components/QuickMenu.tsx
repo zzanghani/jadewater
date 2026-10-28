@@ -43,6 +43,8 @@ const REVIEW_REPORT_ITEM = { href: "/review-report", label: "리뷰리포트", i
 const ATTENDANCE_ITEM = { href: "/attendance", label: "출퇴근", icon: ClockPinIcon } as const;
 // 네이버 검색광고 주간 리포트 — 지점장(자기 매장)·마스터(전 매장).
 const AD_REPORT_ITEM = { href: "/ad-report", label: "광고 리포트", icon: MegaphoneIcon } as const;
+// 체험단 검증 — 리뷰노트 지원자 블로그 자동 확인. 지점장(자기 매장)·마스터(전 매장).
+const RECRUIT_ITEM = { href: "/recruit", label: "체험단 검증", icon: StarIcon } as const;
 
 const EMPLOYEE_ITEMS = [
   ATTENDANCE_ITEM,
@@ -86,8 +88,8 @@ export default function QuickMenu({
     : employeeOnly
       ? EMPLOYEE_ITEMS
       : isMaster
-        ? [...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), ATTENDANCE_ITEM, AD_REPORT_ITEM, HR_ITEM, ACCOUNTS_ITEM, LOAN_ITEM]
-        : [ATTENDANCE_ITEM, ...ALL_ITEMS, REVIEW_REPORT_ITEM, ...(showAdReport ? [AD_REPORT_ITEM] : []), HR_ITEM, MY_REVIEW_ITEM];
+        ? [...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), ATTENDANCE_ITEM, AD_REPORT_ITEM, RECRUIT_ITEM, HR_ITEM, ACCOUNTS_ITEM, LOAN_ITEM]
+        : [ATTENDANCE_ITEM, ...ALL_ITEMS, REVIEW_REPORT_ITEM, ...(showAdReport ? [AD_REPORT_ITEM] : []), RECRUIT_ITEM, HR_ITEM, MY_REVIEW_ITEM];
 
   return (
     <section>

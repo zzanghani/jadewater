@@ -776,6 +776,24 @@ export type ChatMessage = {
   created_at: string
 }
 
+// 체험단 지원자 검증 (supabase/migration_recruit_applicants.sql)
+export type RecruitApplicant = {
+  id: string
+  store_id: string
+  campaign_id: string
+  campaign_title: string | null
+  blog_id: string
+  applicant_name: string | null
+  rn: Record<string, unknown> | null
+  metrics: Record<string, unknown> | null
+  score: number | null
+  grade: string | null
+  flags: string[]
+  checked_at: string | null
+  created_by: string | null
+  created_at: string
+}
+
 export type AdChangeLog = {
   id: string;
   store_id: string;
@@ -1009,6 +1027,12 @@ export type Database = {
         Row: { store_id: string; date: string; memo: string; generated_at: string }
         Insert: { store_id: string; date: string; memo: string; generated_at?: string }
         Update: Partial<{ store_id: string; date: string; memo: string; generated_at: string }>
+        Relationships: []
+      }
+      recruit_applicants: {
+        Row: RecruitApplicant
+        Insert: Partial<RecruitApplicant> & { store_id: string; campaign_id: string; blog_id: string }
+        Update: Partial<RecruitApplicant>
         Relationships: []
       }
       toss_webhook_events: {
