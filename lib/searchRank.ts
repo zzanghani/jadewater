@@ -13,7 +13,11 @@ async function naverGet<T>(path: string, clientId: string, clientSecret: string)
   return (await res.json()) as T;
 }
 
-export type RankCheck = { keyword: string; mapRank: number | null; blogHits: number };
+/** 블로그 상위30 중 우리 글 한 건 (rank = 상위30 안 순위) */
+export type BlogPost = { rank: number; title: string; link: string; blogger: string; date: string | null };
+export type RankCheck = { keyword: string; mapRank: number | null; blogHits: number; blogPosts: BlogPost[] };
+const clean = (t: string) => t.replace(/<[^>]+>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").trim();
+const ymd = (d?: string) => (d && /^\d{8}$/.test(d) ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : null);
 
 /** 한 키워드 확인: 지도 상위5 순위 + 블로그 상위30 중 우리 글 수. terms = 매장 식별어(예: 제이드앤워터, 서울역점). */
 export async function checkKeyword(keyword: string, terms: string[], clientId: string, clientSecret: string): Promise<RankCheck> {
@@ -22,14 +26,17 @@ export async function checkKeyword(keyword: string, terms: string[], clientId: s
   const q = encodeURIComponent(keyword);
   const [local, blog] = await Promise.all([
     naverGet<{ items?: { title: string; address?: string; roadAddress?: string }[] }>(`/v1/search/local.json?query=${q}&display=5&sort=comment`, clientId, clientSecret),
-    naverGet<{ items?: { title: string; description: string }[] }>(`/v1/search/blog.json?query=${q}&display=30&sort=sim`, clientId, clientSecret),
+    naverGet<{ items?: { title: string; description: string; link: string; bloggername?: string; postdate?: string }[] }>(`/v1/search/blog.json?query=${q}&display=30&sort=sim`, clientId, clientSecret),
   ]);
   let mapRank: number | null = null;
   (local?.items ?? []).forEach((it, i) => {
     if (mapRank == null && hit(strip(it.title))) mapRank = i + 1;
   });
-  const blogHits = (blog?.items ?? []).filter((it) => hit(strip(it.title) + strip(it.description))).length;
-  return { keyword, mapRank, blogHits };
+  const blogPosts: BlogPost[] = [];
+  (blog?.items ?? []).forEach((it, i) => {
+    if (hit(strip(it.title) + strip(it.description))) blogPosts.push({ rank: i + 1, title: clean(it.title), link: it.link, blogger: clean(it.bloggername ?? ""), date: ymd(it.postdate) });
+  });
+  return { keyword, mapRank, blogHits: blogPosts.length, blogPosts };
 }
 
 /** 설정이 있는 매장(또는 한 매장)의 키워드를 모두 확인해 오늘 날짜로 저장한다. */
@@ -47,7 +54,7 @@ export async function syncSearchRanks(service: SupabaseClient<Database>, today: 
     const rows = [];
     for (const kw of kws) {
       const r = await checkKeyword(kw, s.terms, clientId, clientSecret);
-      rows.push({ store_id: s.store_id, date: today, keyword: kw, map_rank: r.mapRank, blog_hits: r.blogHits, checked_at: new Date().toISOString() });
+      rows.push({ store_id: s.store_id, date: today, keyword: kw, map_rank: r.mapRank, blog_hits: r.blogHits, blog_posts: r.blogPosts as unknown as Record<string, unknown>[], checked_at: new Date().toISOString() });
     }
     if (rows.length) await service.from("search_rank_daily").upsert(rows, { onConflict: "store_id,date,keyword" });
     n += rows.length;

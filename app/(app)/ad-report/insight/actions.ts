@@ -8,13 +8,13 @@ import { addYmd, kstYmd, type SalesMap } from "@/lib/adReport";
 import { analyze, insightToPrompt, syncAdDaily, syncAdHourly, syncTossDaily, type AdInsight, type DailyRow } from "@/lib/adInsight";
 import { fetchTossClosing } from "@/lib/tossClosing";
 import { syncWeather } from "@/lib/weather";
-import { syncSearchRanks } from "@/lib/searchRank";
+import { syncSearchRanks, type BlogPost } from "@/lib/searchRank";
 import { addKeywords, deleteKeywords, keywordTool, listAdgroups, listCampaigns, listKeywords, normKeyword, setKeywordLock, type KeywordIdea } from "@/lib/naverAds";
 
 export type SearchInfo = {
   terms: string[];
   keywords: string[];
-  rows: { keyword: string; volume: number | null; mapRank: number | null; blogHits: number; mapRankPrev: number | null; blogHitsPrev: number | null }[];
+  rows: { keyword: string; volume: number | null; mapRank: number | null; blogHits: number; blogPosts: BlogPost[]; mapRankPrev: number | null; blogHitsPrev: number | null }[];
   checkedAt: string | null;
   adConnected: boolean;
 };
@@ -99,7 +99,7 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = 
     service.from("ad_special_days").select("date, note").eq("store_id", storeId).gte("date", addYmd(today, -370)),
     service.from("ad_store_settings").select("cost_rate").eq("store_id", storeId).maybeSingle(),
     service.from("store_search_settings").select("terms, keywords, volumes").eq("store_id", storeId).maybeSingle(),
-    service.from("search_rank_daily").select("date, keyword, map_rank, blog_hits, checked_at").eq("store_id", storeId).gte("date", addYmd(today, -8)).order("date", { ascending: false }),
+    service.from("search_rank_daily").select("date, keyword, map_rank, blog_hits, blog_posts, checked_at").eq("store_id", storeId).gte("date", addYmd(today, -8)).order("date", { ascending: false }),
     service.from("receipts").select("amount, category").eq("store_id", storeId).gte("date", addYmd(today, -28)).lte("date", addYmd(today, -1)),
     service.from("daily_closings").select("food_sales, beverage_sales, wine_sales, coupang_eats_sales, baemin_sales").eq("store_id", storeId).gte("date", addYmd(today, -28)).lte("date", addYmd(today, -1)),
   ]);
@@ -121,7 +121,7 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = 
     rows: (searchSetting?.keywords ?? []).map((kw) => {
       const a = latest.find((r) => r.keyword === kw);
       const b = prev.find((r) => r.keyword === kw);
-      return { keyword: kw, volume: (searchSetting?.volumes as Record<string, number> | null)?.[kw] ?? null, mapRank: a?.map_rank ?? null, blogHits: a?.blog_hits ?? 0, mapRankPrev: b ? b.map_rank : null, blogHitsPrev: b ? b.blog_hits : null };
+      return { keyword: kw, volume: (searchSetting?.volumes as Record<string, number> | null)?.[kw] ?? null, mapRank: a?.map_rank ?? null, blogHits: a?.blog_hits ?? 0, blogPosts: Array.isArray(a?.blog_posts) ? (a!.blog_posts as unknown as BlogPost[]) : [], mapRankPrev: b ? b.map_rank : null, blogHitsPrev: b ? b.blog_hits : null };
     }),
     checkedAt: latest[0]?.checked_at ?? null,
     adConnected: !!adAcct,
@@ -276,7 +276,7 @@ export async function loadSearchInfo(storeId: string): Promise<{ ok: true; searc
   const today = kstYmd(0);
   const [{ data: searchSetting }, { data: rankRows }, { data: adAcct }] = await Promise.all([
     service.from("store_search_settings").select("terms, keywords, volumes").eq("store_id", storeId).maybeSingle(),
-    service.from("search_rank_daily").select("date, keyword, map_rank, blog_hits, checked_at").eq("store_id", storeId).gte("date", addYmd(today, -8)).order("date", { ascending: false }),
+    service.from("search_rank_daily").select("date, keyword, map_rank, blog_hits, blog_posts, checked_at").eq("store_id", storeId).gte("date", addYmd(today, -8)).order("date", { ascending: false }),
     service.from("store_ad_accounts").select("store_id").eq("store_id", storeId).eq("enabled", true).maybeSingle(),
   ]);
   const latestDate = rankRows?.[0]?.date ?? null;
@@ -291,7 +291,7 @@ export async function loadSearchInfo(storeId: string): Promise<{ ok: true; searc
       rows: (searchSetting?.keywords ?? []).map((kw) => {
         const a = latest.find((r) => r.keyword === kw);
         const b = prev.find((r) => r.keyword === kw);
-        return { keyword: kw, volume: (searchSetting?.volumes as Record<string, number> | null)?.[kw] ?? null, mapRank: a?.map_rank ?? null, blogHits: a?.blog_hits ?? 0, mapRankPrev: b ? b.map_rank : null, blogHitsPrev: b ? b.blog_hits : null };
+        return { keyword: kw, volume: (searchSetting?.volumes as Record<string, number> | null)?.[kw] ?? null, mapRank: a?.map_rank ?? null, blogHits: a?.blog_hits ?? 0, blogPosts: Array.isArray(a?.blog_posts) ? (a!.blog_posts as unknown as BlogPost[]) : [], mapRankPrev: b ? b.map_rank : null, blogHitsPrev: b ? b.blog_hits : null };
       }),
       checkedAt: latest[0]?.checked_at ?? null,
       adConnected: !!adAcct,

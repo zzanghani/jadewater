@@ -205,11 +205,53 @@ function TrackPanel({ storeId, search, onChanged }: { storeId: string; search: S
           <p className="mt-1.5 text-[10px] text-muted">
             {search.checkedAt ? `${new Date(search.checkedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 확인` : "아직 확인 전 — &lsquo;지금 확인&rsquo;을 눌러 주세요"} · 화살표는 일주일 전 대비. 검색 큰데 지도 &lsquo;밖&rsquo; = 플레이스 광고 유지 + 영수증 리뷰 늘리기. 블로그 0개 → 체험단 글 제목에 그 키워드 넣기.
           </p>
+          <BlogPostsBox rows={search.rows} />
         </>
       ) : (
         <p className="text-xs text-muted">추적할 키워드를 넣어 주세요. 손님이 실제로 검색할 법한 말(동네+맛집, 동네+메뉴)이 좋아요.</p>
       )}
     </section>
+  );
+}
+
+/* ---------- 블로그 상위30 중 우리 글 목록 ---------- */
+function BlogPostsBox({ rows }: { rows: SearchInfo["rows"] }) {
+  const withPosts = rows.filter((r) => r.blogPosts.length > 0);
+  const total = withPosts.reduce((n, r) => n + r.blogPosts.length, 0);
+  return (
+    <div className="mt-3 rounded-xl bg-background p-3">
+      <div className="mb-1.5 flex items-baseline justify-between">
+        <h3 className="text-xs font-bold">블로그 우리 글 {total > 0 && <span className="ml-1 font-normal text-muted">{total}개</span>}</h3>
+        <span className="text-[10px] text-muted">키워드별 상위30 안 순위 · 제목 누르면 글 열림</span>
+      </div>
+      {withPosts.length === 0 ? (
+        <p className="text-[11px] text-muted">아직 상위30 안에 우리 글이 없어요. 체험단 글 제목에 추적 키워드를 그대로 넣어 주세요.</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {withPosts.map((r) => (
+            <li key={r.keyword}>
+              <p className="mb-0.5 text-[11px] font-semibold">
+                {r.keyword} <span className="font-normal text-muted">{r.blogPosts.length}개</span>
+              </p>
+              <ul className="flex flex-col gap-0.5">
+                {r.blogPosts.map((p) => (
+                  <li key={`${r.keyword}-${p.rank}`} className="flex items-start gap-1.5 text-[11px]">
+                    <span className="shrink-0 rounded bg-green-50 px-1 font-bold tabular-nums text-green-700">{p.rank}위</span>
+                    <a href={p.link} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate underline-offset-2 hover:underline">
+                      {p.title}
+                    </a>
+                    <span className="shrink-0 text-[10px] text-muted">
+                      {p.blogger}
+                      {p.date && ` · ${p.date.slice(5).replace("-", "/")}`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
