@@ -6,7 +6,7 @@ import { sendPush } from "@/lib/webpush";
 // - 매일 아침 루틴(클라우드 에이전트)과 pg_cron(점심, supabase/migration_health_check.sql)이 호출한다.
 // - DB가 살아 있는지(그린 무료플랜 자동 일시정지 감지), 핵심 테이블·RLS·pg_cron·푸시 설정을 점검하고
 //   결과를 JSON으로 돌려준다. 이상이 있으면(또는 ?notify=always) 대표(owner) 계정 폰으로 웹푸시.
-// - ?notify=always | problems(기본) | never
+// - ?notify=always | problems(기본) | never, ?summary=<푸시 본문으로 쓸 한 줄(선택)>
 // - 인증: Vercel CRON_SECRET 또는 Supabase Vault의 cron_secret (pg_cron·맥미니가 쓰는 값).
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -73,7 +73,10 @@ function envLabel(): string {
 
 export async function GET(request: Request) {
   const started = Date.now();
-  const notify = new URL(request.url).searchParams.get("notify") ?? "problems";
+  const params = new URL(request.url).searchParams;
+  const notify = params.get("notify") ?? "problems";
+  // 아침 루틴이 린트·화면 점검 결과를 한 줄로 넘기면 푸시 본문에 그대로 싣는다.
+  const summary = (params.get("summary") ?? "").trim().slice(0, 180);
   const authHeader = request.headers.get("authorization") ?? "";
   const env = envLabel();
   const problems: string[] = [];
@@ -222,7 +225,9 @@ export async function GET(request: Request) {
 
   if (shouldNotify && vapidOk && ownerSubs.length > 0) {
     const title = ok ? `[${env}] 앱 점검 정상` : `[${env}] 앱 점검 이상 ${problems.length}건`;
-    const body = ok
+    const body = summary
+      ? summary
+      : ok
       ? warnings.length > 0
         ? `경고 ${warnings.length}건: ${warnings.slice(0, 2).join(" / ")}`
         : `핵심 화면·DB·크론·푸시 모두 정상 (DB ${dbMs}ms)`
