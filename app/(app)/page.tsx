@@ -7,6 +7,7 @@ import {
   kstShortDateLabel,
   last7DaysKST,
   monthRangeKST,
+  shiftDateString,
 } from "@/lib/date";
 import DashboardChart, { type ChartPoint } from "@/components/DashboardChart";
 import MultiStoreChart, { type MultiStorePoint, type StoreSeries } from "@/components/MultiStoreChart";
@@ -15,15 +16,13 @@ import LiveStoreSalesGrid from "@/components/LiveStoreSalesGrid";
 import LiveSalesHero from "@/components/LiveSalesHero";
 import MonthlyTargetTable from "@/components/MonthlyTargetTable";
 import { adReportAllowed } from "@/lib/adAccess";
-import MonthlyPlanCalendar from "@/components/MonthlyPlanCalendar";
-import MonthlyPlanAlerts from "@/components/MonthlyPlanAlerts";
-import type { PlanComment, PlanFollower } from "@/components/MonthlyPlanDetail";
+import UpcomingPlansStrip from "@/components/UpcomingPlansStrip";
+import { loadHqProfiles, type HqProfile } from "@/lib/monthlyPlans";
 import PushSubscribeButton from "@/components/PushSubscribeButton";
 import ScheduleDayTimeline from "@/components/ScheduleDayTimeline";
 import { getStoreContext } from "@/lib/store";
 import { storeColor } from "@/lib/storeColors";
-import { avatarPublicUrl } from "@/lib/avatar";
-import type { DailyClosing } from "@/lib/types";
+import type { DailyClosing, MonthlyPlan } from "@/lib/types";
 
 function sumByStore(rows: { store_id: string; grand_total: number }[] | null) {
   const map = new Map<string, number>();
@@ -112,116 +111,22 @@ export default async function DashboardPage() {
     mom: string;
   }[] = [];
 
-let monthlyPlans: import("@/lib/types").MonthlyPlan[] = [];
-let commentsByPlan: Record<string, PlanComment[]> = {};
-let followersByPlan: Record<string, PlanFollower[]> = {};
-let hqProfiles: { id: string; name: string; department: import("@/lib/types").Department | null }[] = [];
-
+// 홈에는 "이번 주 일정" 띠만 — 오늘부터 7일 치 일정과 담당자 색만 가볍게 읽는다.
+// 달력 전체·댓글·확인자는 /plan 화면에서(lib/monthlyPlans.ts loadHqPlanData).
+let monthlyPlans: MonthlyPlan[] = [];
+let hqProfiles: HqProfile[] = [];
 if (isHq) {
-  const [{ data: plans }, { data: hqProfileRows }] = await Promise.all([
-    supabase.from("monthly_plans").select("*").order("start_date", { ascending: true }),
-    // store_id가 비어있는 계정 = 본사 팀 계정(department 있음) + 마스터(role=owner).
-    // 가입 후 아직 매장을 선택하지 않은 직원(role=staff, department도 없음) 계정도
-    // store_id가 똑같이 비어있어서, 이 조건을 안 걸면 그 직원들까지 캘린더
-    // 담당자 목록에 섞여 들어간다.
+  const [{ data: plans }, profiles] = await Promise.all([
     supabase
-      .from("profiles")
-      .select("id, name, department")
-      .is("store_id", null)
-      .eq("status", "approved")
-      .or("department.not.is.null,role.eq.owner"),
+      .from("monthly_plans")
+      .select("*")
+      .gte("end_date", today)
+      .lte("start_date", shiftDateString(today, 7))
+      .order("start_date", { ascending: true }),
+    loadHqProfiles(supabase),
   ]);
   monthlyPlans = plans ?? [];
-  hqProfiles = (hqProfileRows ?? []).sort((a, b) =>
-    a.name === "대표님" ? -1 : b.name === "대표님" ? 1 : 0
-  );
-
-  const planIds = monthlyPlans.map((p) => p.id);
-  if (planIds.length > 0) {
-    const { data: followerRows } = await supabase
-      .from("monthly_plan_followers")
-      .select("*")
-      .in("plan_id", planIds);
-    const hqNameById = new Map(hqProfiles.map((p) => [p.id, p.name]));
-    followersByPlan = {};
-    for (const f of followerRows ?? []) {
-      const list = followersByPlan[f.plan_id] ?? [];
-      list.push({ userId: f.user_id, name: hqNameById.get(f.user_id) ?? "알 수 없음", confirmed: f.confirmed });
-      followersByPlan[f.plan_id] = list;
-    }
-  }
-  if (planIds.length > 0) {
-    const { data: comments } = await supabase
-      .from("monthly_plan_comments")
-      .select("*")
-      .in("plan_id", planIds)
-      .order("created_at", { ascending: true });
-    const commentRows = comments ?? [];
-    const commentIds = commentRows.map((c) => c.id);
-
-    const [{ data: attachments }, { data: profiles }, { data: avatarProfiles }] = await Promise.all([
-      commentIds.length > 0
-        ? supabase.from("monthly_plan_attachments").select("*").in("comment_id", commentIds)
-        : Promise.resolve({ data: [] as { id: string; comment_id: string; storage_path: string; file_name: string }[] }),
-      supabase.from("profiles").select("id, name"),
-      // avatar_path는 name과 별도 쿼리로 조회한다. 같은 select에 묶으면 마이그레이션
-      // 전 환경에서는 쿼리 전체가 실패해서 이름 표시까지 깨진다.
-      supabase.from("profiles").select("id, avatar_path"),
-    ]);
-
-    const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name]));
-    const avatarById = new Map(
-      (avatarProfiles ?? []).map((p) => [p.id, avatarPublicUrl(p.avatar_path)])
-    );
-
-    const signedUrlByPath = new Map<string, string>();
-    const downloadUrlByPath = new Map<string, string>();
-    if ((attachments ?? []).length > 0) {
-      const paths = (attachments ?? []).map((a) => a.storage_path);
-      // 다운로드 버튼용 서명 URL은 따로 받는다 — Content-Disposition을
-      // attachment로 붙여야 다른 도메인 URL이라도 진짜 다운로드로 동작한다.
-      const [{ data: signedUrls }, { data: downloadSignedUrls }] = await Promise.all([
-        supabase.storage.from("monthly-plans").createSignedUrls(paths, 3600),
-        supabase.storage.from("monthly-plans").createSignedUrls(paths, 3600, { download: true }),
-      ]);
-      for (const s of signedUrls ?? []) {
-        if (s.signedUrl) signedUrlByPath.set(s.path ?? "", s.signedUrl);
-      }
-      for (const s of downloadSignedUrls ?? []) {
-        if (s.signedUrl) downloadUrlByPath.set(s.path ?? "", s.signedUrl);
-      }
-    }
-
-    const attachmentsByComment = new Map<
-      string,
-      { id: string; file_name: string; url?: string; downloadUrl?: string }[]
-    >();
-    for (const a of attachments ?? []) {
-      const list = attachmentsByComment.get(a.comment_id) ?? [];
-      list.push({
-        id: a.id,
-        file_name: a.file_name,
-        url: signedUrlByPath.get(a.storage_path),
-        downloadUrl: downloadUrlByPath.get(a.storage_path),
-      });
-      attachmentsByComment.set(a.comment_id, list);
-    }
-
-    commentsByPlan = {};
-    for (const c of commentRows) {
-      const list = commentsByPlan[c.plan_id] ?? [];
-      list.push({
-        id: c.id,
-        body: c.body,
-        created_by: c.created_by,
-        created_at: c.created_at,
-        authorName: nameById.get(c.created_by) ?? "알 수 없음",
-        authorAvatarUrl: avatarById.get(c.created_by),
-        attachments: attachmentsByComment.get(c.id) ?? [],
-      });
-      commentsByPlan[c.plan_id] = list;
-    }
-  }
+  hqProfiles = profiles;
 }
 
   if (isMaster || isTeamAccount) {
@@ -301,14 +206,7 @@ if (isHq) {
     return (
       <div className="flex flex-col gap-5">
         <PushSubscribeButton storeId={null} />
-        <MonthlyPlanAlerts plans={monthlyPlans} />
-        <MonthlyPlanCalendar
-          plans={monthlyPlans}
-          commentsByPlan={commentsByPlan}
-          followersByPlan={followersByPlan}
-          hqProfiles={hqProfiles}
-          currentUserId={user?.id}
-        />
+        <UpcomingPlansStrip plans={monthlyPlans} hqProfiles={hqProfiles} />
 
         {showStoreSalesCards && (
           <section>
@@ -343,18 +241,7 @@ if (isHq) {
           마스터는 실시간매출 매장 타일 안의 달성률로 본다. */}
       {!isMaster && !isTeamAccount && <MonthlyTargetTable />}
 
-      {isMaster && (
-        <>
-          <MonthlyPlanAlerts plans={monthlyPlans} />
-          <MonthlyPlanCalendar
-            plans={monthlyPlans}
-            commentsByPlan={commentsByPlan}
-            followersByPlan={followersByPlan}
-            hqProfiles={hqProfiles}
-            currentUserId={user?.id}
-          />
-        </>
-      )}
+      {isMaster && <UpcomingPlansStrip plans={monthlyPlans} hqProfiles={hqProfiles} />}
 
       {isMaster ? (
         <section>

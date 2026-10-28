@@ -22,6 +22,8 @@ const TEAM_ITEMS = [
 ] as const;
 
 const HR_ITEM = { href: "/hr", label: "HR", icon: HrIcon } as const;
+// 월간계획 달력은 홈에서 빠지고(홈엔 "이번 주 일정" 띠만) 여기로 들어간다.
+const PLAN_ITEM = { href: "/plan", label: "월간계획", icon: ScheduleIcon } as const;
 // 금전대차 상환표 — 본사 마스터만 (남의 원금·상환액이 담긴다).
 const LOAN_ITEM = { href: "/loans", label: "금전대차", icon: LoanIcon } as const;
 const ACCOUNTS_ITEM = { href: "/accounts", label: "가입승인", icon: HrIcon } as const;
@@ -80,6 +82,7 @@ export default function QuickMenu({
   // 게시판·메시지는 이제 본사 팀 계정도 하단 탭으로 오가서 여기엔 안 넣는다.
   const items = teamOnly
     ? [
+        PLAN_ITEM,
         ...TEAM_ITEMS,
         ...(showHr ? [HR_ITEM] : []),
         ...(showInventory ? [INVENTORY_ITEM] : []),
@@ -88,7 +91,7 @@ export default function QuickMenu({
     : employeeOnly
       ? EMPLOYEE_ITEMS
       : isMaster
-        ? [...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), ATTENDANCE_ITEM, AD_REPORT_ITEM, RECRUIT_ITEM, HR_ITEM, ACCOUNTS_ITEM, LOAN_ITEM]
+        ? [PLAN_ITEM, ...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), ATTENDANCE_ITEM, AD_REPORT_ITEM, RECRUIT_ITEM, HR_ITEM, ACCOUNTS_ITEM, LOAN_ITEM]
         : [ATTENDANCE_ITEM, ...ALL_ITEMS, REVIEW_REPORT_ITEM, ...(showAdReport ? [AD_REPORT_ITEM] : []), RECRUIT_ITEM, HR_ITEM, MY_REVIEW_ITEM];
 
   return (
