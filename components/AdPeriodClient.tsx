@@ -38,13 +38,13 @@ export default function AdPeriodClient() {
   }
 
   return (
-    <section className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <label className="text-xs text-muted">기간</label>
+    <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-bold">기간 성과</h2>
         <select
           value={key}
           onChange={(e) => setKey(e.target.value as PeriodKey)}
-          className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground"
+          className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-semibold text-foreground"
         >
           {KEYS.map((k) => (
             <option key={k} value={k}>
@@ -74,7 +74,7 @@ export default function AdPeriodClient() {
       {res && !res.ok && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{res.error}</p>}
       {res?.ok && (
         <>
-          <p className="text-xs text-muted">
+          <p className="-mt-1 text-[11px] text-muted">
             {res.range.from === res.range.to ? md(res.range.from) : `${md(res.range.from)}~${md(res.range.to)}`}
             {res.range.to === res.today && " · 오늘은 실시간"} · 비교: {res.range.cmpLabel}
           </p>
@@ -86,7 +86,7 @@ export default function AdPeriodClient() {
             </>
           ) : (
             res.stores.map((s) => (
-              <div key={s.storeId} className="rounded-2xl border border-border bg-card p-4">
+              <div key={s.storeId} className="rounded-xl bg-background p-2">
                 <KpiGrid cur={s.cur} cmp={s.cmp} />
                 <StoreNote s={s} />
               </div>
@@ -107,8 +107,8 @@ function SummaryStrip({ cur, cmp }: { cur: PeriodAgg; cmp: PeriodAgg }) {
     { label: "클릭", v: cur.clk, p: cmp.clk, goodUp: true, fmt: (n) => (n == null ? "-" : won(n)) },
   ];
   return (
-    <div className="rounded-2xl border border-brand bg-card p-3">
-      <p className="mb-1.5 text-xs font-bold">전 매장 합계</p>
+    <div>
+      <p className="mb-1.5 text-[11px] font-semibold text-muted">전 매장 합계</p>
       <div className="grid grid-cols-4 gap-1.5">
         {tiles.map((t) => {
           const d = pctDelta(t.v, t.p);
@@ -129,8 +129,8 @@ function SummaryStrip({ cur, cmp }: { cur: PeriodAgg; cmp: PeriodAgg }) {
 function StoreTable({ stores }: { stores: PeriodStore[] }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 border-b border-border px-3 py-2 text-[11px] text-muted">
+    <div className="overflow-hidden rounded-xl border border-border">
+      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 border-b border-border bg-background px-3 py-2 text-[11px] text-muted">
         <span>매장</span>
         <span className="text-right">광고비</span>
         <span className="text-right">매출</span>
@@ -141,7 +141,7 @@ function StoreTable({ stores }: { stores: PeriodStore[] }) {
         const dRoas = pctDelta(s.cur.roas, s.cmp.roas);
         return (
           <div key={s.storeId} className="border-b border-border last:border-b-0">
-            <button type="button" onClick={() => setOpen(isOpen ? null : s.storeId)} className="grid w-full grid-cols-[1fr_auto_auto_auto] items-center gap-x-3 px-3 py-2.5 text-left text-xs tabular-nums">
+            <button type="button" onClick={() => setOpen(isOpen ? null : s.storeId)} className="grid w-full grid-cols-[1fr_auto_auto_auto] items-center gap-x-3 px-3 py-2.5 text-left text-[13px] tabular-nums">
               <span className="flex items-center gap-1 font-semibold">
                 <span className={`inline-block transition-transform ${isOpen ? "rotate-90" : ""}`}>›</span>
                 {short(s.name)}
@@ -227,7 +227,7 @@ function CompareLines({ stores }: { stores: PeriodStore[] }) {
   if (!lines.length) return null;
   const shown = more ? lines : lines.slice(0, 2);
   return (
-    <div className="rounded-2xl border border-border bg-card p-3">
+    <div className="rounded-xl bg-background p-3">
       <p className="mb-1.5 text-xs font-bold">매장 간 비교</p>
       <ul className="flex flex-col gap-1.5">
         {shown.map((l, i) => (
