@@ -114,9 +114,9 @@ function SummaryStrip({ cur, cmp }: { cur: PeriodAgg; cmp: PeriodAgg }) {
           const d = pctDelta(t.v, t.p);
           return (
             <div key={t.label} className="rounded-xl bg-background px-2 py-2 text-center">
-              <p className="text-[10px] text-muted">{t.label}</p>
+              <p className="text-[11px] text-muted">{t.label}</p>
               <p className="text-sm font-bold leading-tight tabular-nums">{t.fmt(t.v)}</p>
-              <p className={`text-[10px] font-semibold tabular-nums ${deltaClass(d, t.goodUp)}`}>{deltaTxt(d)}</p>
+              <p className={`text-[11px] font-semibold tabular-nums ${deltaClass(d, t.goodUp)}`}>{deltaTxt(d)}</p>
             </div>
           );
         })}
@@ -130,7 +130,7 @@ function StoreTable({ stores }: { stores: PeriodStore[] }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 border-b border-border px-3 py-2 text-[10px] text-muted">
+      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 border-b border-border px-3 py-2 text-[11px] text-muted">
         <span>매장</span>
         <span className="text-right">광고비</span>
         <span className="text-right">매출</span>
@@ -145,13 +145,13 @@ function StoreTable({ stores }: { stores: PeriodStore[] }) {
               <span className="flex items-center gap-1 font-semibold">
                 <span className={`inline-block transition-transform ${isOpen ? "rotate-90" : ""}`}>›</span>
                 {short(s.name)}
-                {!s.adConnected && <span className="ml-1 rounded bg-gray-100 px-1 text-[9px] font-normal text-gray-500">광고 미연결</span>}
+                {!s.adConnected && <span className="ml-1 rounded bg-gray-100 px-1 text-[10px] font-normal text-gray-500">광고 미연결</span>}
               </span>
               <span className="text-right">{man(s.cur.cost)}</span>
               <span className="text-right">{man(s.cur.sales)}</span>
               <span className="text-right">
                 {s.cur.roas == null ? "-" : won(s.cur.roas) + "%"}
-                <span className={`ml-1 text-[10px] ${deltaClass(dRoas, true)}`}>{dRoas == null ? "" : deltaTxt(dRoas)}</span>
+                <span className={`ml-1 text-[11px] ${deltaClass(dRoas, true)}`}>{dRoas == null ? "" : deltaTxt(dRoas)}</span>
               </span>
             </button>
             {isOpen && (
@@ -190,12 +190,12 @@ function Kpi({ label, cur, cmp, unit = "", goodUp, sub = "" }: { label: string; 
   const d = pctDelta(cur, cmp);
   return (
     <div className="rounded-xl bg-card px-2.5 py-2">
-      <p className="text-[10px] text-muted">{label}</p>
+      <p className="text-[11px] text-muted">{label}</p>
       <p className="text-sm font-bold leading-tight tabular-nums">
         {won(cur)}
-        <span className="ml-0.5 text-[10px] font-normal text-muted">{cur == null ? "" : unit}</span>
+        <span className="ml-0.5 text-[11px] font-normal text-muted">{cur == null ? "" : unit}</span>
       </p>
-      <p className="text-[10px] tabular-nums">
+      <p className="text-[11px] tabular-nums">
         <span className={`font-semibold ${deltaClass(d, goodUp)}`}>{deltaTxt(d)}</span>
         {sub && <span className="text-muted"> · {sub}</span>}
       </p>

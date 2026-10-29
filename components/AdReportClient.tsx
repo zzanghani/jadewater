@@ -73,12 +73,12 @@ function Kpi({ label, cur, prev, unit = "", goodUp, fmt = won }: { label: string
   const d = pctDelta(cur, prev);
   return (
     <div className="rounded-xl bg-card px-2.5 py-2">
-      <p className="text-[10px] text-muted">{label}</p>
+      <p className="text-[11px] text-muted">{label}</p>
       <p className="text-sm font-bold leading-tight tabular-nums">
         {fmt(cur)}
-        <span className="ml-0.5 text-[10px] font-normal text-muted">{cur == null ? "" : unit}</span>
+        <span className="ml-0.5 text-[11px] font-normal text-muted">{cur == null ? "" : unit}</span>
       </p>
-      <p className={`text-[10px] font-semibold tabular-nums ${deltaClass(d, goodUp)}`}>
+      <p className={`text-[11px] font-semibold tabular-nums ${deltaClass(d, goodUp)}`}>
         {deltaTxt(d)} <span className="font-normal text-muted">전주</span>
       </p>
     </div>
@@ -106,7 +106,7 @@ function StoreCard({ s, rep, defaultOpen }: { s: AdStoreReport; rep: AdWeeklyRep
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-bold">
           {short(s.name)}
-          {bad > 0 && <span className="ml-1.5 rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-600">조치 {bad}</span>}
+          {bad > 0 && <span className="ml-1.5 rounded-md bg-red-50 px-1.5 py-0.5 text-[11px] font-bold text-red-600">조치 {bad}</span>}
         </h2>
         <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums ${bizLow ? "bg-red-50 text-red-600" : "bg-background text-muted"}`}>
           비즈머니 {won(s.biz)}{s.bizDays != null && ` · ${Math.floor(s.bizDays)}일분`}
@@ -119,7 +119,7 @@ function StoreCard({ s, rep, defaultOpen }: { s: AdStoreReport; rep: AdWeeklyRep
         <ol className="mt-2 flex flex-col gap-1">
           {s.actions.map((a, i) => (
             <li key={i} className="flex gap-1.5 text-xs leading-snug">
-              <span className={`mt-0.5 h-fit shrink-0 rounded-md px-1 py-0.5 text-[10px] font-bold ${SEV_CLASS[a.sev]}`}>{SEV_LABEL[a.sev]}</span>
+              <span className={`mt-0.5 h-fit shrink-0 rounded-md px-1 py-0.5 text-[11px] font-bold ${SEV_CLASS[a.sev]}`}>{SEV_LABEL[a.sev]}</span>
               <span>{a.text}</span>
             </li>
           ))}
@@ -139,9 +139,9 @@ function StoreCard({ s, rep, defaultOpen }: { s: AdStoreReport; rep: AdWeeklyRep
             {s.sales && <Kpi label="지난주 매출" cur={s.sales.week.sum} prev={null} unit="원" goodUp fmt={(n) => won(n)} />}
             {s.sales && (
               <div className="rounded-xl bg-card px-2.5 py-2">
-                <p className="text-[10px] text-muted">광고비 비중 · 평소 대비</p>
+                <p className="text-[11px] text-muted">광고비 비중 · 평소 대비</p>
                 <p className="text-sm font-bold tabular-nums">{s.sales.adShare == null ? "-" : s.sales.adShare.toFixed(1) + "%"}</p>
-                <p className={`text-[10px] font-semibold tabular-nums ${s.sales.norm == null ? "text-muted" : s.sales.norm < 0.85 ? "text-red-600" : s.sales.norm > 1.05 ? "text-green-700" : "text-muted"}`}>
+                <p className={`text-[11px] font-semibold tabular-nums ${s.sales.norm == null ? "text-muted" : s.sales.norm < 0.85 ? "text-red-600" : s.sales.norm > 1.05 ? "text-green-700" : "text-muted"}`}>
                   {s.sales.norm == null ? "-" : (s.sales.norm >= 1 ? "+" : "") + ((s.sales.norm - 1) * 100).toFixed(1) + "%"}
                 </p>
               </div>
@@ -149,10 +149,10 @@ function StoreCard({ s, rep, defaultOpen }: { s: AdStoreReport; rep: AdWeeklyRep
           </div>
           <div className="rounded-xl bg-card px-2.5 py-2 text-xs">
             <div className="flex items-baseline justify-between">
-              <p className="text-[10px] text-muted">
+              <p className="text-[11px] text-muted">
                 {month}월 광고비 · {rep.monthElapsed}/{rep.monthDays}일
               </p>
-              {s.budget ? <p className={`text-[10px] font-bold ${overBudget ? "text-red-600" : "text-muted"}`}>{overBudget ? "예산 초과 예상" : "예산 안"}</p> : null}
+              {s.budget ? <p className={`text-[11px] font-bold ${overBudget ? "text-red-600" : "text-muted"}`}>{overBudget ? "예산 초과 예상" : "예산 안"}</p> : null}
             </div>
             <p className="mt-0.5 font-semibold tabular-nums">
               {won(s.mtd.cost)}원 <span className="font-normal text-muted">→ 월말</span> {won(s.projected)}원

@@ -1,6 +1,6 @@
 export const maxDuration = 60;
 
-import Link from "next/link";
+import AdPageHeader from "@/components/AdPageHeader";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { adReportAllowedFor } from "@/lib/adAccess";
@@ -14,7 +14,7 @@ export default async function AdHoursPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const [{ data: profile }, { storeId: contextStoreId, storeName }] = await Promise.all([
+  const [{ data: profile }, { storeId: contextStoreId }] = await Promise.all([
     supabase.from("profiles").select("role, store_id, department").eq("id", user.id).maybeSingle(),
     getStoreContext(supabase),
   ]);
@@ -25,13 +25,7 @@ export default async function AdHoursPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <Link href="/ad-report/insight" className="text-xs text-muted">
-          ‹ 효율 분석
-        </Link>
-        <h1 className="mt-1 text-lg font-bold">시간·요일 분석</h1>
-        <p className="mt-1 text-xs text-muted">{storeName} · 최근 28일 · 토스 시간대 매출 × 네이버 시간대 광고비</p>
-      </div>
+      <AdPageHeader back="/ad-report" backLabel="광고 리포트" title="시간·요일 분석" desc="최근 28일 · 시간대 매출 × 시간대 광고비" />
       <AdHoursClient key={storeId} storeId={storeId} />
     </div>
   );

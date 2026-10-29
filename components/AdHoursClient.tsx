@@ -74,27 +74,28 @@ export default function AdHoursClient({ storeId }: { storeId: string }) {
       {/* 요일별 성과 */}
       <section className="rounded-2xl border border-border bg-card p-4">
         <h2 className="mb-2 text-sm font-bold">요일별 성과</h2>
-        <table className="w-full text-[11px] tabular-nums">
+        <p className="mb-2 text-[11px] text-muted">하루 평균 · 매출은 만원 단위</p>
+        <table className="w-full text-[13px] tabular-nums">
           <thead>
-            <tr className="text-left text-muted">
+            <tr className="text-left text-[11px] text-muted">
               <th className="pb-1 font-medium">요일</th>
-              <th className="pb-1 text-right font-medium">매출(일평균)</th>
-              <th className="pb-1 text-right font-medium">광고비(일평균)</th>
-              <th className="pb-1 text-right font-medium">광고비 대비</th>
-              <th className="pb-1 text-right font-medium">클릭당</th>
+              <th className="whitespace-nowrap pb-1 text-right font-medium">매출</th>
+              <th className="whitespace-nowrap pb-1 text-right font-medium">광고비</th>
+              <th className="whitespace-nowrap pb-1 text-right font-medium">광고비 대비</th>
+              <th className="whitespace-nowrap pb-1 text-right font-medium">클릭당</th>
             </tr>
           </thead>
           <tbody>
             {a.weekday.map((w) => (
               <tr key={w.wd} className="border-t border-border">
-                <td className="py-1.5 font-semibold">
+                <td className="py-2 font-semibold">
                   {w.label}
-                  {w.lowEff && <span className="ml-1 rounded bg-amber-50 px-1 text-[9px] font-bold text-amber-700">효율 낮음</span>}
+                  {w.lowEff && <span className="ml-1 rounded bg-amber-50 px-1 text-[11px] font-bold text-amber-700">효율 낮음</span>}
                 </td>
-                <td className="py-1.5 text-right">{w.days ? man(w.sales / w.days) : "-"}</td>
-                <td className="py-1.5 text-right">{w.adDays ? won(w.cost / w.adDays) : "-"}</td>
-                <td className="py-1.5 text-right">{w.roas == null ? "-" : won(w.roas) + "%"}</td>
-                <td className="py-1.5 text-right">{won(w.cpc)}</td>
+                <td className="py-2 text-right">{w.days ? man(w.sales / w.days) : "-"}</td>
+                <td className="py-2 text-right">{w.adDays ? won(w.cost / w.adDays) : "-"}</td>
+                <td className="py-2 text-right">{w.roas == null ? "-" : won(w.roas) + "%"}</td>
+                <td className="py-2 text-right">{won(w.cpc)}</td>
               </tr>
             ))}
           </tbody>
@@ -116,7 +117,7 @@ function HourBars({ a }: { a: HoursAnalysis }) {
           <div key={h.hour} className="group relative flex h-full flex-1 flex-col justify-end">
             <div className={`w-full rounded-t ${peak.has(h.hour) ? "bg-brand" : "bg-brand/35"}`} style={{ height: `${(h.sales / maxS) * 100}%` }} />
             {a.adConnected && <div className="absolute left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-red-500" style={{ bottom: `${(h.cost / maxC) * 100}%` }} />}
-            <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-2 py-1 text-[10px] shadow group-hover:block">
+            <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-2 py-1 text-[11px] shadow group-hover:block">
               {h.hour}시 · 매출 {man(h.sales)} · 광고비 {won(h.cost)}원{h.roas != null && ` · ${won(h.roas)}%`}
             </div>
           </div>
@@ -124,12 +125,12 @@ function HourBars({ a }: { a: HoursAnalysis }) {
       </div>
       <div className="mt-1 flex gap-[3px]">
         {a.hours.map((h) => (
-          <div key={h.hour} className={`flex-1 text-center text-[9px] ${focus.has(h.hour) ? "font-bold text-red-600" : "text-muted"}`}>
+          <div key={h.hour} className={`flex-1 text-center text-[10px] ${focus.has(h.hour) ? "font-bold text-red-600" : "text-muted"}`}>
             {h.hour}
           </div>
         ))}
       </div>
-      <p className="mt-1 text-[10px] text-muted">진한 막대 = 매출 피크 · 빨간 숫자 = 광고 집중 추천 시간</p>
+      <p className="mt-1 text-[11px] text-muted">진한 막대 = 매출 피크 · 빨간 숫자 = 광고 집중 추천 시간</p>
     </div>
   );
 }
@@ -150,9 +151,9 @@ function Heatmap({ a, metric }: { a: HoursAnalysis; metric: "sales" | "cost" }) 
         <div className="grid gap-[2px]" style={{ gridTemplateColumns: `28px repeat(${hours.length}, minmax(0, 1fr))` }}>
           <div />
           {hours.map((h) => (
-            <div key={h} className="text-center text-[9px]">{h}</div>
+            <div key={h} className="text-center text-[10px]">{h}</div>
           ))}
-          <div className="text-[10px] font-semibold text-foreground">합</div>
+          <div className="text-[11px] font-semibold text-foreground">합</div>
           {a.hours.map((h) => (
             <div key={h.hour} title={`${h.hour}시 광고비 ${won(h.cost)}원`} className="h-7 rounded-sm" style={{ background: `rgba(239,68,68,${0.1 + (h.cost / maxC) * 0.85})` }} />
           ))}
@@ -166,13 +167,13 @@ function Heatmap({ a, metric }: { a: HoursAnalysis; metric: "sales" | "cost" }) 
       <div className="grid gap-[2px]" style={{ gridTemplateColumns: `28px repeat(${hours.length}, minmax(0, 1fr))` }}>
         <div />
         {hours.map((h) => (
-          <div key={h} className="text-center text-[9px] text-muted">{h}</div>
+          <div key={h} className="text-center text-[10px] text-muted">{h}</div>
         ))}
         {rows.map((r) => (
           <HeatRow key={r.label} r={r} max={max} />
         ))}
       </div>
-      <p className="mt-1 text-[10px] text-muted">진할수록 그 요일·시간에 매출이 커요. 칸을 누르면 금액이 보여요.</p>
+      <p className="mt-1 text-[11px] text-muted">진할수록 그 요일·시간에 매출이 커요. 칸을 누르면 금액이 보여요.</p>
     </div>
   );
 }
@@ -181,13 +182,13 @@ function HeatRow({ r, max }: { r: { label: string; days: number; cells: { hour: 
   const [sel, setSel] = useState<number | null>(null);
   return (
     <>
-      <div className="flex items-center text-[10px] font-semibold">
+      <div className="flex items-center text-[11px] font-semibold">
         {r.label}
-        <span className="ml-0.5 text-[8px] font-normal text-muted">{r.days}</span>
+        <span className="ml-0.5 text-[9px] font-normal text-muted">{r.days}</span>
       </div>
       {r.cells.map((c) => (
         <button key={c.hour} type="button" onClick={() => setSel(sel === c.hour ? null : c.hour)} className="relative h-7 rounded-sm" style={{ background: `rgba(30,41,139,${max ? 0.06 + (c.v / max) * 0.9 : 0.06})` }}>
-          {sel === c.hour && <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-white drop-shadow">{man(c.v)}</span>}
+          {sel === c.hour && <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white drop-shadow">{man(c.v)}</span>}
         </button>
       ))}
     </>

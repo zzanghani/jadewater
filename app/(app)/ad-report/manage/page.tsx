@@ -1,6 +1,6 @@
 export const maxDuration = 60;
 
-import Link from "next/link";
+import AdPageHeader from "@/components/AdPageHeader";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { adReportAllowedFor } from "@/lib/adAccess";
@@ -14,7 +14,7 @@ export default async function AdManagePage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const [{ data: profile }, { storeId: contextStoreId, storeName }] = await Promise.all([
+  const [{ data: profile }, { storeId: contextStoreId }] = await Promise.all([
     supabase.from("profiles").select("role, store_id, department").eq("id", user.id).maybeSingle(),
     getStoreContext(supabase),
   ]);
@@ -26,13 +26,7 @@ export default async function AdManagePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <Link href="/ad-report" className="text-xs text-muted">
-          ‹ 광고 리포트
-        </Link>
-        <h1 className="mt-1 text-lg font-bold">광고 관리</h1>
-        <p className="mt-1 text-xs text-muted">{storeName} · 네이버 검색광고 캠페인 켜기/끄기 · 하루 예산 · 변경 효과</p>
-      </div>
+      <AdPageHeader back="/ad-report" backLabel="광고 리포트" title="광고 관리" desc="캠페인 켜기/끄기 · 하루 예산 · 노출 시간" />
       <AdManageClient key={storeId} storeId={storeId} />
     </div>
   );

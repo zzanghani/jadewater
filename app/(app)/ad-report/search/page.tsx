@@ -1,6 +1,6 @@
 export const maxDuration = 60;
 
-import Link from "next/link";
+import AdPageHeader from "@/components/AdPageHeader";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { adReportAllowedFor } from "@/lib/adAccess";
@@ -14,7 +14,7 @@ export default async function AdSearchPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const [{ data: profile }, { storeId: contextStoreId, storeName }] = await Promise.all([
+  const [{ data: profile }, { storeId: contextStoreId }] = await Promise.all([
     supabase.from("profiles").select("role, store_id, department").eq("id", user.id).maybeSingle(),
     getStoreContext(supabase),
   ]);
@@ -25,13 +25,7 @@ export default async function AdSearchPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <Link href="/ad-report/insight" className="text-xs text-muted">
-          ‹ 효율 분석
-        </Link>
-        <h1 className="mt-1 text-lg font-bold">검색 노출</h1>
-        <p className="mt-1 text-xs text-muted">{storeName} · 네이버 지도 상위 5 · 블로그 상위 30 · 월 검색량 · 매일 새벽 자동 확인</p>
-      </div>
+      <AdPageHeader back="/ad-report" backLabel="광고 리포트" title="검색 노출" desc="네이버 지도 순위 · 블로그 상위30 · 월 검색량" />
       <AdSearchClient key={storeId} storeId={storeId} />
     </div>
   );

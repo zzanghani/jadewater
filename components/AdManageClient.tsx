@@ -45,31 +45,37 @@ export default function AdManageClient({ storeId }: { storeId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="rounded-full bg-background px-3 py-1.5">
-          캠페인 <b>{onCount}/{res.campaigns.length}</b> 켜짐
-        </span>
-        <span className="rounded-full bg-background px-3 py-1.5">
-          최근 7일 광고비 <b>{won(weekCost)}</b>원
-        </span>
-        {res.bizmoney != null && (
-          <span className={`rounded-full px-3 py-1.5 ${weekCost > 0 && res.bizmoney / (weekCost / 7) < 5 ? "bg-red-50 text-red-600" : "bg-background"}`}>
-            비즈머니 <b>{won(res.bizmoney)}</b>원{weekCost > 0 && ` · 약 ${Math.floor(res.bizmoney / (weekCost / 7))}일분`}
-          </span>
-        )}
-        <button type="button" onClick={reload} disabled={loading} className="ml-auto rounded-xl border border-border px-3 py-1.5 text-xs disabled:opacity-50">
-          {loading ? "읽는 중..." : "새로고침"}
-        </button>
-        <a
-          href="https://searchad.naver.com/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-xl bg-[#03c75a] px-3 py-1.5 text-xs font-semibold text-white"
-          title="키워드·입찰가·노출 시간 등 세부 설정은 네이버 광고주 사이트에서"
-        >
-          네이버 광고주 ↗
-        </a>
-      </div>
+      <section className="rounded-2xl border border-border bg-card p-3">
+        <div className="grid grid-cols-3 gap-1.5 text-center">
+          <div className="rounded-xl bg-background py-2">
+            <p className="text-[11px] text-muted">켜진 캠페인</p>
+            <p className="text-base font-bold tabular-nums">{onCount}<span className="text-xs font-normal text-muted">/{res.campaigns.length}</span></p>
+          </div>
+          <div className="rounded-xl bg-background py-2">
+            <p className="text-[11px] text-muted">7일 광고비</p>
+            <p className="text-base font-bold tabular-nums">{won(weekCost)}<span className="text-xs font-normal text-muted">원</span></p>
+          </div>
+          <div className={`rounded-xl py-2 ${res.bizmoney != null && weekCost > 0 && res.bizmoney / (weekCost / 7) < 5 ? "bg-red-50 text-red-600" : "bg-background"}`}>
+            <p className="text-[11px] text-muted">비즈머니</p>
+            <p className="text-base font-bold tabular-nums">{res.bizmoney == null ? "-" : won(res.bizmoney)}<span className="text-xs font-normal text-muted">원</span></p>
+            {res.bizmoney != null && weekCost > 0 && <p className="text-[11px]">약 {Math.floor(res.bizmoney / (weekCost / 7))}일분</p>}
+          </div>
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-1.5">
+          <button type="button" onClick={reload} disabled={loading} className="rounded-xl border border-border px-3 py-2 text-xs font-semibold disabled:opacity-50">
+            {loading ? "읽는 중…" : "새로고침"}
+          </button>
+          <a
+            href="https://searchad.naver.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-xl bg-[#03c75a] px-3 py-2 text-center text-xs font-semibold text-white"
+            title="키워드·입찰가·노출 시간 등 세부 설정은 네이버 광고주 사이트에서"
+          >
+            네이버 광고주 ↗
+          </a>
+        </div>
+      </section>
       {err && <p className="rounded-xl bg-red-50 px-4 py-3 text-xs text-red-600">{err}</p>}
 
       <section className="flex flex-col gap-2">
@@ -134,26 +140,26 @@ function CampaignCard({ c, storeId, busy, onToggle, onSaved, onError, suggest }:
           <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${c.on ? "left-[22px]" : "left-0.5"}`} />
         </button>
       </div>
-      <div className="mt-2 grid grid-cols-4 gap-1 text-center text-[11px]">
-        <div className="rounded-lg bg-background py-1.5">
-          <p className="text-muted">7일 광고비</p>
-          <p className="font-semibold tabular-nums">{won(c.week.cost)}</p>
+      <div className="mt-3 grid grid-cols-4 divide-x divide-border rounded-xl bg-background py-2 text-center">
+        <div>
+          <p className="text-[11px] text-muted">7일 광고비</p>
+          <p className="text-[13px] font-semibold tabular-nums">{won(c.week.cost)}</p>
         </div>
-        <div className="rounded-lg bg-background py-1.5">
-          <p className="text-muted">클릭</p>
-          <p className="font-semibold tabular-nums">{c.week.clk}</p>
+        <div>
+          <p className="text-[11px] text-muted">클릭</p>
+          <p className="text-[13px] font-semibold tabular-nums">{c.week.clk}</p>
         </div>
-        <div className="rounded-lg bg-background py-1.5">
-          <p className="text-muted">클릭률</p>
-          <p className="font-semibold tabular-nums">{ctr == null ? "-" : ctr.toFixed(1) + "%"}</p>
+        <div>
+          <p className="text-[11px] text-muted">클릭률</p>
+          <p className="text-[13px] font-semibold tabular-nums">{ctr == null ? "-" : ctr.toFixed(1) + "%"}</p>
         </div>
-        <div className="rounded-lg bg-background py-1.5">
-          <p className="text-muted">클릭당</p>
-          <p className="font-semibold tabular-nums">{won(cpc)}</p>
+        <div>
+          <p className="text-[11px] text-muted">클릭당</p>
+          <p className="text-[13px] font-semibold tabular-nums">{won(cpc)}</p>
         </div>
       </div>
       <div className="mt-2 flex items-center gap-1.5 text-xs">
-        <span className="text-muted">하루 예산</span>
+        <span className="shrink-0 text-muted">하루 예산</span>
         <input
           type="number"
           inputMode="numeric"
@@ -161,14 +167,14 @@ function CampaignCard({ c, storeId, busy, onToggle, onSaved, onError, suggest }:
           step={1000}
           value={budget}
           onChange={(e) => setBudgetInput(e.target.value)}
-          className="w-28 rounded-lg border border-border bg-background px-2 py-1 text-right tabular-nums text-foreground"
+          className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-right text-sm font-semibold tabular-nums text-foreground"
         />
-        <span className="text-muted">원</span>
-        <button type="button" onClick={save} disabled={saving || busy || !changed} className="rounded-lg bg-brand px-2.5 py-1 text-[11px] font-semibold text-white disabled:opacity-40">
+        <span className="shrink-0 text-muted">원</span>
+        <button type="button" onClick={save} disabled={saving || busy || !changed} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">
           {saving ? "저장 중" : "저장"}
         </button>
-        {c.dailyBudget === 0 && <span className="text-[10px] text-muted">0 = 제한 없음</span>}
       </div>
+      {c.dailyBudget === 0 && <p className="mt-1 text-[11px] text-muted">0 = 제한 없음</p>}
       {c.groups.length > 0 && (
         <div className="mt-2 flex flex-col gap-1.5">
           {c.groups.map((g) => (
@@ -212,11 +218,19 @@ function ScheduleBlock({ storeId, group, single, suggest, busy, onSaved, onError
   return (
     <div className="rounded-xl bg-background px-3 py-2 text-xs">
       <div className="flex items-center justify-between gap-2">
-        <p className="min-w-0 truncate">
-          <span className="text-muted">노출 시간{!single && ` · ${group.name}`}</span> <span className="font-semibold">{scheduleSummary(base)}</span>
-          {!group.on && <span className="ml-1 rounded bg-gray-100 px-1 text-[9px] text-gray-500">그룹 꺼짐</span>}
-        </p>
-        <button type="button" onClick={() => { setDraft(base); setEdit(!edit); }} className="shrink-0 text-[11px] font-semibold text-brand">
+        <div className="min-w-0">
+          {!single && (
+            <p className="truncate text-[11px] text-muted">
+              {group.name}
+              {!group.on && <span className="ml-1 rounded bg-gray-100 px-1 text-[11px] text-gray-500">그룹 꺼짐</span>}
+            </p>
+          )}
+          <p className="truncate">
+            <span className="text-muted">노출 시간</span> <span className="font-semibold">{scheduleSummary(base)}</span>
+            {single && !group.on && <span className="ml-1 rounded bg-gray-100 px-1 text-[11px] text-gray-500">그룹 꺼짐</span>}
+          </p>
+        </div>
+        <button type="button" onClick={() => { setDraft(base); setEdit(!edit); }} className="shrink-0 rounded-lg border border-border bg-card px-2.5 py-1 text-[11px] font-semibold text-brand">
           {edit ? "닫기" : "수정"}
         </button>
       </div>
@@ -230,7 +244,7 @@ function ScheduleBlock({ storeId, group, single, suggest, busy, onSaved, onError
             {preset("저녁 앞", [16, 17, 18, 19])}
           </div>
           <AdScheduleGrid value={draft} onChange={setDraft} hours={hours} />
-          <p className="text-[10px] text-muted">파란 칸 = 광고 나가는 시간. 요일 글자를 누르면 그 줄 전체, 시간 숫자를 누르면 그 열 전체가 바뀌어요. 지금: {scheduleSummary(draft)}</p>
+          <p className="text-[11px] text-muted">파란 칸 = 광고 나가는 시간. 요일 글자를 누르면 그 줄 전체, 시간 숫자를 누르면 그 열 전체가 바뀌어요. 지금: {scheduleSummary(draft)}</p>
           <div className="flex gap-1.5">
             <button type="button" onClick={save} disabled={saving || busy || !changed} className="rounded-lg bg-brand px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-40">
               {saving ? "적용 중…" : "네이버에 적용"}
@@ -266,11 +280,11 @@ function ChangeItem({ ch }: { ch: ChangeRow }) {
             {ch.user_name && ` · ${ch.user_name}`}
           </p>
         </div>
-        {ch.effect && <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${EFFECT[ch.effect.state]}`}>{EFFECT_LABEL[ch.effect.state]}</span>}
+        {ch.effect && <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-bold ${EFFECT[ch.effect.state]}`}>{EFFECT_LABEL[ch.effect.state]}</span>}
       </div>
       {ch.effect && <p className="mt-1 text-[11px] leading-snug text-muted">{ch.effect.text}</p>}
       {ch.effect && ch.effect.state !== "pending" && (
-        <p className="mt-0.5 text-[10px] tabular-nums text-muted">
+        <p className="mt-0.5 text-[11px] tabular-nums text-muted">
           전 7일 매출 {won(ch.effect.before.sales)} / 광고비 {won(ch.effect.before.cost)} → 후 7일 매출 {won(ch.effect.after.sales)} / 광고비 {won(ch.effect.after.cost)}
         </p>
       )}

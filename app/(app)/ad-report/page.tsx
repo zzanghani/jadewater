@@ -63,6 +63,15 @@ export default async function AdReportPage() {
           <span className="mt-0.5 text-[11px] text-brand/80">캠페인 켜기/끄기 · 하루 예산</span>
         </Link>
       </div>
+      {/* 자주 가는 보조 화면 — 효율 분석 안에만 숨어 있어 찾기 어려웠던 걸 여기서도 바로 */}
+      <div className="grid grid-cols-2 gap-2">
+        <Link href="/ad-report/hours" className="rounded-xl border border-border bg-card px-3 py-2 text-center text-xs font-semibold">
+          시간·요일 분석
+        </Link>
+        <Link href="/ad-report/search" className="rounded-xl border border-border bg-card px-3 py-2 text-center text-xs font-semibold">
+          검색 노출
+        </Link>
+      </div>
       <AdReportShell initial={initial} />
     </div>
   );
