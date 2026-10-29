@@ -21,7 +21,7 @@ export type SearchInfo = {
   adConnected: boolean;
 };
 export type InsightResult =
-  | { ok: true; insight: AdInsight; memo: string | null; memoAt: string | null; synced: { toss: number | null; ad: number | null; weather: number | null }; search: SearchInfo }
+  | { ok: true; insight: AdInsight; memo: string | null; memoAt: string | null; synced: { toss: number | null; ad: number | null; weather: number | null; at: string | null; full: boolean }; search: SearchInfo }
   | { ok: false; error: string };
 
 type AuthResult =
@@ -43,10 +43,13 @@ async function authStore(storeId: string): Promise<AuthResult> {
 }
 
 /**
- * 광고 효율 분석 — 필요하면 최근 28일을 동기화(sync=true)한 뒤 계산한다.
+ * 광고 효율 분석 — 화면이 열릴 때 자동으로 동기화한 뒤 계산한다.
+ *   sync: "auto"  쌓인 데이터가 있으면 어제·오늘만 다시 받고(몇 초), 없으면 처음 한 번 8주를 받는다(30초쯤).
+ *                 15분 안에 받은 적이 있으면 건너뛴다(네이버 호출 아끼기). 밤마다 도는 크론이 최근 7일을 채운다.
+ *   sync: true    언제나 8주 전체.
  * 오늘 매출은 토스에서 바로 읽는다(실시간).
  */
-export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = {}): Promise<InsightResult> {
+export async function loadAdInsight(storeId: string, opts: { sync?: boolean | "auto" } = {}): Promise<InsightResult> {
   const auth = await authStore(storeId);
   if (auth.error !== undefined) return { ok: false, error: auth.error };
   const { supabase } = auth;
@@ -66,30 +69,54 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean } = 
   // 광고 계정이 없으면 매출만 보여준다 (광고비 0으로).
   const acct = adAcct ? { customerId: adAcct.naver_customer_id, apiKey: adAcct.naver_api_key, secretKey: adAcct.naver_secret_key } : null;
 
-  const synced = { toss: null as number | null, ad: null as number | null, weather: null as number | null };
-  if (opts.sync) {
+  const synced = { toss: null as number | null, ad: null as number | null, weather: null as number | null, at: null as string | null, full: false };
+  // 마지막으로 받은 시각과 가장 오래된 날짜 — 자동 동기화 범위를 정하는 데 쓴다.
+  const [{ data: adLast }, { data: adFirst }, { data: tossLast }] = await Promise.all([
+    acct ? service.from("ad_daily_stats").select("synced_at").eq("store_id", storeId).order("synced_at", { ascending: false }).limit(1).maybeSingle() : Promise.resolve({ data: null }),
+    acct ? service.from("ad_daily_stats").select("date").eq("store_id", storeId).order("date", { ascending: true }).limit(1).maybeSingle() : Promise.resolve({ data: null }),
+    keys && merchant ? service.from("toss_daily_sales").select("synced_at").eq("store_id", storeId).order("synced_at", { ascending: false }).limit(1).maybeSingle() : Promise.resolve({ data: null }),
+  ]);
+  const lastAt = [adLast?.synced_at, tossLast?.synced_at].filter(Boolean).sort().pop() ?? null;
+  synced.at = lastAt;
+  let mode: "none" | "recent" | "full" = "none";
+  if (opts.sync === true) mode = "full";
+  else if (opts.sync === "auto") {
+    const fresh = lastAt != null && Date.now() - new Date(lastAt).getTime() < 15 * 60e3;
+    // 광고 계정이 있는데 8주치가 아직 없으면(처음 열었거나 중간에 연결) 전체를 받는다
+    const missing = (acct && (!adFirst || adFirst.date > addYmd(from, 3))) || (keys && merchant && !tossLast);
+    mode = missing ? "full" : fresh ? "none" : "recent";
+  }
+  if (mode !== "none") {
+    synced.full = mode === "full";
+    const recentFrom = addYmd(today, -2);
     if (acct) {
       try {
-        // 네이버는 31일 단위로 두 번
-        const mid = addYmd(today, -28);
-        const a1 = await syncAdDaily(service, storeId, acct, from, addYmd(mid, -1));
-        const a2 = await syncAdDaily(service, storeId, acct, mid, today);
-        synced.ad = a1 + a2;
-        // 시간대별은 최근 28일만 (호출 수 절약)
-        await syncAdHourly(service, storeId, acct, mid, today).catch(() => 0);
+        if (mode === "full") {
+          // 네이버는 31일 단위로 두 번
+          const mid = addYmd(today, -28);
+          const a1 = await syncAdDaily(service, storeId, acct, from, addYmd(mid, -1));
+          const a2 = await syncAdDaily(service, storeId, acct, mid, today);
+          synced.ad = a1 + a2;
+          // 시간대별은 최근 28일만 (호출 수 절약)
+          await syncAdHourly(service, storeId, acct, mid, today).catch(() => 0);
+        } else {
+          synced.ad = await syncAdDaily(service, storeId, acct, recentFrom, today);
+          await syncAdHourly(service, storeId, acct, recentFrom, today).catch(() => 0);
+        }
       } catch (e) {
         return { ok: false, error: `네이버 광고 성과를 못 읽었어요: ${(e as Error).message}` };
       }
     }
     if (keys && merchant) {
       try {
-        synced.toss = await syncTossDaily(service, storeId, keys, merchant.merchant_id, from, addYmd(today, -1));
+        synced.toss = await syncTossDaily(service, storeId, keys, merchant.merchant_id, mode === "full" ? from : recentFrom, addYmd(today, -1));
       } catch (e) {
         return { ok: false, error: `토스 매출을 못 읽었어요: ${(e as Error).message}` };
       }
     }
     // 날씨는 실패해도 분석은 계속한다 (보정만 빠짐). 크론이 매일 밤 다시 채운다.
-    synced.weather = await syncWeather(service, addYmd(today, -370), today).catch(() => null);
+    if (mode === "full") synced.weather = await syncWeather(service, addYmd(today, -370), today).catch(() => null);
+    synced.at = new Date().toISOString();
   }
 
   const [{ data: tossRows }, { data: adRows }, { data: closings }, { data: memoRow }, { data: weatherRows }, { data: specialRows }, { data: setting }, { data: searchSetting }, { data: rankRows }, { data: receipts }, { data: costClosings }] = await Promise.all([
