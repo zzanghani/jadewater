@@ -78,7 +78,7 @@ export default function AdScheduleGrid({ value, onChange, hours = Array.from({ l
     <div className="grid gap-[2px]" style={{ gridTemplateColumns: `30px repeat(${hours.length}, minmax(0, 1fr))` }}>
       <div />
       {hours.map((h) => (
-        <button key={h} type="button" onClick={() => toggleHour(h)} className="text-center text-[9px] text-muted">
+        <button key={h} type="button" onClick={() => toggleHour(h)} className="text-center text-[10px] text-muted">
           {h}
         </button>
       ))}

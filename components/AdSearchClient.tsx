@@ -74,19 +74,21 @@ export default function AdSearchClient({ storeId }: { storeId: string }) {
     });
   }
 
+  const adCount = groups ? groups.reduce((n, g) => n + g.keywords.length, 0) : null;
   const TABS = [
-    ["track", "추적"],
-    ["find", "연관 키워드"],
-    ["combo", "조합 검색"],
-    ["ad", `광고 키워드${groups ? ` ${groups.reduce((n, g) => n + g.keywords.length, 0)}` : ""}`],
+    ["track", "추적", null],
+    ["find", "연관 키워드", null],
+    ["combo", "조합 검색", null],
+    ["ad", "광고 키워드", adCount],
   ] as const;
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-4 rounded-xl bg-background p-1 text-xs font-semibold">
-        {TABS.map(([k, label]) => (
-          <button key={k} type="button" onClick={() => setTab(k)} className={`rounded-lg py-2 ${tab === k ? "bg-card text-foreground shadow-sm" : "text-muted"}`}>
+      <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-0.5 text-[13px] font-semibold [scrollbar-width:none]">
+        {TABS.map(([k, label, count]) => (
+          <button key={k} type="button" onClick={() => setTab(k)} className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-2 ${tab === k ? "bg-brand text-white" : "bg-card text-muted"}`}>
             {label}
+            {count != null && <span className={`ml-1 rounded-full px-1.5 text-[11px] ${tab === k ? "bg-white/20" : "bg-background"}`}>{count}</span>}
           </button>
         ))}
       </div>
@@ -143,20 +145,20 @@ function TrackPanel({ storeId, search, onChanged }: { storeId: string; search: S
   };
   return (
     <section className="rounded-2xl border border-border bg-card p-4">
-      <div className="mb-1 flex items-center justify-between">
-        <h2 className="text-sm font-bold">추적 키워드 (지도 순위 · 블로그 상위30)</h2>
-        <div className="flex gap-1.5">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-bold">추적 키워드</h2>
+        <div className="flex shrink-0 gap-1.5">
           {search.keywords.length > 0 && !edit && (
-            <button type="button" onClick={checkNow} disabled={busy} className="rounded-lg border border-border px-2 py-1 text-[11px] disabled:opacity-50">
+            <button type="button" onClick={checkNow} disabled={busy} className="whitespace-nowrap rounded-lg border border-border px-2.5 py-1 text-xs font-semibold disabled:opacity-50">
               {busy ? "확인 중…" : "지금 확인"}
             </button>
           )}
-          <button type="button" onClick={() => setEdit(!edit)} className="rounded-lg border border-border px-2 py-1 text-[11px]">
+          <button type="button" onClick={() => setEdit(!edit)} className="whitespace-nowrap rounded-lg border border-border px-2.5 py-1 text-xs font-semibold">
             {edit ? "닫기" : "설정"}
           </button>
         </div>
       </div>
-      <p className="mb-2 text-[11px] text-muted">매일 새벽 자동 확인. 키워드는 연관 키워드·조합 검색 탭에서 &lsquo;+ 추적&rsquo;으로도 넣을 수 있어요.</p>
+      <p className="mb-2 text-[11px] text-muted">지도 순위 · 블로그 상위30 안 우리 글 · 매일 새벽 자동 확인</p>
       {edit && (
         <div className="mb-3 flex flex-col gap-1.5 rounded-xl bg-background p-3 text-xs">
           <label className="flex flex-col gap-1">
@@ -180,13 +182,13 @@ function TrackPanel({ storeId, search, onChanged }: { storeId: string; search: S
       {msg && <p className="mb-2 text-xs text-red-600">{msg}</p>}
       {search.rows.length > 0 ? (
         <>
-          <table className="w-full text-xs tabular-nums">
+          <table className="w-full text-[13px] tabular-nums">
             <thead>
               <tr className="text-left text-[11px] text-muted">
                 <th className="pb-1 font-medium">키워드</th>
-                <th className="pb-1 text-right font-medium">월 검색</th>
-                <th className="pb-1 text-right font-medium">지도 순위</th>
-                <th className="pb-1 text-right font-medium">블로그 우리 글</th>
+                <th className="whitespace-nowrap pb-1 text-right font-medium">월 검색</th>
+                <th className="whitespace-nowrap pb-1 text-right font-medium">지도</th>
+                <th className="whitespace-nowrap pb-1 text-right font-medium">블로그</th>
               </tr>
             </thead>
             <tbody>
@@ -198,30 +200,39 @@ function TrackPanel({ storeId, search, onChanged }: { storeId: string; search: S
                 const mc = mapCell(r);
                 return (
                   <tr key={r.keyword} className="border-t border-border">
-                    <td className="py-1.5 font-semibold">{r.keyword}</td>
-                    <td className="py-1.5 text-right text-muted">{fmt(r.volume)}</td>
-                    <td className={`py-1.5 text-right ${mc.c}`} title={r.mapName ? `지도 목록 이름: ${r.mapName}` : undefined}>
+                    <td className="py-2 font-semibold">{r.keyword}</td>
+                    <td className="py-2 text-right text-muted">{fmt(r.volume)}</td>
+                    <td className={`whitespace-nowrap py-2 text-right font-semibold ${mc.c}`} title={r.mapName ? `지도 목록 이름: ${r.mapName}` : undefined}>
                       {mc.t}
-                      {dm && <span className={`ml-1 text-[10px] ${dm.c}`}>{dm.t}</span>}
-                      {mc.sub && <span className="block text-[9px] font-normal text-muted">{mc.sub}</span>}
+                      {dm && <span className={`ml-1 text-[11px] ${dm.c}`}>{dm.t}</span>}
+                      {mc.sub && <span className="block text-[11px] font-normal text-muted">{mc.sub}</span>}
                     </td>
-                    <td className={`py-1.5 text-right ${r.blogHits === 0 ? "text-red-600" : ""}`}>
-                      {r.blogHits}개{db && <span className={`ml-1 text-[10px] ${db.c}`}>{db.t}</span>}
+                    <td className={`whitespace-nowrap py-2 text-right ${r.blogHits === 0 ? "text-red-600" : ""}`}>
+                      {r.blogHits}개{db && <span className={`ml-1 text-[11px] ${db.c}`}>{db.t}</span>}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          <p className="mt-1.5 text-[10px] text-muted">
-            {search.checkedAt ? `${new Date(search.checkedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 확인` : "아직 확인 전 — &lsquo;지금 확인&rsquo;을 눌러 주세요"} · 화살표는 일주일 전 대비. 지도 순위는 맥미니가 매일 새벽 네이버 지도에서 광고를 빼고 센 순위(약 100개까지)이고, 맥미니 확인 전에는 네이버 공식 상위5만 보여요. 검색 큰데 지도 뒤쪽 = 플레이스 광고 유지 + 영수증 리뷰 늘리기. 블로그 0개 → 체험단 글 제목에 그 키워드 넣기.
+          <p className="mt-2 text-[11px] text-muted">
+            {search.checkedAt ? `${new Date(search.checkedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 확인` : "아직 확인 전 — ‘지금 확인’을 눌러 주세요"}
             {search.mapAt && (
               <>
-                {" "}· 맥미니 {new Date(search.mapAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                {search.mapNote ? ` (${search.mapNote})` : " 확인"}
+                {" "}· 지도 순위 {new Date(search.mapAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                {search.mapNote ? ` (${search.mapNote})` : ""}
               </>
             )}
+            {" "}· 화살표는 일주일 전 대비
           </p>
+          <details className="mt-1 text-[11px] text-muted">
+            <summary className="cursor-pointer select-none font-semibold text-brand">순위 읽는 법</summary>
+            <ul className="mt-1 flex list-disc flex-col gap-0.5 pl-4 leading-relaxed">
+              <li>지도 순위는 맥미니가 매일 새벽 네이버 지도에서 광고를 빼고 센 순위예요(약 100개까지). 아직 안 읽은 키워드는 네이버 공식 상위5만 보여요.</li>
+              <li>검색은 많은데 지도 뒤쪽이면 → 플레이스 광고 유지 + 영수증 리뷰 늘리기.</li>
+              <li>블로그 0개면 → 체험단 글 제목에 그 키워드를 그대로 넣기.</li>
+            </ul>
+          </details>
           <BlogPostsBox rows={search.rows} />
         </>
       ) : (
@@ -239,7 +250,7 @@ function BlogPostsBox({ rows }: { rows: SearchInfo["rows"] }) {
     <div className="mt-3 rounded-xl bg-background p-3">
       <div className="mb-1.5 flex items-baseline justify-between">
         <h3 className="text-xs font-bold">블로그 우리 글 {total > 0 && <span className="ml-1 font-normal text-muted">{total}개</span>}</h3>
-        <span className="text-[10px] text-muted">키워드별 상위30 안 순위 · 제목 누르면 글 열림</span>
+        <span className="text-[11px] text-muted">키워드별 상위30 안 순위 · 제목 누르면 글 열림</span>
       </div>
       {withPosts.length === 0 ? (
         <p className="text-[11px] text-muted">아직 상위30 안에 우리 글이 없어요. 체험단 글 제목에 추적 키워드를 그대로 넣어 주세요.</p>
@@ -258,7 +269,7 @@ function BlogPostsBox({ rows }: { rows: SearchInfo["rows"] }) {
                       <a href={p.link} target="_blank" rel="noreferrer" className="block truncate underline-offset-2 hover:underline">
                         {p.title}
                       </a>
-                      <p className="truncate text-[10px] text-muted">
+                      <p className="truncate text-[11px] text-muted">
                         {p.blogger}
                         {p.date && ` · ${p.date.slice(5).replace("-", "/")}`}
                       </p>
@@ -287,8 +298,8 @@ function KeywordRow({ kw, total, compIdx, registered, tracked, groups, adConnect
             월 {fmt(total)}
             {compIdx && ` · 경쟁 ${compIdx}`}
           </span>
-          {registered && <span className="ml-1.5 rounded bg-green-50 px-1 text-[9px] font-bold text-green-700">광고 등록됨</span>}
-          {tracked && <span className="ml-1 rounded bg-blue-50 px-1 text-[9px] font-bold text-blue-700">추적 중</span>}
+          {registered && <span className="ml-1.5 rounded bg-green-50 px-1 text-[10px] font-bold text-green-700">광고 등록됨</span>}
+          {tracked && <span className="ml-1 rounded bg-blue-50 px-1 text-[10px] font-bold text-blue-700">추적 중</span>}
         </span>
         <span className="flex shrink-0 gap-1">
           {!tracked && (
@@ -305,9 +316,9 @@ function KeywordRow({ kw, total, compIdx, registered, tracked, groups, adConnect
       </div>
       {pick && (
         <div className="mt-1.5 flex flex-wrap gap-1">
-          <span className="text-[10px] text-muted">어느 광고그룹에?</span>
+          <span className="text-[11px] text-muted">어느 광고그룹에?</span>
           {(onGroups.length ? onGroups : groups).map((g) => (
-            <button key={g.adgroupId} type="button" onClick={() => { setPick(false); onAd(kw, g.adgroupId, g.adgroupName); }} className="rounded-md border border-border px-2 py-0.5 text-[10px]">
+            <button key={g.adgroupId} type="button" onClick={() => { setPick(false); onAd(kw, g.adgroupId, g.adgroupName); }} className="rounded-md border border-border px-2 py-0.5 text-[11px]">
               {g.adgroupName}
             </button>
           ))}
@@ -462,7 +473,7 @@ function AdKeywordsPanel({ storeId, groups, onChanged, onMsg }: { storeId: strin
         <section key={g.adgroupId} className="rounded-2xl border border-border bg-card p-3">
           <p className="text-xs font-bold">
             {g.adgroupName} <span className="font-normal text-muted">· {g.campaignName}</span>
-            {!g.on && <span className="ml-1 rounded bg-gray-100 px-1 text-[9px] text-gray-500">그룹 꺼짐</span>}
+            {!g.on && <span className="ml-1 rounded bg-gray-100 px-1 text-[10px] text-gray-500">그룹 꺼짐</span>}
             <span className="ml-1 text-[11px] font-normal text-muted">{g.keywords.length}개</span>
           </p>
           {g.keywords.length === 0 ? (

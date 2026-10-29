@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AdPageHeader from "@/components/AdPageHeader";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getStoreContext } from "@/lib/store";
@@ -23,20 +24,18 @@ export default async function AdReportSettingsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <Link href="/ad-report" className="text-xs text-muted">
-          ‹ 광고 리포트
-        </Link>
-        <div className="mt-1 flex items-center justify-between">
-          <h1 className="text-lg font-bold">매장 광고 키 설정</h1>
+      <AdPageHeader
+        back="/ad-report"
+        backLabel="광고 리포트"
+        title="매장 광고 키 설정"
+        desc="네이버 광고 API 키를 매장별로 · 저장할 때 연결 확인"
+        action={
           <Link href="/toss/settings" className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold">
             토스포스 연결
           </Link>
-        </div>
-        <p className="mt-1 text-xs text-muted">
-          네이버 검색광고 → 도구 → API 사용 관리에서 받은 고객 ID·엑세스라이선스·비밀키를 매장별로 넣어요. 저장할 때 실제로 연결해 봐요.
-        </p>
-      </div>
+        }
+      />
+      <p className="text-xs leading-relaxed text-muted">네이버 검색광고 → 도구 → API 사용 관리에서 받은 고객 ID·엑세스라이선스·비밀키를 매장별로 넣어요.</p>
       {stores.map((s) => (
         <AdAccountForm key={s.id} storeId={s.id} storeName={s.name} account={byStore.get(s.id) ?? null} />
       ))}

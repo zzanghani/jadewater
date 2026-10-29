@@ -61,7 +61,7 @@ export default function AdInsightChart({ rows }: { rows: DailyRow[] }) {
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted">
+      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted">
         <Chip color={COLOR.normal} label="매출" />
         {has("rain") && <Chip color={COLOR.rain} label="비 온 날(1mm↑)" />}
         {has("holiday") && <Chip color={COLOR.holiday} label="공휴일" />}

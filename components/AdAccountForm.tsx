@@ -29,11 +29,11 @@ export default function AdAccountForm({ storeId, storeName, account }: { storeId
             <input name="naver_customer_id" defaultValue={account?.naver_customer_id ?? ""} className={inputClass} inputMode="numeric" required />
           </label>
           <label className="flex flex-col gap-1 text-xs text-muted">
-            엑세스라이선스 (API KEY){account && <span className="text-[10px]"> · 비워두면 기존 값 유지 ({mask(account.naver_api_key)})</span>}
+            엑세스라이선스 (API KEY){account && <span className="text-[11px]"> · 비워두면 기존 값 유지 ({mask(account.naver_api_key)})</span>}
             <input name="naver_api_key" className={inputClass} autoComplete="off" placeholder={account ? "변경할 때만 입력" : ""} />
           </label>
           <label className="flex flex-col gap-1 text-xs text-muted">
-            비밀키 (SECRET KEY){account && <span className="text-[10px]"> · 비워두면 기존 값 유지 ({mask(account.naver_secret_key)})</span>}
+            비밀키 (SECRET KEY){account && <span className="text-[11px]"> · 비워두면 기존 값 유지 ({mask(account.naver_secret_key)})</span>}
             <input name="naver_secret_key" type="password" className={inputClass} autoComplete="off" placeholder={account ? "변경할 때만 입력" : ""} />
           </label>
           <div className="grid grid-cols-2 gap-2">

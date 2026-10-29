@@ -55,23 +55,25 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <button type="button" onClick={sync} disabled={loading} className="rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
-          {loading ? "동기화 중..." : "최근 8주 동기화"}
-        </button>
-        <Link href="/ad-report/hours" className="rounded-xl border-2 border-brand px-4 py-2.5 text-sm font-semibold text-brand">
-          시간·요일 분석
-        </Link>
-        <Link href="/ad-report/search" className="rounded-xl border-2 border-brand px-4 py-2.5 text-sm font-semibold text-brand">
-          검색 노출
-        </Link>
+      <div className="flex flex-col gap-1.5">
+        <div className="grid grid-cols-3 gap-2">
+          <button type="button" onClick={sync} disabled={loading} className="rounded-xl bg-brand px-2 py-2.5 text-[13px] font-semibold text-white disabled:opacity-60">
+            {loading ? "동기화 중…" : "8주 동기화"}
+          </button>
+          <Link href="/ad-report/hours" className="rounded-xl border border-brand bg-card px-2 py-2.5 text-center text-[13px] font-semibold text-brand">
+            시간·요일
+          </Link>
+          <Link href="/ad-report/search" className="rounded-xl border border-brand bg-card px-2 py-2.5 text-center text-[13px] font-semibold text-brand">
+            검색 노출
+          </Link>
+        </div>
         {(res.synced.ad != null || res.synced.toss != null) && (
-          <span className="text-[11px] text-muted">
+          <p className="text-right text-[11px] text-muted">
             {res.synced.ad != null && `광고 ${res.synced.ad}일`}
             {res.synced.ad != null && res.synced.toss != null && " · "}
             {res.synced.toss != null && `토스 ${res.synced.toss}일`}
             {res.synced.weather != null && ` · 날씨 ${res.synced.weather}일`} 갱신
-          </span>
+          </p>
         )}
       </div>
       {needSync && <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-800">아직 쌓인 데이터가 없어요. &lsquo;최근 8주 동기화&rsquo;를 한 번 눌러 주세요 (30초쯤 걸려요).</p>}
@@ -82,24 +84,25 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
           <p className="text-sm text-white/85">오늘 실시간 · {x.today.date.slice(5).replace("-", "/")}</p>
           {x.today.lastPayAt && <p className="text-[11px] text-white/70">마지막 결제 {x.today.lastPayAt}</p>}
         </div>
-        <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+        <div className="mt-2 flex items-baseline gap-2">
+          <p className="text-xs text-white/70">매출</p>
+          <p className="text-2xl font-bold tabular-nums">{x.today.sales == null ? "-" : won(x.today.sales)}<span className="ml-0.5 text-sm font-normal text-white/80">원</span></p>
+          {x.today.orders != null && <p className="text-xs text-white/70">{x.today.orders}건</p>}
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2 border-t border-white/15 pt-2 text-xs">
           <div>
-            <p className="text-white/70">매출</p>
-            <p className="text-lg font-bold tabular-nums">{x.today.sales == null ? "-" : won(x.today.sales)}<span className="text-xs font-normal">원</span></p>
-            {x.today.orders != null && <p className="text-white/70">{x.today.orders}건</p>}
-          </div>
-          <div>
-            <p className="text-white/70">광고비</p>
-            <p className="text-lg font-bold tabular-nums">{won(x.today.cost)}<span className="text-xs font-normal">원</span></p>
-            <p className="text-white/70">클릭 {x.today.clk}</p>
+            <p className="text-white/70">광고비 <span className="text-white/50">· 클릭 {x.today.clk}</span></p>
+            <p className="text-lg font-bold tabular-nums">{won(x.today.cost)}<span className="text-xs font-normal text-white/80">원</span></p>
           </div>
           <div>
             <p className="text-white/70">광고비 대비 매출</p>
-            <p className="text-lg font-bold tabular-nums">{x.today.roas == null ? "-" : won(x.today.roas) + "%"}</p>
-            <p className="text-white/70">광고비 1원당 {x.today.roas == null ? "-" : (x.today.roas / 100).toFixed(0)}원</p>
+            <p className="text-lg font-bold tabular-nums">
+              {x.today.roas == null ? "-" : won(x.today.roas) + "%"}
+              {x.today.roas != null && <span className="ml-1 text-xs font-normal text-white/70">1원당 {(x.today.roas / 100).toFixed(0)}원</span>}
+            </p>
           </div>
         </div>
-        <p className="mt-2 text-[10px] text-white/60">오늘 광고비는 어젯밤 동기화 이후 값이라 조금 늦을 수 있어요.</p>
+        <p className="mt-2 text-[11px] text-white/60">오늘 광고비는 어젯밤 동기화 이후 값이라 조금 늦을 수 있어요.</p>
       </section>
 
       {/* 7일 / 28일 */}
@@ -131,12 +134,12 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
                   <div className={`w-5 rounded-t ${w.roas === best && best > 0 ? "bg-brand" : "bg-brand/40"}`} style={{ height: h }} />
                 </div>
                 <p className="text-[11px] font-semibold">{w.label}</p>
-                <p className="text-[10px] tabular-nums text-muted">{w.roas == null ? "-" : won(w.roas) + "%"}</p>
+                <p className="text-[11px] tabular-nums text-muted">{w.roas == null ? "-" : won(w.roas) + "%"}</p>
               </div>
             );
           })}
         </div>
-        <p className="mt-2 text-[10px] text-muted">막대 = 광고비 대비 매출. 높을수록 그 요일 광고가 효율적이에요.</p>
+        <p className="mt-2 text-[11px] text-muted">막대 = 광고비 대비 매출. 높을수록 그 요일 광고가 효율적이에요.</p>
       </section>
 
       {/* 진단 */}
@@ -145,7 +148,7 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
         <ul className="flex flex-col gap-1.5">
           {x.findings.map((f, i) => (
             <li key={i} className="flex gap-2 text-xs leading-relaxed">
-              <span className={`mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${SEV[f.sev]}`}>{SEV_LABEL[f.sev]}</span>
+              <span className={`mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-bold ${SEV[f.sev]}`}>{SEV_LABEL[f.sev]}</span>
               <span>{f.text}</span>
             </li>
           ))}
@@ -164,7 +167,7 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
         {res.memo ? (
           <>
             <StrategyMemo raw={res.memo} />
-            {res.memoAt && <p className="mt-2 text-[10px] text-muted">{new Date(res.memoAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 생성</p>}
+            {res.memoAt && <p className="mt-2 text-[11px] text-muted">{new Date(res.memoAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 생성</p>}
           </>
         ) : (
           <p className="text-xs text-muted">위 숫자를 읽고 &lsquo;진단 → 이번 주 전략 3개 → 예산 제안&rsquo;을 써줘요.</p>
@@ -180,7 +183,7 @@ function PeriodCard({ title, cur, prev, norm, convTracked, note = "" }: { title:
       <div className="mb-2 flex items-baseline justify-between">
         <h2 className="text-sm font-bold">
           {title}
-          {note && <span className="ml-2 text-[10px] font-normal text-muted">{note}</span>}
+          {note && <span className="ml-2 text-[11px] font-normal text-muted">{note}</span>}
         </h2>
         {norm != null && (
           <span className={`text-[11px] font-semibold ${norm < 0.85 ? "text-red-600" : norm > 1.05 ? "text-green-700" : "text-muted"}`}>
@@ -301,22 +304,21 @@ function BreakevenCard({ storeId, x, onSaved }: { storeId: string; x: AdInsight;
   }
   return (
     <section className="rounded-2xl border border-border bg-card p-4">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h2 className="text-sm font-bold">광고 손익분기</h2>
-        <label className="flex items-center gap-1 text-[11px] text-muted">
-          원가율
-          <input type="number" inputMode="numeric" min={0} max={94} value={rate} onChange={(e) => setRate(e.target.value)} className="w-14 rounded-lg border border-border bg-background px-2 py-1 text-right text-xs text-foreground" />
-          %
-          <button type="button" onClick={save} disabled={saving || Number(rate) === Math.round(b.costRate * 100)} className="rounded-lg bg-brand px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-40">
-            {saving ? "저장 중" : "저장"}
+      <h2 className="mb-2 text-sm font-bold">광고 손익분기</h2>
+      <label className="mb-2 flex items-center gap-1.5 rounded-xl bg-background px-3 py-2 text-xs text-muted">
+        <span className="shrink-0">원가율</span>
+        <input type="number" inputMode="numeric" min={0} max={94} value={rate} onChange={(e) => setRate(e.target.value)} className="w-16 rounded-lg border border-border bg-card px-2 py-1.5 text-right text-sm font-semibold text-foreground" />
+        <span className="shrink-0">%</span>
+        <span className="flex-1" />
+        <button type="button" onClick={save} disabled={saving || Number(rate) === Math.round(b.costRate * 100)} className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">
+          {saving ? "저장 중" : "저장"}
+        </button>
+        {b.source === "manual" && (
+          <button type="button" onClick={() => { setRate("0"); startSave(async () => { const r = await saveCostRate(storeId, 0); if (!r.ok) setErr(r.error); else onSaved(); }); }} disabled={saving} className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs disabled:opacity-40">
+            자동으로
           </button>
-          {b.source === "manual" && (
-            <button type="button" onClick={() => { setRate("0"); startSave(async () => { const r = await saveCostRate(storeId, 0); if (!r.ok) setErr(r.error); else onSaved(); }); }} disabled={saving} className="rounded-lg border border-border px-2 py-1 text-[11px] disabled:opacity-40">
-              자동으로
-            </button>
-          )}
-        </label>
-      </div>
+        )}
+      </label>
       <p className="mb-2 text-[11px] text-muted">
         {b.source === "auto" && <>원가율 {(b.costRate * 100).toFixed(1)}% = 앱의 실시간 코스트 자동 반영(최근 28일 식재료·음료 입고 ÷ 음식·음료·주류·배달 매출). 직접 넣으면 그 값이 우선해요.</>}
         {b.source === "manual" && <>직접 입력한 원가율 {(b.costRate * 100).toFixed(0)}%{b.autoRate != null && ` (앱 코스트 자동 계산은 ${(b.autoRate * 100).toFixed(1)}%)`}. &lsquo;자동으로&rsquo;를 누르면 코스트 기준으로 돌아가요.</>}
@@ -337,7 +339,7 @@ function BreakevenCard({ storeId, x, onSaved }: { storeId: string; x: AdInsight;
           <p className="text-[11px] text-muted">{b.weekProfit == null ? "" : `최근 7일 광고 뒤 남은 이익 ${won(b.weekProfit)}원`}</p>
         </div>
       </div>
-      <p className="mt-2 text-[10px] text-muted">매출 1만원 중 {Math.round(b.costRate * 100)}%가 원가면 광고비 1만원은 매출 {won(b.neededPer10k)}원이 돼야 본전이에요.</p>
+      <p className="mt-2 text-[11px] text-muted">매출 1만원 중 {Math.round(b.costRate * 100)}%가 원가면 광고비 1만원은 매출 {won(b.neededPer10k)}원이 돼야 본전이에요.</p>
     </section>
   );
 }
@@ -348,6 +350,7 @@ function SpecialDays({ storeId, days, onChanged }: { storeId: string; days: { da
   const [note, setNote] = useState("");
   const [busy, startBusy] = useTransition();
   const [err, setErr] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   function add() {
     setErr(null);
     startBusy(async () => {
@@ -356,6 +359,7 @@ function SpecialDays({ storeId, days, onChanged }: { storeId: string; days: { da
       else {
         setDate("");
         setNote("");
+        setOpen(false);
         onChanged();
       }
     });
@@ -369,20 +373,29 @@ function SpecialDays({ storeId, days, onChanged }: { storeId: string; days: { da
   }
   return (
     <section className="rounded-2xl border border-border bg-card p-4">
-      <h2 className="mb-1 text-sm font-bold">특이일 (비교에서 제외)</h2>
-      <p className="mb-2 text-[11px] text-muted">단체 예약·행사·임시 휴무처럼 평소와 다른 날을 적어 두면 평소 대비와 광고 효과 판정에서 빼요.</p>
-      <div className="flex gap-1.5">
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs text-foreground" />
-        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="예: 단체 40명" maxLength={40} className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs text-foreground" />
-        <button type="button" onClick={add} disabled={busy || !date} className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">
-          추가
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-bold">특이일 <span className="font-normal text-muted">(비교에서 제외)</span></h2>
+        <button type="button" onClick={() => setOpen(!open)} className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-brand">
+          {open ? "닫기" : "+ 추가"}
         </button>
       </div>
-      {err && <p className="mt-1 text-xs text-red-600">{err}</p>}
+      <p className="mb-2 text-[11px] text-muted">단체 예약·행사·임시 휴무처럼 평소와 다른 날. 평소 대비와 광고 효과 판정에서 빼요.</p>
+      {open && (
+        <div className="mb-2 flex flex-col gap-1.5 rounded-xl bg-background p-3">
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full rounded-lg border border-border bg-card px-2 py-2 text-sm text-foreground" />
+          <div className="flex gap-1.5">
+            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="예: 단체 40명" maxLength={40} className="min-w-0 flex-1 rounded-lg border border-border bg-card px-2 py-2 text-sm text-foreground" />
+            <button type="button" onClick={add} disabled={busy || !date} className="shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
+              추가
+            </button>
+          </div>
+        </div>
+      )}
+      {err && <p className="mb-1 text-xs text-red-600">{err}</p>}
       {days.length > 0 && (
-        <ul className="mt-2 flex flex-col gap-1">
+        <ul className="flex flex-col gap-1">
           {days.map((s) => (
-            <li key={s.date} className="flex items-center justify-between rounded-lg bg-background px-3 py-1.5 text-xs">
+            <li key={s.date} className="flex items-center justify-between rounded-lg bg-background px-3 py-2 text-xs">
               <span>
                 <span className="tabular-nums text-muted">{s.date.slice(5).replace("-", "/")}</span> {s.note}
               </span>
