@@ -28,16 +28,31 @@ function dCls(c: number | null, p: number | null, goodUp: boolean) {
 export default function AdInsightClient({ storeId }: { storeId: string }) {
   const [res, setRes] = useState<InsightResult | null>(null);
   const [loading, start] = useTransition();
+  const [syncing, startSync] = useTransition();
+  const [syncNote, setSyncNote] = useState<string | null>(null);
   const [memoLoading, startMemo] = useTransition();
   const [memoError, setMemoError] = useState<string | null>(null);
 
+  // 열자마자 쌓인 데이터로 먼저 그리고, 뒤에서 어제·오늘 치를 받아 바꿔 끼운다 (버튼 없이 자동).
+  // 처음 여는 매장(쌓인 게 없음)은 그대로 8주를 받으며 기다린다.
   useEffect(() => {
-    start(async () => setRes(await loadAdInsight(storeId)));
+    let alive = true;
+    start(async () => {
+      const first = await loadAdInsight(storeId);
+      if (!alive) return;
+      setRes(first);
+      if (!first.ok) return;
+      startSync(async () => {
+        const fresh = await loadAdInsight(storeId, { sync: "auto" });
+        if (!alive) return;
+        if (fresh.ok) setRes(fresh);
+        else setSyncNote(fresh.error);
+      });
+    });
+    return () => {
+      alive = false;
+    };
   }, [storeId]);
-
-  function sync() {
-    start(async () => setRes(await loadAdInsight(storeId, { sync: true })));
-  }
   function makeMemo() {
     setMemoError(null);
     startMemo(async () => {
@@ -51,24 +66,24 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
   if (!res.ok) return <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{res.error}</p>;
   const x = res.insight;
   const needSync = x.week.salesDays === 0 && x.week.cost === 0;
+  const syncedAt = res.synced.at ? new Date(res.synced.at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : null;
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        {/* 시간·요일 분석·검색 노출 바로가기는 광고 리포트 홈에 있다 (여기 두면 중복) */}
-        <button type="button" onClick={sync} disabled={loading} className="w-full rounded-xl bg-brand px-3 py-2.5 text-[13px] font-semibold text-white disabled:opacity-60">
-          {loading ? "동기화 중…" : "최근 8주 동기화"}
-        </button>
-        {(res.synced.ad != null || res.synced.toss != null) && (
-          <p className="text-right text-[11px] text-muted">
-            {res.synced.ad != null && `광고 ${res.synced.ad}일`}
-            {res.synced.ad != null && res.synced.toss != null && " · "}
-            {res.synced.toss != null && `토스 ${res.synced.toss}일`}
-            {res.synced.weather != null && ` · 날씨 ${res.synced.weather}일`} 갱신
-          </p>
-        )}
-      </div>
-      {needSync && <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-800">아직 쌓인 데이터가 없어요. &lsquo;최근 8주 동기화&rsquo;를 한 번 눌러 주세요 (30초쯤 걸려요).</p>}
+      {/* 동기화는 열 때 자동. 시간·요일 분석·검색 노출 바로가기는 광고 리포트 홈에 있다. */}
+      <p className="flex items-center justify-end gap-1.5 text-[11px] text-muted">
+        {syncing ? (
+          <>
+            <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+            {needSync ? "처음이라 최근 8주 데이터를 받는 중… 30초쯤 걸려요" : "최신 데이터로 갱신하는 중…"}
+          </>
+        ) : syncNote ? (
+          <span className="text-amber-700">갱신 실패 — {syncNote}</span>
+        ) : syncedAt ? (
+          `${syncedAt} 갱신${res.synced.full ? " · 8주 전체" : ""}`
+        ) : null}
+      </p>
+      {needSync && !syncing && <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-800">아직 쌓인 데이터가 없어요. 네이버 광고·토스 연결을 확인한 뒤 화면을 다시 열어 주세요.</p>}
 
       {/* 오늘 실시간 */}
       <section className="rounded-2xl bg-brand-dark p-4 text-white shadow-lg shadow-brand/25">
