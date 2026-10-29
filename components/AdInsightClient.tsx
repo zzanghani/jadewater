@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import Link from "next/link";
 import { addSpecialDay, generateStrategyMemo, loadAdInsight, removeSpecialDay, saveCostRate, type InsightResult } from "@/app/(app)/ad-report/insight/actions";
 import { won, type AdInsight, type PeriodStat } from "@/lib/adInsight";
 import { pctDelta } from "@/lib/adReport";
@@ -56,17 +55,10 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <div className="grid grid-cols-3 gap-2">
-          <button type="button" onClick={sync} disabled={loading} className="rounded-xl bg-brand px-2 py-2.5 text-[13px] font-semibold text-white disabled:opacity-60">
-            {loading ? "동기화 중…" : "8주 동기화"}
-          </button>
-          <Link href="/ad-report/hours" className="rounded-xl border border-brand bg-card px-2 py-2.5 text-center text-[13px] font-semibold text-brand">
-            시간·요일
-          </Link>
-          <Link href="/ad-report/search" className="rounded-xl border border-brand bg-card px-2 py-2.5 text-center text-[13px] font-semibold text-brand">
-            검색 노출
-          </Link>
-        </div>
+        {/* 시간·요일 분석·검색 노출 바로가기는 광고 리포트 홈에 있다 (여기 두면 중복) */}
+        <button type="button" onClick={sync} disabled={loading} className="w-full rounded-xl bg-brand px-3 py-2.5 text-[13px] font-semibold text-white disabled:opacity-60">
+          {loading ? "동기화 중…" : "최근 8주 동기화"}
+        </button>
         {(res.synced.ad != null || res.synced.toss != null) && (
           <p className="text-right text-[11px] text-muted">
             {res.synced.ad != null && `광고 ${res.synced.ad}일`}
