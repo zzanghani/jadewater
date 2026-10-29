@@ -8,6 +8,15 @@ import { adReportAllowedFor } from "@/lib/adAccess";
 import { weekWindows, type AdStoreReport, type AdWeeklyReport } from "@/lib/adReport";
 import AdReportShell from "@/components/AdReportShell";
 
+function MenuTile({ href, title, sub, primary = false }: { href: string; title: string; sub: string; primary?: boolean }) {
+  return (
+    <Link href={href} className={`flex flex-col rounded-2xl px-4 py-3 ${primary ? "bg-brand text-white shadow-md shadow-brand/20" : "border border-border bg-card"}`}>
+      <span className="text-[15px] font-bold leading-tight">{title}</span>
+      <span className={`mt-1 text-[11px] leading-snug ${primary ? "text-white/80" : "text-muted"}`}>{sub}</span>
+    </Link>
+  );
+}
+
 // 네이버 검색광고 주간 리포트 — 지점장은 자기 매장, 본사 마스터는 연결된 전 매장.
 export default async function AdReportPage() {
   const supabase = await createClient();
@@ -41,36 +50,23 @@ export default async function AdReportPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-end justify-between gap-2">
         <div>
-          <h1 className="text-lg font-bold">광고 리포트</h1>
-          <p className="mt-1 text-xs text-muted">네이버 검색광고 × 토스·마감 매출</p>
+          <h1 className="text-lg font-bold leading-tight">광고 리포트</h1>
+          <p className="text-xs text-muted">네이버 검색광고 × 토스·마감 매출</p>
         </div>
         {isHqMaster && (
-          <Link href="/ad-report/settings" className="shrink-0 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold">
+          <Link href="/ad-report/settings" className="shrink-0 text-xs font-semibold text-muted underline-offset-2 hover:underline">
             매장 키 설정
           </Link>
         )}
       </div>
-      {/* 큰 버튼 두 개 — 폰에서도 바로 누르게 */}
+      {/* 메뉴 — 네 화면을 같은 모양으로 한 덩어리에. 효율 분석만 채워서 첫 번째라는 걸 보여준다. */}
       <div className="grid grid-cols-2 gap-2">
-        <Link href="/ad-report/insight" className="flex flex-col items-center justify-center rounded-2xl bg-brand px-3 py-3 text-white shadow-md shadow-brand/20">
-          <span className="text-base font-bold">효율 분석</span>
-          <span className="mt-0.5 text-[11px] text-white/80">실시간 매출 × 광고비 · AI 전략</span>
-        </Link>
-        <Link href="/ad-report/manage" className="flex flex-col items-center justify-center rounded-2xl border-2 border-brand bg-card px-3 py-3 text-brand">
-          <span className="text-base font-bold">광고 관리</span>
-          <span className="mt-0.5 text-[11px] text-brand/80">캠페인 켜기/끄기 · 하루 예산</span>
-        </Link>
-      </div>
-      {/* 자주 가는 보조 화면 — 효율 분석 안에만 숨어 있어 찾기 어려웠던 걸 여기서도 바로 */}
-      <div className="grid grid-cols-2 gap-2">
-        <Link href="/ad-report/hours" className="rounded-xl border border-border bg-card px-3 py-2 text-center text-xs font-semibold">
-          시간·요일 분석
-        </Link>
-        <Link href="/ad-report/search" className="rounded-xl border border-border bg-card px-3 py-2 text-center text-xs font-semibold">
-          검색 노출
-        </Link>
+        <MenuTile href="/ad-report/insight" title="효율 분석" sub="실시간 매출 × 광고비 · AI 전략" primary />
+        <MenuTile href="/ad-report/manage" title="광고 관리" sub="캠페인 켜기/끄기 · 하루 예산" />
+        <MenuTile href="/ad-report/hours" title="시간·요일 분석" sub="매출 피크 vs 광고 나가는 시간" />
+        <MenuTile href="/ad-report/search" title="검색 노출" sub="지도 순위 · 블로그 우리 글" />
       </div>
       <AdReportShell initial={initial} />
     </div>

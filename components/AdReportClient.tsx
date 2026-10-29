@@ -49,30 +49,46 @@ export default function AdReportClient({ initial }: { initial: AdWeeklyReport | 
   }, [initial]);
 
   const single = (report?.stores.length ?? 0) === 1;
+  const [open, setOpen] = useState(false);
+  const bad = report?.stores.reduce((n, s) => n + s.actions.filter((a) => a.sev === "bad").length, 0) ?? 0;
+  const warn = report?.stores.reduce((n, s) => n + s.actions.filter((a) => a.sev === "warn").length, 0) ?? 0;
   return (
-    <div className="flex flex-col gap-3">
-      <p className="flex items-center gap-2 text-xs text-muted">
-        {loading ? (
-          <>
-            <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-            {report ? "최신 데이터로 갱신하는 중…" : "리포트를 만드는 중… (매장마다 키워드까지 읽어서 30초쯤 걸려요)"}
-          </>
-        ) : report ? (
-          <>
-            지난주 {report.week[0].slice(5).replace("-", "/")}~{report.week[1].slice(5).replace("-", "/")} 기준 · {ago(report.generatedAt)} 갱신 · 매주 월요일 아침 알림
-          </>
-        ) : null}
-      </p>
-      {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>}
-      {report?.stores.map((s) => <StoreCard key={s.storeId} s={s} rep={report} defaultOpen={single} />)}
-    </div>
+    <section className="rounded-2xl border border-border bg-card p-4">
+      <button type="button" onClick={() => setOpen(!open)} className="flex w-full items-center justify-between gap-2 text-left">
+        <div className="min-w-0">
+          <h2 className="text-sm font-bold">
+            주간 할 일
+            {report && bad > 0 && <span className="ml-1.5 rounded-md bg-red-50 px-1.5 py-0.5 text-[11px] font-bold text-red-600">조치 {bad}</span>}
+            {report && warn > 0 && <span className="ml-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">점검 {warn}</span>}
+            {report && bad === 0 && warn === 0 && !loading && <span className="ml-1.5 text-[11px] font-semibold text-green-700">급한 조치 없음</span>}
+          </h2>
+          <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">
+            {loading ? (
+              <>
+                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+                {report ? "최신 데이터로 갱신하는 중…" : "리포트를 만드는 중… 30초쯤 걸려요"}
+              </>
+            ) : report ? (
+              <>지난주 {report.week[0].slice(5).replace("-", "/")}~{report.week[1].slice(5).replace("-", "/")} 기준 · {ago(report.generatedAt)} 갱신 · 매주 월요일 아침 알림</>
+            ) : null}
+          </p>
+        </div>
+        <span className={`shrink-0 text-muted transition-transform ${open ? "rotate-90" : ""}`}>›</span>
+      </button>
+      {open && (
+        <div className="mt-3 flex flex-col gap-2">
+          {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>}
+          {report?.stores.map((s) => <StoreCard key={s.storeId} s={s} rep={report} defaultOpen={single} />)}
+        </div>
+      )}
+    </section>
   );
 }
 
 function Kpi({ label, cur, prev, unit = "", goodUp, fmt = won }: { label: string; cur: number | null; prev: number | null; unit?: string; goodUp: boolean; fmt?: (n: number | null) => string }) {
   const d = pctDelta(cur, prev);
   return (
-    <div className="rounded-xl bg-card px-2.5 py-2">
+    <div className="rounded-xl bg-background px-2.5 py-2">
       <p className="text-[11px] text-muted">{label}</p>
       <p className="text-sm font-bold leading-tight tabular-nums">
         {fmt(cur)}
@@ -90,7 +106,7 @@ function StoreCard({ s, rep, defaultOpen }: { s: AdStoreReport; rep: AdWeeklyRep
   const [open, setOpen] = useState(defaultOpen);
   if (s.error) {
     return (
-      <section className="rounded-2xl border border-red-200 bg-card p-3">
+      <section className="rounded-xl border border-red-200 bg-background p-3">
         <h2 className="text-sm font-bold">{short(s.name)}</h2>
         <p className="mt-1 text-xs text-red-600">불러오지 못했어요: {s.error}</p>
       </section>
@@ -102,13 +118,13 @@ function StoreCard({ s, rep, defaultOpen }: { s: AdStoreReport; rep: AdWeeklyRep
   const bizLow = s.bizDays != null && s.bizDays < 7;
   const bad = s.actions.filter((a) => a.sev === "bad").length;
   return (
-    <section className="rounded-2xl border border-border bg-card p-3">
+    <section className="rounded-xl bg-background p-3">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-bold">
           {short(s.name)}
           {bad > 0 && <span className="ml-1.5 rounded-md bg-red-50 px-1.5 py-0.5 text-[11px] font-bold text-red-600">조치 {bad}</span>}
         </h2>
-        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums ${bizLow ? "bg-red-50 text-red-600" : "bg-background text-muted"}`}>
+        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums ${bizLow ? "bg-red-50 text-red-600" : "bg-card text-muted"}`}>
           비즈머니 {won(s.biz)}{s.bizDays != null && ` · ${Math.floor(s.bizDays)}일분`}
         </span>
       </div>
@@ -130,7 +146,7 @@ function StoreCard({ s, rep, defaultOpen }: { s: AdStoreReport; rep: AdWeeklyRep
         {open ? "성과 접기 ▴" : "지난주 성과 보기 ▾"}
       </button>
       {open && (
-        <div className="mt-2 flex flex-col gap-2 rounded-xl bg-background p-2">
+        <div className="mt-2 flex flex-col gap-2 rounded-xl bg-card p-2">
           <div className="grid grid-cols-3 gap-1.5">
             <Kpi label="광고비" cur={s.week.cost} prev={s.prev.cost} unit="원" goodUp={false} />
             <Kpi label="클릭" cur={s.week.clk} prev={s.prev.clk} goodUp />
@@ -138,7 +154,7 @@ function StoreCard({ s, rep, defaultOpen }: { s: AdStoreReport; rep: AdWeeklyRep
             {s.sales && <Kpi label="광고비 대비 매출" cur={s.sales.roas} prev={s.sales.roasPrev} unit="%" goodUp />}
             {s.sales && <Kpi label="지난주 매출" cur={s.sales.week.sum} prev={null} unit="원" goodUp fmt={(n) => won(n)} />}
             {s.sales && (
-              <div className="rounded-xl bg-card px-2.5 py-2">
+              <div className="rounded-xl bg-background px-2.5 py-2">
                 <p className="text-[11px] text-muted">광고비 비중 · 평소 대비</p>
                 <p className="text-sm font-bold tabular-nums">{s.sales.adShare == null ? "-" : s.sales.adShare.toFixed(1) + "%"}</p>
                 <p className={`text-[11px] font-semibold tabular-nums ${s.sales.norm == null ? "text-muted" : s.sales.norm < 0.85 ? "text-red-600" : s.sales.norm > 1.05 ? "text-green-700" : "text-muted"}`}>
@@ -147,7 +163,7 @@ function StoreCard({ s, rep, defaultOpen }: { s: AdStoreReport; rep: AdWeeklyRep
               </div>
             )}
           </div>
-          <div className="rounded-xl bg-card px-2.5 py-2 text-xs">
+          <div className="rounded-xl bg-background px-2.5 py-2 text-xs">
             <div className="flex items-baseline justify-between">
               <p className="text-[11px] text-muted">
                 {month}월 광고비 · {rep.monthElapsed}/{rep.monthDays}일
