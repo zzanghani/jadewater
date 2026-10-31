@@ -39,6 +39,7 @@ export async function GET(request: Request) {
   }
 
   const results: Record<string, string> = {};
+  let googleFailures = 0;
 
   // 매장별로 따로 검색하는 대신 브랜드명("제이드앤워터" / "정다미")으로 한 번에
   // 넓게 검색한 뒤, 글마다 어느 지점 얘기가 가장 많이 나오는지로 분류한다.
@@ -79,11 +80,16 @@ export async function GET(request: Request) {
       continue;
     }
 
-    const snapshot = await fetchGooglePlaceSnapshot(store.google_place_id, apiKey);
-    if (!snapshot) {
-      results[store.name] = "수집 실패 (Google API 응답 오류)";
+    const placeResult = await fetchGooglePlaceSnapshot(store.google_place_id, apiKey);
+    if (!placeResult.ok) {
+      // 구글 조회가 막히면 그 매장은 통째로 건너뛴다(블로그·AI요약도). 이유를 결과에 남기고
+      // 서버 로그에도 찍어 Vercel 오류 화면과 헬스체크에서 보이게 한다.
+      googleFailures++;
+      console.error(`[collect-reviews] ${store.name} 구글 조회 실패: ${placeResult.error}`);
+      results[store.name] = `수집 실패 (${placeResult.error})`;
       continue;
     }
+    const snapshot = placeResult.snapshot;
 
     const { data: yesterdayStat } = await supabase
       .from("review_platform_stats")
@@ -213,5 +219,15 @@ export async function GET(request: Request) {
       : `완료 (평점 ${snapshot.rating}, 총 ${snapshot.reviewCount}건, 증가 ${changeCount}건${blogSummary})${summarySuffix}`;
   }
 
-  return NextResponse.json({ ok: true, date: today, results });
+  const storesWithPlace = (stores ?? []).filter((s) => s.google_place_id).length;
+  const allFailed = storesWithPlace > 0 && googleFailures === storesWithPlace;
+  if (allFailed) {
+    console.error(
+      `[collect-reviews] 매장 ${storesWithPlace}곳 전부 구글 조회 실패 — Google Cloud 키·결제·Places API(New) 사용 설정 확인 필요`
+    );
+  }
+  return NextResponse.json(
+    { ok: !allFailed, date: today, googleFailures, results },
+    { status: allFailed ? 502 : 200 }
+  );
 }

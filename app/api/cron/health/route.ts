@@ -144,7 +144,7 @@ export async function GET(request: Request) {
 
     // 3) 핵심 테이블이 읽히는지 + 최근 데이터 신선도
     try {
-      const [stores, profiles, closings, attendance, subs] = await withTimeout(
+      const [stores, profiles, closings, attendance, subs, reviewStats] = await withTimeout(
         Promise.all([
           supabase.from("stores").select("id", { count: "exact", head: true }),
           supabase.from("profiles").select("id", { count: "exact", head: true }),
@@ -155,6 +155,11 @@ export async function GET(request: Request) {
             .order("recorded_at", { ascending: false })
             .limit(1),
           supabase.from("push_subscriptions").select("id", { count: "exact", head: true }),
+          supabase
+            .from("review_platform_stats")
+            .select("date")
+            .order("date", { ascending: false })
+            .limit(1),
         ]),
         DB_TIMEOUT_MS,
         "핵심 테이블"
@@ -165,6 +170,7 @@ export async function GET(request: Request) {
         ["daily_closings", closings],
         ["attendance_records", attendance],
         ["push_subscriptions", subs],
+        ["review_platform_stats", reviewStats],
       ] as const) {
         if (r.error) problems.push(`${label} 조회 실패: ${r.error.message}`);
       }
@@ -176,14 +182,23 @@ export async function GET(request: Request) {
 
       const lastClosing = closings.data?.[0]?.date ?? null;
       const lastAttendance = attendance.data?.[0]?.recorded_at ?? null;
+      const lastReviewCollect = reviewStats.data?.[0]?.date ?? null;
       info.lastClosing = lastClosing;
       info.lastAttendance = lastAttendance;
+      info.lastReviewCollect = lastReviewCollect;
       // 운영(블루)에서만 "입력이 끊겼다"를 경고한다. 그린은 시험 데이터라 비어 있어도 정상.
       if (env === "블루") {
         const cd = daysSince(lastClosing);
         if (cd !== null && cd >= 3) warnings.push(`마감입력이 ${cd}일째 없음 (마지막 ${lastClosing})`);
         const ad = daysSince(lastAttendance);
         if (ad !== null && ad >= 3) warnings.push(`출퇴근 기록이 ${ad}일째 없음`);
+        // 리뷰 수집(매일 06시 Vercel 크론 collect-reviews)은 성공하면 매장마다 그날 행이 생긴다.
+        // 이틀 이상 비면 구글 키·결제 문제 등으로 수집이 멈춘 것이므로 '이상'으로 올려 푸시한다.
+        // (2026-10-21부터 열흘간 조용히 멈춰 있던 걸 사람이 먼저 알아챈 적이 있어서 추가.)
+        const rd = daysSince(lastReviewCollect);
+        if (rd !== null && rd >= 2) {
+          problems.push(`리뷰 수집이 ${rd}일째 안 됨 (마지막 ${lastReviewCollect}) — 구글 Places 키·결제 확인`);
+        }
       }
     } catch (e) {
       problems.push(`핵심 테이블 점검 실패: ${errMsg(e)}`);
