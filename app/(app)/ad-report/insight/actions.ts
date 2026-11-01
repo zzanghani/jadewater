@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { adReportAllowedFor } from "@/lib/adAccess";
+import { AD_EDIT_DENIED, adCanEdit, adCanView, adReportAllowedFor } from "@/lib/adAccess";
 import { createServiceClient } from "@/lib/supabase/service";
 import { generateAdStrategy } from "@/lib/claude";
 import { addYmd, kstYmd, type SalesMap } from "@/lib/adReport";
@@ -28,17 +28,19 @@ type AuthResult =
   | { error: string; supabase?: undefined }
   | { error?: undefined; supabase: Awaited<ReturnType<typeof createClient>> };
 
-async function authStore(storeId: string): Promise<AuthResult> {
+// write=true 면 설정을 바꾸는 호출: 마스터 또는 자기 매장만. 보기는 같은 브랜드 매장까지(lib/adAccess.ts).
+async function authStore(storeId: string, write = false): Promise<AuthResult> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "로그인이 필요합니다." };
   const { data: p } = await supabase.from("profiles").select("role, store_id, department, status").eq("id", user.id).maybeSingle();
-  if (!p || p.status !== "approved" || p.department || p.role !== "owner" || (p.store_id && p.store_id !== storeId)) {
+  if (!p || p.status !== "approved" || p.department || p.role !== "owner" || !(await adCanView(createServiceClient(), p, storeId))) {
     return { error: "이 매장의 광고 분석을 볼 권한이 없어요." };
   }
   if (!(await adReportAllowedFor(supabase, p))) return { error: "광고 효율 분석은 아직 시범 운영 중이라 이 계정에서는 볼 수 없어요." };
+  if (write && !adCanEdit(p, storeId)) return { error: AD_EDIT_DENIED };
   return { supabase };
 }
 
@@ -212,7 +214,7 @@ export async function generateStrategyMemo(storeId: string): Promise<{ ok: true;
 
 /* ---------- 손익분기·특이일 설정 ---------- */
 export async function saveCostRate(storeId: string, ratePct: number): Promise<{ ok: true } | { ok: false; error: string }> {
-  const auth = await authStore(storeId);
+  const auth = await authStore(storeId, true);
   if (auth.error !== undefined) return { ok: false, error: auth.error };
   const rate = Number(ratePct) / 100;
   if (!isFinite(rate) || rate < 0 || rate >= 0.95) return { ok: false, error: "원가율은 0~94% 사이로 넣어 주세요." };
@@ -233,7 +235,7 @@ export async function saveCostRate(storeId: string, ratePct: number): Promise<{ 
 }
 
 export async function addSpecialDay(storeId: string, date: string, note: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  const auth = await authStore(storeId);
+  const auth = await authStore(storeId, true);
   if (auth.error !== undefined) return { ok: false, error: auth.error };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "날짜를 골라 주세요." };
   const {
@@ -247,7 +249,7 @@ export async function addSpecialDay(storeId: string, date: string, note: string)
 }
 
 export async function removeSpecialDay(storeId: string, date: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  const auth = await authStore(storeId);
+  const auth = await authStore(storeId, true);
   if (auth.error !== undefined) return { ok: false, error: auth.error };
   const { error } = await createServiceClient().from("ad_special_days").delete().eq("store_id", storeId).eq("date", date);
   if (error) return { ok: false, error: error.message };
@@ -256,7 +258,7 @@ export async function removeSpecialDay(storeId: string, date: string): Promise<{
 
 /* ---------- 검색 노출 추적 설정 ---------- */
 export async function saveSearchSettings(storeId: string, termsText: string, keywordsText: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  const auth = await authStore(storeId);
+  const auth = await authStore(storeId, true);
   if (auth.error !== undefined) return { ok: false, error: auth.error };
   const split = (t: string) => Array.from(new Set(t.split(/[,\n]/).map((x) => x.trim()).filter(Boolean)));
   const terms = split(termsText).slice(0, 10);
@@ -371,7 +373,7 @@ async function logKeywordChange(storeId: string, supabase: Awaited<ReturnType<ty
 }
 
 export async function addAdKeyword(storeId: string, adgroupId: string, adgroupName: string, keyword: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  const auth = await authStore(storeId);
+  const auth = await authStore(storeId, true);
   if (auth.error !== undefined) return { ok: false, error: auth.error };
   const acct = await acctFor(storeId);
   if (!acct) return { ok: false, error: "광고 계정이 없어요." };
@@ -387,7 +389,7 @@ export async function addAdKeyword(storeId: string, adgroupId: string, adgroupNa
 }
 
 export async function toggleAdKeyword(storeId: string, keywordId: string, keyword: string, adgroupId: string, adgroupName: string, on: boolean): Promise<{ ok: true } | { ok: false; error: string }> {
-  const auth = await authStore(storeId);
+  const auth = await authStore(storeId, true);
   if (auth.error !== undefined) return { ok: false, error: auth.error };
   const acct = await acctFor(storeId);
   if (!acct) return { ok: false, error: "광고 계정이 없어요." };
@@ -401,7 +403,7 @@ export async function toggleAdKeyword(storeId: string, keywordId: string, keywor
 }
 
 export async function removeAdKeyword(storeId: string, keywordId: string, keyword: string, adgroupId: string, adgroupName: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  const auth = await authStore(storeId);
+  const auth = await authStore(storeId, true);
   if (auth.error !== undefined) return { ok: false, error: auth.error };
   const acct = await acctFor(storeId);
   if (!acct) return { ok: false, error: "광고 계정이 없어요." };

@@ -32,12 +32,8 @@ export default function StoreSwitcher({
     pathname.startsWith("/schedule") ||
     pathname.startsWith("/payroll") ||
     // 출퇴근: 마스터는 매장을 바꿔가며 출근 현황·근태 기록·위치 설정을 본다.
-    pathname.startsWith("/attendance") ||
-    // 광고 효율 분석: 마스터는 매장을 바꿔가며 본다.
-    pathname.startsWith("/ad-report/insight") ||
-    pathname.startsWith("/ad-report/manage") ||
-    pathname.startsWith("/ad-report/hours") ||
-    pathname.startsWith("/ad-report/search");
+    pathname.startsWith("/attendance");
+  // 광고 화면(/ad-report/*)은 머리글에 자체 매장 선택이 있다 (지점장도 같은 브랜드 매장을 고를 수 있어서).
   if (stores.length > 1 && !showsStoreSwitcher) {
     return null;
   }

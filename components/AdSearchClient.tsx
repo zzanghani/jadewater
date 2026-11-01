@@ -20,7 +20,8 @@ import type { KeywordIdea } from "@/lib/naverAds";
 const norm = (k: string) => k.replace(/\s+/g, "").toLowerCase();
 const fmt = (n: number | null | undefined) => (n == null ? "-" : n.toLocaleString("ko-KR"));
 
-export default function AdSearchClient({ storeId }: { storeId: string }) {
+// canEdit=false 면 같은 브랜드 다른 매장을 보는 지점장: 추적 키워드 설정·광고 키워드 추가/끄기/삭제는 막는다.
+export default function AdSearchClient({ storeId, canEdit = true }: { storeId: string; canEdit?: boolean }) {
   const [info, setInfo] = useState<SearchInfo | null>(null);
   const [groups, setGroups] = useState<AdKeywordGroup[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -52,6 +53,7 @@ export default function AdSearchClient({ storeId }: { storeId: string }) {
 
   // 추적에 추가 (설정 저장)
   function addTrack(kw: string) {
+    if (!canEdit) return setMsg("보기만 가능 — 설정 변경은 그 매장 지점장이나 대표님만 할 수 있어요.");
     setMsg(null);
     if (tracked.has(norm(kw))) return setMsg(`'${kw}'은(는) 이미 추적 중이에요.`);
     if (info!.keywords.length >= 10) return setMsg("추적 키워드는 10개까지예요. 설정에서 하나 빼고 넣어 주세요.");
@@ -64,6 +66,7 @@ export default function AdSearchClient({ storeId }: { storeId: string }) {
   }
   // 광고 키워드로 추가
   function addAd(kw: string, adgroupId: string, adgroupName: string) {
+    if (!canEdit) return setMsg("보기만 가능 — 설정 변경은 그 매장 지점장이나 대표님만 할 수 있어요.");
     setMsg(null);
     if (!window.confirm(`'${kw}'을(를) 광고그룹 '${adgroupName}'에 추가할까요?\n그룹 입찰가로 바로 광고가 나가요.`)) return;
     start(async () => {
@@ -92,17 +95,18 @@ export default function AdSearchClient({ storeId }: { storeId: string }) {
           </button>
         ))}
       </div>
+      {!canEdit && <p className="rounded-xl bg-blue-50 px-3 py-2 text-xs text-blue-800">보기만 가능 — 설정 변경은 그 매장 지점장이나 대표님만 할 수 있어요.</p>}
       {msg && <p className="rounded-xl bg-blue-50 px-3 py-2 text-xs text-blue-800">{msg}</p>}
-      {tab === "track" && <TrackPanel key={`${info.terms.join("|")}#${info.keywords.join("|")}`} storeId={storeId} search={info} onChanged={reload} />}
+      {tab === "track" && <TrackPanel key={`${info.terms.join("|")}#${info.keywords.join("|")}`} storeId={storeId} search={info} readOnly={!canEdit} onChanged={reload} />}
       {tab === "find" && <FindPanel storeId={storeId} adConnected={info.adConnected} groups={groups ?? []} registered={registered} tracked={tracked} onTrack={addTrack} onAd={addAd} />}
       {tab === "combo" && <ComboPanel storeId={storeId} adConnected={info.adConnected} groups={groups ?? []} tracked={tracked} onTrack={addTrack} onAd={addAd} />}
-      {tab === "ad" && <AdKeywordsPanel storeId={storeId} groups={groups} onChanged={reload} onMsg={setMsg} />}
+      {tab === "ad" && <AdKeywordsPanel storeId={storeId} groups={groups} readOnly={!canEdit} onChanged={reload} onMsg={setMsg} />}
     </div>
   );
 }
 
 /* ---------- 추적 (지도·블로그 노출) ---------- */
-function TrackPanel({ storeId, search, onChanged }: { storeId: string; search: SearchInfo; onChanged: () => void }) {
+function TrackPanel({ storeId, search, readOnly, onChanged }: { storeId: string; search: SearchInfo; readOnly: boolean; onChanged: () => void }) {
   const [edit, setEdit] = useState(search.keywords.length === 0);
   const [terms, setTerms] = useState(search.terms.join(", "));
   const [keywords, setKeywords] = useState(search.keywords.join(", "));
@@ -153,9 +157,11 @@ function TrackPanel({ storeId, search, onChanged }: { storeId: string; search: S
               {busy ? "확인 중…" : "지금 확인"}
             </button>
           )}
-          <button type="button" onClick={() => setEdit(!edit)} className="whitespace-nowrap rounded-lg border border-border px-2.5 py-1 text-xs font-semibold">
-            {edit ? "닫기" : "설정"}
-          </button>
+          {!readOnly && (
+            <button type="button" onClick={() => setEdit(!edit)} className="whitespace-nowrap rounded-lg border border-border px-2.5 py-1 text-xs font-semibold">
+              {edit ? "닫기" : "설정"}
+            </button>
+          )}
         </div>
       </div>
       <p className="mb-2 text-[11px] text-muted">지도 순위 · 블로그 상위30 안 우리 글 · 매일 새벽 자동 확인</p>
@@ -445,7 +451,7 @@ function ComboPanel({ storeId, adConnected, groups, tracked, onTrack, onAd }: { 
 }
 
 /* ---------- 광고 키워드 (등록된 입찰 키워드) ---------- */
-function AdKeywordsPanel({ storeId, groups, onChanged, onMsg }: { storeId: string; groups: AdKeywordGroup[] | null; onChanged: () => void; onMsg: (m: string | null) => void }) {
+function AdKeywordsPanel({ storeId, groups, readOnly, onChanged, onMsg }: { storeId: string; groups: AdKeywordGroup[] | null; readOnly: boolean; onChanged: () => void; onMsg: (m: string | null) => void }) {
   const [busy, startBusy] = useTransition();
   if (!groups) return <p className="rounded-2xl border border-border bg-card p-4 text-xs text-muted">네이버 광고 계정이 연결된 매장만 볼 수 있어요.</p>;
   if (!groups.length) return <p className="rounded-2xl border border-border bg-card p-4 text-xs text-muted">파워링크 캠페인이 없어요. (플레이스 광고는 키워드가 없고 업체 정보로 노출돼요)</p>;
@@ -483,12 +489,16 @@ function AdKeywordsPanel({ storeId, groups, onChanged, onMsg }: { storeId: strin
               {g.keywords.map((k) => (
                 <li key={k.id} className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] ${k.on ? "border-border" : "border-dashed border-border text-muted"}`}>
                   <span className={k.on ? "" : "line-through"}>{k.keyword}</span>
-                  <button type="button" onClick={() => toggle(g, k)} disabled={busy} className="text-brand">
-                    {k.on ? "끄기" : "켜기"}
-                  </button>
-                  <button type="button" onClick={() => remove(g, k)} disabled={busy} className="text-red-600">
-                    삭제
-                  </button>
+                  {!readOnly && (
+                    <>
+                      <button type="button" onClick={() => toggle(g, k)} disabled={busy} className="text-brand">
+                        {k.on ? "끄기" : "켜기"}
+                      </button>
+                      <button type="button" onClick={() => remove(g, k)} disabled={busy} className="text-red-600">
+                        삭제
+                      </button>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { adReportAllowedFor } from "@/lib/adAccess";
+import { adReportAllowedFor, adVisibleStores } from "@/lib/adAccess";
 import { createServiceClient } from "@/lib/supabase/service";
 import { testNaverAccount } from "@/lib/naverAds";
 import {
@@ -117,13 +117,12 @@ export async function buildAdReportAction(refresh = false): Promise<BuildResult>
   if (!(await adReportAllowedFor(supabase, profile))) return { ok: false, error: "광고 리포트는 아직 시범 운영 중이라 이 계정에서는 볼 수 없어요." };
 
   const service = createServiceClient();
-  let q = service.from("store_ad_accounts").select("*").eq("enabled", true);
-  if (profile.store_id) q = q.eq("store_id", profile.store_id);
-  const { data: accounts } = await q;
-  if (!accounts?.length) return { ok: false, error: profile.store_id ? "이 매장은 아직 광고 계정이 연결되지 않았어요. 대표님께 요청해 주세요." : "연결된 광고 계정이 없어요. 설정에서 매장 키를 등록해 주세요." };
+  // 마스터는 전 매장, 지점장은 같은 브랜드 매장 (lib/adAccess.ts)
+  const visible = await adVisibleStores(service, profile);
+  const { data: accounts } = await service.from("store_ad_accounts").select("*").eq("enabled", true).in("store_id", visible.map((s) => s.id));
+  if (!accounts?.length) return { ok: false, error: profile.store_id ? "아직 광고 계정이 연결된 매장이 없어요. 대표님께 요청해 주세요." : "연결된 광고 계정이 없어요. 설정에서 매장 키를 등록해 주세요." };
 
-  const { data: storeRows } = await supabase.from("stores").select("id, name").in("id", accounts.map((a) => a.store_id));
-  const nameById = new Map((storeRows ?? []).map((s) => [s.id, s.name]));
+  const nameById = new Map(visible.map((s) => [s.id, s.name]));
   const W = weekWindows();
 
   const stores: AdStoreReport[] = [];

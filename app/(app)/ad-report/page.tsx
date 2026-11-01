@@ -4,7 +4,8 @@ export const maxDuration = 60;
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { adReportAllowedFor } from "@/lib/adAccess";
+import { adReportAllowedFor, adVisibleStores } from "@/lib/adAccess";
+import { createServiceClient } from "@/lib/supabase/service";
 import { weekWindows, type AdStoreReport, type AdWeeklyReport } from "@/lib/adReport";
 import AdReportShell from "@/components/AdReportShell";
 
@@ -17,7 +18,7 @@ function MenuTile({ href, title, sub, primary = false }: { href: string; title: 
   );
 }
 
-// 네이버 검색광고 주간 리포트 — 지점장은 자기 매장, 본사 마스터는 연결된 전 매장.
+// 네이버 검색광고 주간 리포트 — 본사 마스터는 연결된 전 매장, 지점장은 같은 브랜드 매장 전부 (lib/adAccess.ts).
 export default async function AdReportPage() {
   const supabase = await createClient();
   const {
@@ -27,15 +28,18 @@ export default async function AdReportPage() {
   const { data: profile } = await supabase.from("profiles").select("role, store_id, department").eq("id", user.id).maybeSingle();
   const isManager = !!profile && profile.role === "owner" && !profile.department;
   if (!isManager) redirect("/");
-  // 시범 운영: 본사 마스터 + 성수 점장만 (lib/adAccess.ts)
   if (!(await adReportAllowedFor(supabase, profile))) redirect("/");
   const isHqMaster = isManager && !profile!.store_id;
 
   // 이미 만들어 둔 이번 주 저장본이 있으면 먼저 보여주고, 없으면 화면에서 만든다.
   const W = weekWindows();
-  let q = supabase.from("ad_weekly_reports").select("store_id, report, generated_at").eq("week_start", W.week[0]);
-  if (profile!.store_id) q = q.eq("store_id", profile!.store_id);
-  const { data: cached } = await q;
+  const service = createServiceClient();
+  const visible = await adVisibleStores(service, profile);
+  const { data: cached } = await service
+    .from("ad_weekly_reports")
+    .select("store_id, report, generated_at")
+    .eq("week_start", W.week[0])
+    .in("store_id", visible.map((s) => s.id));
   const initial: AdWeeklyReport | null = cached?.length
     ? {
         generatedAt: Math.min(...cached.map((c) => new Date(c.generated_at).getTime())),
