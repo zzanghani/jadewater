@@ -78,16 +78,24 @@ export function moduleForPath(pathname: string): ModuleKey | null {
   return null;
 }
 
-/** 지금 켜져 있는 모듈 키 목록(체험 중이면 기한 안인 것만). */
+/**
+ * 지금 켜져 있는 모듈 키 목록(체험 중이면 기한 안인 것만).
+ * brand_modules 테이블이 아직 없는 환경(마이그레이션 전)에서는 조회가 실패하는데,
+ * 그때 매장 계정의 메뉴가 통째로 사라지면 안 되므로 null(제한 없음)을 돌려준다.
+ */
 export async function loadActiveModules(
   supabase: SupabaseClient<Database>,
   brandId: string | null | undefined
-): Promise<ModuleKey[]> {
+): Promise<ModuleKey[] | null> {
   if (!brandId) return [];
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("brand_modules")
     .select("module_key, status, trial_ends_at")
     .eq("brand_id", brandId);
+  if (error) {
+    console.error("[modules] brand_modules 조회 실패 — 제한 없이 표시", error.message);
+    return null;
+  }
   const now = Date.now();
   return (data ?? [])
     .filter((r) => r.status === "active" || (r.status === "trial" && (!r.trial_ends_at || new Date(r.trial_ends_at).getTime() > now)))

@@ -163,7 +163,7 @@ export default async function AppLayout({
     activeModules = await loadActiveModules(supabase, storeContext.store?.brand_id);
     const pathname = (await headers()).get("x-pathname") ?? "";
     const locked = moduleForPath(pathname);
-    if (locked && !activeModules.includes(locked) && !pathname.startsWith("/upgrade")) {
+    if (locked && activeModules && !activeModules.includes(locked) && !pathname.startsWith("/upgrade")) {
       redirect(`/upgrade?module=${locked}`);
     }
   }
