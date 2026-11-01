@@ -1,8 +1,8 @@
 -- 브랜드별 기능 모듈 구독(brand_modules)
 --
 -- 앱을 외부 브랜드에 팔 때의 요금 구조: 기본 기능(마감·입고·지출·재고·스케줄·
--- 출퇴근·게시판·메시지·매출 분석 등)은 기본 요금에 포함하고, 그 위에 모듈
--- (정산·급여 / 인사·평가 / 리뷰·광고 / 체험단 / 포스 연동)을 월 결제로 추가한다.
+-- 게시판·메시지·매출 분석·포스 연동 등)은 기본 요금에 포함하고, 그 위에 모듈
+-- (정산·급여 / 인사·평가(GPS 출퇴근 포함) / 리뷰·광고 / 체험단)을 월 결제로 추가한다.
 -- 모듈 목록과 화면 매핑은 앱 코드 lib/modules.ts 가 기준이고, 이 테이블은
 -- "어느 브랜드가 어떤 모듈을 켰는지"만 담는다. 결제가 붙기 전까지는 본사
 -- 마스터가 /modules 화면에서 손으로 켜고 끈다.
@@ -44,5 +44,5 @@ create policy "brand_modules_write_master"
 insert into public.brand_modules (brand_id, module_key, status, note)
 select b.id, m.key, 'active', '운영사 내부 브랜드'
 from public.brands b
-cross join (values ('finance'), ('hr'), ('marketing'), ('recruit'), ('pos')) as m(key)
+cross join (values ('finance'), ('hr'), ('marketing'), ('recruit')) as m(key)
 on conflict (brand_id, module_key) do nothing;

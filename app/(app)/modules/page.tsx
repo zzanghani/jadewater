@@ -43,8 +43,8 @@ export default async function ModulesPage() {
       <section className="rounded-xl border border-border bg-card p-3 text-xs text-muted">
         <p className="font-semibold text-foreground">기본 기능(기본 요금 포함)</p>
         <p className="mt-1">
-          마감입력 · 입고 · 현장지출 · 입금요청 · 재고 · 스케줄러 · GPS 출퇴근 · 매출 분석 · 매출 목표 · 게시판 · 메시지 ·
-          주간보고 · 월간계획
+          마감입력 · 입고 · 현장지출 · 입금요청 · 재고 · 스케줄러 · 매출 분석 · 매출 목표 · 게시판 · 메시지 ·
+          주간보고 · 월간계획 · 포스(토스) 연동
         </p>
       </section>
 

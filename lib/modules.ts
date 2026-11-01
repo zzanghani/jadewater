@@ -1,7 +1,8 @@
 // 기능 모듈 — 외부 브랜드에 팔 때의 요금 단위.
 //
 // 기본 기능(여기 목록에 없는 모든 화면)은 기본 요금에 포함되고, 아래 모듈은
-// 브랜드가 월 결제로 추가한다. 어느 브랜드가 무엇을 켰는지는 DB brand_modules
+// 브랜드가 월 결제로 추가한다. 포스(토스) 연동은 API 키 한 번 꽂으면 끝나는
+// 일이라 따로 받지 않고 기본에 넣었다(2026-11-01 대표님 결정). 어느 브랜드가 무엇을 켰는지는 DB brand_modules
 // (supabase/migration_brand_modules.sql)에 있고, 결제가 붙기 전까지는 본사
 // 마스터가 /modules 화면에서 손으로 켜고 끈다.
 //
@@ -10,7 +11,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/types";
 
-export type ModuleKey = "finance" | "hr" | "marketing" | "recruit" | "pos";
+export type ModuleKey = "finance" | "hr" | "marketing" | "recruit";
 
 export type ModuleInfo = {
   key: ModuleKey;
@@ -36,9 +37,14 @@ export const MODULES: ModuleInfo[] = [
   {
     key: "hr",
     name: "인사·평가",
-    summary: "직원 명단·보건증·입퇴사, 점장 평가와 자기평가",
-    paths: ["/hr", "/my-review"],
-    features: ["직원 명단·입퇴사·보건증 관리", "점장 평가표", "직원 자기평가·확정 결과 열람"],
+    summary: "GPS 출퇴근, 직원 명단·보건증·입퇴사, 점장 평가와 자기평가",
+    paths: ["/attendance", "/hr", "/my-review"],
+    features: [
+      "GPS 출퇴근(매장 반경 안에서만 기록, 지각·조퇴·결근 자동 표시, 출퇴근 전 알림)",
+      "직원 명단·입퇴사·보건증 관리",
+      "점장 평가표",
+      "직원 자기평가·확정 결과 열람",
+    ],
     priceMonthly: 10000,
   },
   {
@@ -56,14 +62,6 @@ export const MODULES: ModuleInfo[] = [
     paths: ["/recruit"],
     features: ["모집글 AI 초안", "지원자 블로그 점수(A/B/C)와 선정", "선정자 안내 문자·셀프 방문 예약·리뷰 등록 추적"],
     priceMonthly: 20000,
-  },
-  {
-    key: "pos",
-    name: "포스 연동",
-    summary: "토스포스 결제 데이터로 실시간 매출과 마감 자동 입력",
-    paths: ["/toss", "/live"],
-    features: ["홈 실시간 매출(결제+미결제)", "마감 자동 입력", "메뉴별 판매 분석"],
-    priceMonthly: 10000,
   },
 ];
 
