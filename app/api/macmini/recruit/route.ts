@@ -105,6 +105,27 @@ export async function GET(request: Request) {
 
 type IncomingApplicant = { blogId: string; name?: string | null; rn?: (ReviewnoteInfo & { applyId?: number | string }) | null };
 
+// 리뷰노트 캠페인 내용(제공 내역·키워드·모집글 본문·방문 가능 요일/시간·영업 안내)으로
+// 회차의 "비어 있는" 칸만 채운다. 앱에서 쓴 글은 덮어쓰지 않는다 — 리뷰노트에서
+// 가져온 회차(손으로 넣었거나 앱 밖에서 만든 것)가 '지난 회차' 바탕글로 쓰일 수 있게.
+function fillFromCampaign(round: Record<string, unknown>, campaign: Record<string, unknown>) {
+  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v : null);
+  const patch: Record<string, unknown> = {};
+  const put = (col: string, v: unknown) => {
+    if (v != null && (round[col] == null || round[col] === "")) patch[col] = v;
+  };
+  put("title", str(campaign.title));
+  put("offer", str(campaign.offer));
+  put("information", str(campaign.information));
+  put("possible_days", str(campaign.possibleDays));
+  put("possible_time", str(campaign.possibleTime));
+  put("schedule_information", str(campaign.scheduleInformation));
+  const kws = [campaign.keyword1, campaign.keyword2, campaign.keyword3].map(str).filter((k): k is string => !!k);
+  if (kws.length > 0 && (!Array.isArray(round.keywords) || (round.keywords as unknown[]).length === 0)) patch.keywords = kws;
+  if (typeof campaign.infNum === "number" && campaign.infNum > 0 && !round.inf_num) patch.inf_num = campaign.infNum;
+  return patch;
+}
+
 export async function POST(request: Request) {
   const supabase = createServiceClient();
   if (!(await authorized(request, supabase))) {
@@ -164,6 +185,7 @@ export async function POST(request: Request) {
         .from("recruit_rounds")
         .update({
           status: "selecting",
+          ...fillFromCampaign(round as unknown as Record<string, unknown>, campaign),
           ...(infNum ? { inf_num: infNum } : {}),
           ...note(`지원자 ${clean.length}명 가져옴`),
         })
@@ -218,6 +240,7 @@ export async function POST(request: Request) {
         rn?: ReviewnoteInfo | null;
       }[];
       const reviewEndAt = typeof body.reviewEndAt === "string" ? body.reviewEndAt : null;
+      const progressCampaign = (body.campaign ?? {}) as Record<string, unknown>;
       let matched = 0;
       for (const it of items) {
         const blogId = (it.blogId ?? "").trim().toLowerCase();
@@ -272,6 +295,7 @@ export async function POST(request: Request) {
         .from("recruit_rounds")
         .update({
           ...(becomesDone ? { status: "done" } : {}),
+          ...fillFromCampaign(round as unknown as Record<string, unknown>, progressCampaign),
           ...(reviewEndAt ? { review_end_at: reviewEndAt } : {}),
           progress_synced_at: now,
           ...note(`체험 진행 ${items.length}명 · 리뷰 등록 ${reviewed}명 확인`),
