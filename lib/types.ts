@@ -1131,9 +1131,9 @@ export type Database = {
         Relationships: []
       }
       attendance_reminders: {
-        Row: { id: string; shift_id: string; user_id: string; kind: 'start' | 'end'; sent_at: string }
-        Insert: { shift_id: string; user_id: string; kind: 'start' | 'end'; sent_at?: string }
-        Update: Partial<{ shift_id: string; user_id: string; kind: 'start' | 'end'; sent_at: string }>
+        Row: { id: string; shift_id: string; user_id: string; kind: 'start' | 'end' | 'start30' | 'start10' | 'end30' | 'end10'; sent_at: string }
+        Insert: { shift_id: string; user_id: string; kind: 'start' | 'end' | 'start30' | 'start10' | 'end30' | 'end10'; sent_at?: string }
+        Update: Partial<{ shift_id: string; user_id: string; kind: 'start' | 'end' | 'start30' | 'start10' | 'end30' | 'end10'; sent_at: string }>
         Relationships: []
       }
       attendance_records: {

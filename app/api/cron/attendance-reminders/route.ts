@@ -5,12 +5,17 @@ import { kstDateString } from "@/lib/date";
 import { kstDateAndMinutes, nameMatches, timeToMinutes } from "@/lib/attendanceSchedule";
 import { resolveAttendanceNames } from "@/lib/attendanceNames";
 
-// Vercel Cron이 10분마다 호출한다 (vercel.json 참고).
-// 오늘 스케줄러에 잡힌 근무자에게 출근 2시간 전 / 퇴근 1시간 전 푸시를 보낸다.
+// Supabase pg_cron이 5분마다 호출한다 (supabase/migration_attendance_reminder_cron.sql 참고).
+// 오늘 스케줄러에 잡힌 근무자에게 출근 30분 전·10분 전 / 퇴근 30분 전·10분 전 푸시를 보낸다.
 // 크론이 늦게 돌아도 놓치지 않게 "지난 20분 안에 도래한 알림"을 모두 보되,
 // attendance_reminders에 남긴 발송 기록으로 중복은 막는다.
-const START_LEAD_MIN = 120;
-const END_LEAD_MIN = 60;
+type ReminderKind = "start30" | "start10" | "end30" | "end10";
+const REMINDERS: { kind: ReminderKind; base: "start" | "end"; leadMin: number }[] = [
+  { kind: "start30", base: "start", leadMin: 30 },
+  { kind: "start10", base: "start", leadMin: 10 },
+  { kind: "end30", base: "end", leadMin: 30 },
+  { kind: "end10", base: "end", leadMin: 10 },
+];
 const CATCH_UP_WINDOW_MIN = 20;
 
 export async function GET(request: Request) {
@@ -39,12 +44,11 @@ export async function GET(request: Request) {
   }
 
   // 지금 보내야 할 (근무, 종류) 목록
-  const due: { shift: NonNullable<typeof shifts>[number]; kind: "start" | "end"; at: number }[] = [];
+  const due: { shift: NonNullable<typeof shifts>[number]; kind: ReminderKind; base: "start" | "end"; leadMin: number; at: number }[] = [];
   for (const s of shifts ?? []) {
-    const startAt = timeToMinutes(s.start_time) - START_LEAD_MIN;
-    const endAt = timeToMinutes(s.end_time) - END_LEAD_MIN;
-    for (const [kind, at] of [["start", startAt], ["end", endAt]] as const) {
-      if (at <= nowMin && at > nowMin - CATCH_UP_WINDOW_MIN) due.push({ shift: s, kind, at });
+    for (const r of REMINDERS) {
+      const at = timeToMinutes(r.base === "start" ? s.start_time : s.end_time) - r.leadMin;
+      if (at <= nowMin && at > nowMin - CATCH_UP_WINDOW_MIN) due.push({ shift: s, ...r, at });
     }
   }
   if (due.length === 0) {
@@ -81,7 +85,7 @@ export async function GET(request: Request) {
 
   let sent = 0;
   let skipped = 0;
-  for (const { shift, kind } of due) {
+  for (const { shift, kind, base, leadMin } of due) {
     const resolved = resolvedByStore.get(shift.store_id);
     if (!resolved) continue;
     const targets = Array.from(resolved.entries())
@@ -95,21 +99,21 @@ export async function GET(request: Request) {
     const label = storeLabel.get(shift.store_id) ?? "매장";
     const hm = (t: string) => t.slice(0, 5);
     const payload =
-      kind === "start"
+      base === "start"
         ? {
-            title: `${label} 출근 2시간 전`,
+            title: `${label} 출근 ${leadMin}분 전`,
             body: `오늘 ${hm(shift.start_time)} 출근이에요. 매장에 도착하면 앱에서 출근을 찍어주세요.`,
             url: "/attendance",
           }
         : {
-            title: `${label} 퇴근 1시간 전`,
+            title: `${label} 퇴근 ${leadMin}분 전`,
             body: `${hm(shift.end_time)} 퇴근 예정이에요. 퇴근할 때 앱에서 퇴근을 꼭 찍어주세요.`,
             url: "/attendance",
           };
 
     for (const userId of targets) {
-      if (kind === "start" && alreadyIn.has(userId)) continue;
-      if (kind === "end" && alreadyOut.has(userId)) continue;
+      if (base === "start" && alreadyIn.has(userId)) continue;
+      if (base === "end" && alreadyOut.has(userId)) continue;
 
       // 발송 기록을 먼저 남긴다 — 유니크 충돌이면 이미 보낸 것.
       const { error: markError } = await supabase
