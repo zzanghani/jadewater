@@ -125,12 +125,15 @@ export default async function AppLayout({
     // (조회 권한은 RLS의 user_can_view_closings).
     const isMarketingStoreView =
       profile?.department === "marketing" && pathname.startsWith("/store/");
+    // 마케팅팀은 광고 리포트(효율 분석·광고 관리·검색 노출·시간대·매장 키 설정)를 대표님과 똑같이 쓴다 (lib/adAccess.ts).
+    const isMarketingAd = profile?.department === "marketing" && pathname.startsWith("/ad-report");
     const allowed =
       TEAM_ALLOWED_PREFIXES.some((p) => (p === "/" ? pathname === "/" : pathname.startsWith(p))) ||
       (isHrTeam && pathname.startsWith("/hr")) ||
       (isRnd && pathname.startsWith("/inventory")) ||
       isRndViewOnly ||
-      isMarketingStoreView;
+      isMarketingStoreView ||
+      isMarketingAd;
     if (!allowed) {
       redirect("/");
     }

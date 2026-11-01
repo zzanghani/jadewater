@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { AD_EDIT_DENIED, adCanEdit, adCanView, adReportAllowedFor } from "@/lib/adAccess";
+import { AD_EDIT_DENIED, adAccountOk, adCanEdit, adCanView, adReportAllowedFor } from "@/lib/adAccess";
 import { createServiceClient } from "@/lib/supabase/service";
 import { generateAdStrategy } from "@/lib/claude";
 import { addYmd, kstYmd, type SalesMap } from "@/lib/adReport";
@@ -36,7 +36,7 @@ async function authStore(storeId: string, write = false): Promise<AuthResult> {
   } = await supabase.auth.getUser();
   if (!user) return { error: "로그인이 필요합니다." };
   const { data: p } = await supabase.from("profiles").select("role, store_id, department, status").eq("id", user.id).maybeSingle();
-  if (!p || p.status !== "approved" || p.department || p.role !== "owner" || !(await adCanView(createServiceClient(), p, storeId))) {
+  if (!p || p.status !== "approved" || !adAccountOk(p) || !(await adCanView(createServiceClient(), p, storeId))) {
     return { error: "이 매장의 광고 분석을 볼 권한이 없어요." };
   }
   if (!(await adReportAllowedFor(supabase, p))) return { error: "광고 효율 분석은 아직 시범 운영 중이라 이 계정에서는 볼 수 없어요." };

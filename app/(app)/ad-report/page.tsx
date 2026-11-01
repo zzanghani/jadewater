@@ -4,7 +4,7 @@ export const maxDuration = 60;
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { adReportAllowedFor, adVisibleStores } from "@/lib/adAccess";
+import { adAccountOk, adIsHq, adReportAllowedFor, adVisibleStores } from "@/lib/adAccess";
 import { createServiceClient } from "@/lib/supabase/service";
 import { weekWindows, type AdStoreReport, type AdWeeklyReport } from "@/lib/adReport";
 import AdReportShell from "@/components/AdReportShell";
@@ -26,10 +26,9 @@ export default async function AdReportPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const { data: profile } = await supabase.from("profiles").select("role, store_id, department").eq("id", user.id).maybeSingle();
-  const isManager = !!profile && profile.role === "owner" && !profile.department;
-  if (!isManager) redirect("/");
+  if (!adAccountOk(profile)) redirect("/");
   if (!(await adReportAllowedFor(supabase, profile))) redirect("/");
-  const isHqMaster = isManager && !profile!.store_id;
+  const isHqMaster = adIsHq(profile); // 대표님·마케팅팀
 
   // 이미 만들어 둔 이번 주 저장본이 있으면 먼저 보여주고, 없으면 화면에서 만든다.
   const W = weekWindows();

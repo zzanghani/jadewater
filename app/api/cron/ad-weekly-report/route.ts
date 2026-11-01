@@ -23,8 +23,9 @@ export async function GET(request: Request) {
 
   const { data: storeRows } = await supabase.from("stores").select("id, name, short_label").in("id", accounts.map((a) => a.store_id));
   const storeById = new Map((storeRows ?? []).map((s) => [s.id, s]));
-  const { data: masters } = await supabase.from("profiles").select("id").eq("role", "owner").is("store_id", null).is("department", null).eq("status", "approved");
-  const masterIds = (masters ?? []).map((m) => m.id);
+  // 본사 수신자: 대표님 + 마케팅팀 (lib/adAccess.ts 와 같은 기준)
+  const { data: hq } = await supabase.from("profiles").select("id, role, department").is("store_id", null).eq("status", "approved");
+  const masterIds = (hq ?? []).filter((m) => (m.role === "owner" && !m.department) || m.department === "marketing").map((m) => m.id);
 
   const results: Record<string, string> = {};
   for (const a of accounts) {

@@ -85,6 +85,7 @@ export default function QuickMenu({
         ...(showHr ? [HR_ITEM] : []),
         ...(showInventory ? [INVENTORY_ITEM] : []),
         ...(showStoreOpsView ? RND_VIEW_ITEMS : []),
+        ...(teamOnly && showAdReport ? [AD_REPORT_ITEM] : []),
       ]
     : employeeOnly
       ? EMPLOYEE_ITEMS

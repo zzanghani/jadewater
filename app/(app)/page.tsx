@@ -223,6 +223,7 @@ if (isHq) {
           showHr={profile?.department === "rnd" || profile?.department === "ops"}
           showInventory={profile?.department === "rnd"}
           showStoreOpsView={profile?.department === "rnd"}
+          showAdReport={profile?.department === "marketing"}
         />
 
         <section className="rounded-2xl border border-border bg-card p-4">

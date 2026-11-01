@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { adReportAllowedFor, adVisibleStores } from "@/lib/adAccess";
+import { adAccountOk, adIsHq, adReportAllowedFor, adVisibleStores } from "@/lib/adAccess";
 import { createServiceClient } from "@/lib/supabase/service";
 import { testNaverAccount } from "@/lib/naverAds";
 import {
@@ -29,7 +29,8 @@ async function requireHqMaster(supabase: SupabaseClient<Database>) {
   } = await supabase.auth.getUser();
   if (!user) return null;
   const { data: p } = await supabase.from("profiles").select("role, store_id, department, status").eq("id", user.id).maybeSingle();
-  const ok = !!p && p.role === "owner" && !p.store_id && !p.department && p.status === "approved";
+  // 대표님 + 본사 마케팅팀 (lib/adAccess.ts)
+  const ok = !!p && p.status === "approved" && adIsHq(p);
   return ok ? user : null;
 }
 
@@ -37,7 +38,7 @@ async function requireHqMaster(supabase: SupabaseClient<Database>) {
 export async function saveAdAccount(_prev: AdAccountFormState, formData: FormData): Promise<AdAccountFormState> {
   const supabase = await createClient();
   const user = await requireHqMaster(supabase);
-  if (!user) return { error: "본사 마스터 계정만 설정할 수 있어요." };
+  if (!user) return { error: "대표님·마케팅팀 계정만 설정할 수 있어요." };
 
   const storeId = String(formData.get("store_id") ?? "");
   const customerId = String(formData.get("naver_customer_id") ?? "").trim();
@@ -48,7 +49,8 @@ export async function saveAdAccount(_prev: AdAccountFormState, formData: FormDat
   if (!customerId) return { error: "고객 ID(CUSTOMER_ID)를 입력해 주세요." };
 
   // 키 칸을 비워두면 기존 키를 유지한다(마스킹된 값을 다시 적을 필요 없게).
-  const { data: existing } = await supabase.from("store_ad_accounts").select("naver_api_key, naver_secret_key").eq("store_id", storeId).maybeSingle();
+  const service = createServiceClient(); // store_ad_accounts RLS는 대표님 전용이라 마케팅팀도 쓰게 서비스 클라이언트로 (권한은 위에서 확인)
+  const { data: existing } = await service.from("store_ad_accounts").select("naver_api_key, naver_secret_key").eq("store_id", storeId).maybeSingle();
   const apiKey = apiKeyIn || existing?.naver_api_key || "";
   const secretKey = secretIn || existing?.naver_secret_key || "";
   if (!apiKey || !secretKey) return { error: "엑세스라이선스와 비밀키를 입력해 주세요." };
@@ -56,7 +58,7 @@ export async function saveAdAccount(_prev: AdAccountFormState, formData: FormDat
   const test = await testNaverAccount({ customerId, apiKey, secretKey });
   if (!test.ok) return { error: `네이버 연결 실패: ${test.error}` };
 
-  const { error } = await supabase.from("store_ad_accounts").upsert(
+  const { error } = await service.from("store_ad_accounts").upsert(
     {
       store_id: storeId,
       naver_customer_id: customerId,
@@ -79,7 +81,7 @@ export async function saveAdAccount(_prev: AdAccountFormState, formData: FormDat
 export async function deleteAdAccount(storeId: string): Promise<void> {
   const supabase = await createClient();
   if (!(await requireHqMaster(supabase))) return;
-  await supabase.from("store_ad_accounts").delete().eq("store_id", storeId);
+  await createServiceClient().from("store_ad_accounts").delete().eq("store_id", storeId);
   revalidatePath("/ad-report/settings");
   revalidatePath("/ad-report");
 }
@@ -111,8 +113,8 @@ export async function buildAdReportAction(refresh = false): Promise<BuildResult>
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "로그인이 필요합니다." };
   const { data: profile } = await supabase.from("profiles").select("role, store_id, department, status").eq("id", user.id).maybeSingle();
-  if (!profile || profile.status !== "approved" || profile.department || profile.role !== "owner") {
-    return { ok: false, error: "지점장·대표 계정만 볼 수 있어요." };
+  if (!profile || profile.status !== "approved" || !adAccountOk(profile)) {
+    return { ok: false, error: "지점장·대표·마케팅팀 계정만 볼 수 있어요." };
   }
   if (!(await adReportAllowedFor(supabase, profile))) return { ok: false, error: "광고 리포트는 아직 시범 운영 중이라 이 계정에서는 볼 수 없어요." };
 
