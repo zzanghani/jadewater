@@ -21,7 +21,11 @@ async function authorized(request: Request, supabase: Supa): Promise<boolean> {
 }
 
 const ROUND_COLS =
-  "id, store_id, status, campaign_id, title, offer, keywords, information, possible_days, possible_time, schedule_information, inf_num, macmini_note, macmini_at, approved_at, review_end_at, progress_synced_at";
+  "id, store_id, status, campaign_id, title, offer, keywords, information, possible_days, possible_time, schedule_information, inf_num, macmini_note, macmini_at, approved_at, review_end_at, progress_synced_at, booking_token";
+
+// 선정 안내 문자는 이 시각 이후에 선정 승인된 회차부터 보낸다.
+// (기능을 켜기 전부터 진행 중이던 회차의 선정자에게 뒤늦게 문자가 가지 않도록)
+const NOTIFY_SINCE = "2026-11-01T10:00:00.000Z";
 
 export async function GET(request: Request) {
   const supabase = createServiceClient();
@@ -78,7 +82,25 @@ export async function GET(request: Request) {
     unchecked[r.id] = (rows ?? []).map((x) => x.id);
   }
 
-  return NextResponse.json({ ok: true, stores: stores ?? [], rounds, selections, unchecked });
+  // 선정 안내 문자 보낼 사람: 리뷰노트 반영이 끝난(done) 회차의 선정자 중 아직 안 보낸 사람.
+  // 번호는 앱에 없으니 작업기가 리뷰노트 진행 목록에서 applyId로 찾아 보낸다.
+  const notify: Record<string, { id: string; apply_id: string | null; blog_id: string; name: string | null }[]> = {};
+  for (const r of rounds.filter((x) => x.status === "done" && x.campaign_id && x.approved_at && x.approved_at >= NOTIFY_SINCE)) {
+    const { data: rows } = await supabase
+      .from("recruit_applicants")
+      .select("id, blog_id, applicant_name, apply_id")
+      .eq("store_id", r.store_id)
+      .eq("campaign_id", r.campaign_id!)
+      .eq("selected", true)
+      .eq("no_show", false)
+      .is("notify_sent_at", null)
+      .limit(100);
+    if (rows && rows.length > 0) {
+      notify[r.id] = rows.map((a) => ({ id: a.id, apply_id: a.apply_id, blog_id: a.blog_id, name: a.applicant_name }));
+    }
+  }
+
+  return NextResponse.json({ ok: true, stores: stores ?? [], rounds, selections, unchecked, notify });
 }
 
 type IncomingApplicant = { blogId: string; name?: string | null; rn?: (ReviewnoteInfo & { applyId?: number | string }) | null };
@@ -257,6 +279,42 @@ export async function POST(request: Request) {
         .eq("id", round.id);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       return NextResponse.json({ ok: true, matched, reviewed, done: becomesDone });
+    }
+
+    // 선정 안내 문자 발송 결과. 번호 전체는 받지 않고 뒷 4자리만 남긴다.
+    case "notified": {
+      if (!round) return NextResponse.json({ error: "회차 없음" }, { status: 404 });
+      const results = (Array.isArray(body.results) ? body.results : []) as {
+        applicantId: string;
+        ok: boolean;
+        to4?: string | null;
+        error?: string | null;
+      }[];
+      let sent = 0;
+      let failed = 0;
+      for (const r of results) {
+        if (typeof r.applicantId !== "string") continue;
+        const to4 = typeof r.to4 === "string" ? r.to4.replace(/\D/g, "").slice(-4) : null;
+        const { error } = await supabase
+          .from("recruit_applicants")
+          .update(
+            r.ok
+              ? { notify_sent_at: now, notify_error: null, notify_to: to4 }
+              : { notify_error: String(r.error ?? "발송 실패").slice(0, 200), notify_to: to4 }
+          )
+          .eq("id", r.applicantId)
+          .eq("store_id", round.store_id);
+        if (error) continue;
+        if (r.ok) sent++;
+        else failed++;
+      }
+      if (sent > 0 || failed > 0) {
+        await supabase
+          .from("recruit_rounds")
+          .update(note(`선정 안내 문자 ${sent}명 발송${failed ? ` · 실패 ${failed}명` : ""}`))
+          .eq("id", round.id);
+      }
+      return NextResponse.json({ ok: true, sent, failed });
     }
 
     // 실패 메모 (상태는 안 바꾼다 — 다음 주기에 다시 시도)

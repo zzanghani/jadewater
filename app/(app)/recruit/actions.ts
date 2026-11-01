@@ -50,6 +50,9 @@ export type ApplicantRow = {
   visit_source: string | null;
   visit_contact: string | null;
   visit_updated_at: string | null;
+  notify_sent_at: string | null;
+  notify_error: string | null;
+  notify_to: string | null;
 };
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
@@ -69,7 +72,7 @@ async function authStore(storeId: string): Promise<{ error: string } | { supabas
 }
 
 const COLS =
-  "id, campaign_id, campaign_title, blog_id, applicant_name, rn, metrics, score, grade, flags, checked_at, selected, created_at, visit_at, visit_party, visit_note, visited_at, no_show, review_url, review_at, review_ranks, rn_status, visit_source, visit_contact, visit_updated_at";
+  "id, campaign_id, campaign_title, blog_id, applicant_name, rn, metrics, score, grade, flags, checked_at, selected, created_at, visit_at, visit_party, visit_note, visited_at, no_show, review_url, review_at, review_ranks, rn_status, visit_source, visit_contact, visit_updated_at, notify_sent_at, notify_error, notify_to";
 
 export async function loadApplicants(storeId: string): Promise<{ ok: true; rows: ApplicantRow[] } | { ok: false; error: string }> {
   const auth = await authStore(storeId);

@@ -170,6 +170,16 @@ export default function RecruitVisitClient({
                     {r.visit_at ? `${visitLabel(r.visit_at)}${r.visit_party ? ` · ${r.visit_party}명` : ""}` : "방문 일시 미정"}
                     {r.visit_at && r.visit_source === "reviewer" && <span className="ml-1 rounded-md bg-violet-50 px-1 py-0.5 text-[10px] font-semibold text-violet-700">본인 예약</span>}
                     {r.visit_contact && ` · ${r.visit_contact}`}
+                    {r.notify_sent_at ? (
+                      <span className="ml-1 rounded-md bg-emerald-50 px-1 py-0.5 text-[10px] font-semibold text-emerald-700">
+                        안내 문자 {kstParts(r.notify_sent_at).date.slice(5).replace("-", "/")}
+                        {r.notify_to ? ` · ****${r.notify_to}` : ""}
+                      </span>
+                    ) : r.notify_error ? (
+                      <span className="ml-1 rounded-md bg-red-50 px-1 py-0.5 text-[10px] font-semibold text-red-600" title={r.notify_error}>
+                        문자 실패
+                      </span>
+                    ) : null}
                     {r.visit_note && ` · ${r.visit_note}`}
                     {r.visited_at && ` · 방문 ${kstParts(r.visited_at).date.slice(5).replace("-", "/")}`}
                     {rankText && ` · 검색 ${rankText}`}
@@ -339,7 +349,7 @@ function BookingLinkCard({ token }: { token: string }) {
   return (
     <div className="mt-3 rounded-xl bg-background p-3">
       <p className="text-xs font-semibold">선정자가 직접 예약하게 하기</p>
-      <p className="mt-1 text-[11px] text-muted">아래 링크를 리뷰노트 선정 안내(또는 쪽지)에 붙여 넣으세요. 블로거가 날짜·시간·인원을 적으면 여기 자동으로 들어오고, 지점장에게 알림이 와요.</p>
+      <p className="mt-1 text-[11px] text-muted">리뷰노트에 선정이 반영되면 맥미니가 선정자 전원에게 이 링크를 문자로 보내요(이름 옆 &lsquo;안내 문자&rsquo; 표시). 따로 더 보낼 때만 복사해 쓰세요. 블로거가 날짜·시간·인원을 적으면 여기 자동으로 들어오고, 지점장에게 알림이 와요.</p>
       <input
         readOnly
         value={url}

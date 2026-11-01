@@ -806,6 +806,10 @@ export type RecruitApplicant = {
   visit_source: string | null
   visit_contact: string | null
   visit_updated_at: string | null
+  // 선정 안내 문자 (migration_recruit_notify.sql) — 보낸 시각, 실패 사유, 번호 뒷 4자리
+  notify_sent_at: string | null
+  notify_error: string | null
+  notify_to: string | null
   created_by: string | null
   created_at: string
 }
