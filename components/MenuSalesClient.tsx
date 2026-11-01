@@ -18,7 +18,7 @@ export default function MenuSalesClient({ isMaster }: { isMaster: boolean }) {
   if (!res) return <p className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">{loading ? "메뉴 판매를 모으는 중..." : ""}</p>;
   if (!res.ok) return <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{res.error}</p>;
   const menus = res.menus.filter((m) => m.sales > 0);
-  if (!menus.length) return <p className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">아직 메뉴별 판매가 쌓이지 않았어요. 효율 분석에서 &lsquo;최근 8주 동기화&rsquo;를 누르면 채워져요.</p>;
+  if (!menus.length) return <p className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">아직 메뉴별 판매가 쌓이지 않았어요. 효율 분석을 한 번 열면 최근 8주 치가 채워져요.</p>;
   const current = menus.find((m) => m.storeId === pick) ?? menus[0];
   return (
     <div className="flex flex-col gap-3">

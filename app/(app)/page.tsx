@@ -20,6 +20,7 @@ import UpcomingPlansStrip from "@/components/UpcomingPlansStrip";
 import { loadHqProfiles, type HqProfile } from "@/lib/monthlyPlans";
 import PushSubscribeButton from "@/components/PushSubscribeButton";
 import ScheduleDayTimeline from "@/components/ScheduleDayTimeline";
+import TodayVisitsCard, { type TodayVisit } from "@/components/TodayVisitsCard";
 import { getStoreContext } from "@/lib/store";
 import { storeColor } from "@/lib/storeColors";
 import type { DailyClosing, MonthlyPlan } from "@/lib/types";
@@ -92,6 +93,13 @@ export default async function DashboardPage() {
         .eq("store_id", storeId)
         .eq("date", today)
         .order("created_at", { ascending: true })
+    : { data: [] };
+
+  // 오늘 체험단 방문 예정 — 지점장·직원 홈 맨 위 카드. 매장 소속이면 함수가 읽게 해 준다(RLS 우회 없음).
+  const todayFrom = new Date(`${today}T00:00:00+09:00`).toISOString();
+  const todayTo = new Date(`${today}T23:59:59.999+09:00`).toISOString();
+  const { data: todayVisits } = !isHq && storeId
+    ? await supabase.rpc("recruit_visits_between", { p_store_id: storeId, p_from: todayFrom, p_to: todayTo })
     : { data: [] };
 
   const chartData: ChartPoint[] = days.map((date) => ({
@@ -261,6 +269,8 @@ if (isHq) {
           guestsText={isHanam ? `${todayVisitTeams.toLocaleString()}팀` : `${todayGuests.toLocaleString()}명`}
         />
       )}
+
+      {!isMaster && <TodayVisitsCard visits={(todayVisits ?? []) as TodayVisit[]} canManage={!isEmployee} />}
 
       {isEmployee && (
         <Link href="/schedule" className="block">

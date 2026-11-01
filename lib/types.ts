@@ -776,6 +776,77 @@ export type ChatMessage = {
   created_at: string
 }
 
+// 체험단 지원자 검증 (supabase/migration_recruit_applicants.sql)
+export type RecruitApplicant = {
+  id: string
+  store_id: string
+  campaign_id: string
+  campaign_title: string | null
+  blog_id: string
+  applicant_name: string | null
+  rn: Record<string, unknown> | null
+  metrics: Record<string, unknown> | null
+  score: number | null
+  grade: string | null
+  flags: string[]
+  checked_at: string | null
+  selected: boolean
+  // 리뷰노트 지원 번호(applyId) — 선정 반영할 때 씀
+  apply_id: string | null
+  // 선정 이후(체험 진행) — migration_recruit_visits.sql
+  visit_at: string | null
+  visit_party: number | null
+  visit_note: string | null
+  visited_at: string | null
+  no_show: boolean
+  review_url: string | null
+  review_at: string | null
+  review_ranks: Record<string, number | null> | null
+  rn_status: string | null
+  visit_source: string | null
+  visit_contact: string | null
+  visit_updated_at: string | null
+  // 선정 안내 문자 (migration_recruit_notify.sql) — 보낸 시각, 실패 사유, 번호 뒷 4자리
+  notify_sent_at: string | null
+  notify_error: string | null
+  notify_to: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export type RecruitRoundStatus = 'draft' | 'confirmed' | 'registered' | 'selecting' | 'approved' | 'done'
+
+// 체험단 모집 회차 (supabase/migration_recruit_rounds.sql)
+export type RecruitRound = {
+  id: string
+  store_id: string
+  status: RecruitRoundStatus
+  campaign_id: string | null
+  title: string | null
+  offer: string | null
+  keywords: string[]
+  information: string | null
+  possible_days: string | null
+  possible_time: string | null
+  schedule_information: string | null
+  inf_num: number
+  ai_drafted: boolean
+  created_by: string | null
+  confirmed_at: string | null
+  approved_by: string | null
+  approved_at: string | null
+  // 맥미니 작업기가 마지막으로 한 일/오류 (migration_recruit_macmini.sql)
+  macmini_note: string | null
+  macmini_at: string | null
+  // 리뷰 마감(리뷰노트 reviewEndAt)과 맥미니가 리뷰 현황을 마지막으로 맞춘 시각
+  review_end_at: string | null
+  progress_synced_at: string | null
+  // 선정자 셀프 방문 예약 공개 링크 토큰 (/visit/<token>)
+  booking_token: string
+  created_at: string
+  updated_at: string
+}
+
 export type AdChangeLog = {
   id: string;
   store_id: string;
@@ -1011,6 +1082,18 @@ export type Database = {
         Update: Partial<{ store_id: string; date: string; memo: string; generated_at: string }>
         Relationships: []
       }
+      recruit_rounds: {
+        Row: RecruitRound
+        Insert: Partial<RecruitRound> & { store_id: string }
+        Update: Partial<RecruitRound>
+        Relationships: []
+      }
+      recruit_applicants: {
+        Row: RecruitApplicant
+        Insert: Partial<RecruitApplicant> & { store_id: string; campaign_id: string; blog_id: string }
+        Update: Partial<RecruitApplicant>
+        Relationships: []
+      }
       toss_webhook_events: {
         Row: { id: string; type: string; merchant_id: string | null; created_at: string | null; received_at: string; payload: Record<string, unknown> }
         Insert: { id: string; type: string; merchant_id?: string | null; created_at?: string | null; received_at?: string; payload: Record<string, unknown> }
@@ -1048,9 +1131,9 @@ export type Database = {
         Relationships: []
       }
       attendance_reminders: {
-        Row: { id: string; shift_id: string; user_id: string; kind: 'start' | 'end'; sent_at: string }
-        Insert: { shift_id: string; user_id: string; kind: 'start' | 'end'; sent_at?: string }
-        Update: Partial<{ shift_id: string; user_id: string; kind: 'start' | 'end'; sent_at: string }>
+        Row: { id: string; shift_id: string; user_id: string; kind: 'start' | 'end' | 'start30' | 'start10' | 'end30' | 'end10'; sent_at: string }
+        Insert: { shift_id: string; user_id: string; kind: 'start' | 'end' | 'start30' | 'start10' | 'end30' | 'end10'; sent_at?: string }
+        Update: Partial<{ shift_id: string; user_id: string; kind: 'start' | 'end' | 'start30' | 'start10' | 'end30' | 'end10'; sent_at: string }>
         Relationships: []
       }
       attendance_records: {
@@ -1329,6 +1412,26 @@ export type Database = {
           p_end: string
         }
         Returns: { date: string; store_id: string; grand_total: number }[]
+      }
+      // 체험단 오늘 방문 (migration_recruit_today_visits.sql) — 매장 소속이면 직원도 읽음
+      recruit_visits_between: {
+        Args: {
+          p_store_id: string
+          p_from: string
+          p_to: string
+        }
+        Returns: {
+          id: string
+          applicant_name: string | null
+          blog_id: string
+          visit_at: string
+          visit_party: number | null
+          visit_note: string | null
+          visited_at: string | null
+          no_show: boolean
+          visit_source: string | null
+          campaign_title: string | null
+        }[]
       }
     }
     Enums: Record<string, never>
