@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getStoreContext } from "@/lib/store";
-import { AD_STORE_COOKIE, adCanEdit, adReportAllowedFor, adVisibleStores, pickAdStore, type AdStore } from "@/lib/adAccess";
+import { AD_STORE_COOKIE, adAccountOk, adCanEdit, adIsHq, adReportAllowedFor, adVisibleStores, pickAdStore, type AdStore } from "@/lib/adAccess";
 
 export type AdPageScope = {
   /** 지금 보여줄 매장 */
@@ -27,10 +27,9 @@ export async function resolveAdPageScope(): Promise<AdPageScope> {
     getStoreContext(supabase),
     cookies(),
   ]);
-  const isManager = !!profile && profile.role === "owner" && !profile.department;
-  if (!isManager) redirect("/");
+  if (!adAccountOk(profile)) redirect("/");
   if (!(await adReportAllowedFor(supabase, profile))) redirect("/");
   const stores = await adVisibleStores(createServiceClient(), profile);
   const storeId = pickAdStore(stores, profile, cookieStore.get(AD_STORE_COOKIE)?.value, contextStoreId);
-  return { storeId, stores, canEdit: adCanEdit(profile, storeId), isHqMaster: !profile!.store_id };
+  return { storeId, stores, canEdit: adCanEdit(profile, storeId), isHqMaster: adIsHq(profile) };
 }

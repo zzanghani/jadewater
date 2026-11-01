@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { adCanView, adReportAllowedFor } from "@/lib/adAccess";
+import { adAccountOk, adCanView, adReportAllowedFor } from "@/lib/adAccess";
 import { kstYmd } from "@/lib/adReport";
 import { analyzeHours, hoursRange, type HoursAnalysis } from "@/lib/adHours";
 
@@ -15,7 +15,7 @@ export async function loadHours(storeId: string): Promise<HoursResult> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "로그인이 필요합니다." };
   const { data: p } = await supabase.from("profiles").select("role, store_id, department, status").eq("id", user.id).maybeSingle();
-  if (!p || p.status !== "approved" || p.department || p.role !== "owner" || !(await adCanView(createServiceClient(), p, storeId))) return { ok: false, error: "이 매장의 분석을 볼 권한이 없어요." };
+  if (!p || p.status !== "approved" || !adAccountOk(p) || !(await adCanView(createServiceClient(), p, storeId))) return { ok: false, error: "이 매장의 분석을 볼 권한이 없어요." };
   if (!(await adReportAllowedFor(supabase, p))) return { ok: false, error: "아직 시범 운영 중이라 이 계정에서는 볼 수 없어요." };
 
   const service = createServiceClient();

@@ -4,7 +4,7 @@
 // 비어 있는 날은 그 자리에서 네이버·토스에서 받아 채운다. 오늘은 항상 실시간으로 다시 읽는다.
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { adReportAllowedFor, adVisibleStores } from "@/lib/adAccess";
+import { adAccountOk, adReportAllowedFor, adVisibleStores } from "@/lib/adAccess";
 import { addYmd, kstYmd } from "@/lib/adReport";
 import { aggregate, MAX_RANGE_DAYS, periodRange, type PeriodAgg, type PeriodKey, type PeriodRange } from "@/lib/adPeriod";
 import { syncAdDaily, syncTossDaily } from "@/lib/adInsight";
@@ -32,7 +32,7 @@ export async function loadAdPeriod(key: PeriodKey, custom?: { from: string; to: 
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "로그인이 필요합니다." };
   const { data: profile } = await supabase.from("profiles").select("role, store_id, department, status").eq("id", user.id).maybeSingle();
-  if (!profile || profile.status !== "approved" || profile.department || profile.role !== "owner") return { ok: false, error: "지점장·대표 계정만 볼 수 있어요." };
+  if (!profile || profile.status !== "approved" || !adAccountOk(profile)) return { ok: false, error: "지점장·대표·마케팅팀 계정만 볼 수 있어요." };
   if (!(await adReportAllowedFor(supabase, profile))) return { ok: false, error: "광고 리포트는 아직 시범 운영 중이라 이 계정에서는 볼 수 없어요." };
 
   const today = kstYmd(0);

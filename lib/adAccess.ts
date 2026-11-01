@@ -16,12 +16,28 @@ export const AD_STORE_COOKIE = "ad_store_id";
 
 type Profile = { role: string | null; store_id: string | null; department: string | null } | null | undefined;
 
+/**
+ * 광고 기능을 쓸 수 있는 계정인가.
+ *  - 지점장·대표: role=owner, 부서 없음
+ *  - 본사 마케팅팀(department=marketing, 매장 없음): 대표님과 똑같이 전 매장을 보고 설정도 바꾼다 (2026-11-01)
+ */
+export function adAccountOk(profile: Profile): boolean {
+  if (!profile) return false;
+  if (profile.department === "marketing" && !profile.store_id) return true;
+  return profile.role === "owner" && !profile.department;
+}
+
+/** 본사 급(대표님·마케팅팀): 전 매장 보기 + 전 매장 설정 변경 + 매장 키 설정. */
+export function adIsHq(profile: Profile): boolean {
+  return adAccountOk(profile) && !profile!.store_id;
+}
+
 export type AdStore = { id: string; name: string; brand_id: string };
 
 /** 매장 이름을 이미 아는 경우(홈 화면 등). */
 export function adReportAllowed(profile: Profile, storeName: string | null | undefined): boolean {
-  if (!profile || profile.role !== "owner" || profile.department) return false;
-  if (!profile.store_id) return true; // 본사 마스터
+  if (!adAccountOk(profile)) return false;
+  if (!profile!.store_id) return true; // 본사 마스터·마케팅팀
   if (AD_PILOT_STORE_MATCH === null) return true; // 전 매장 개방
   if (AD_PILOT_STORE_MATCH === "") return false; // 마스터만
   return !!storeName && storeName.includes(AD_PILOT_STORE_MATCH);
@@ -29,10 +45,10 @@ export function adReportAllowed(profile: Profile, storeName: string | null | und
 
 /** 서버 액션·페이지에서: 매장 이름을 조회해 판단한다. */
 export async function adReportAllowedFor(supabase: SupabaseClient<Database>, profile: Profile): Promise<boolean> {
-  if (!profile || profile.role !== "owner" || profile.department) return false;
-  if (!profile.store_id || AD_PILOT_STORE_MATCH === null) return true;
+  if (!adAccountOk(profile)) return false;
+  if (!profile!.store_id || AD_PILOT_STORE_MATCH === null) return true;
   if (AD_PILOT_STORE_MATCH === "") return false;
-  const { data } = await supabase.from("stores").select("name").eq("id", profile.store_id).maybeSingle();
+  const { data } = await supabase.from("stores").select("name").eq("id", profile!.store_id!).maybeSingle();
   return adReportAllowed(profile, data?.name);
 }
 
@@ -41,7 +57,7 @@ export async function adReportAllowedFor(supabase: SupabaseClient<Database>, pro
  * stores 테이블은 RLS로 지점장에게 자기 매장만 보이므로 서비스 클라이언트로 읽고 여기서 브랜드로 거른다.
  */
 export async function adVisibleStores(service: SupabaseClient<Database>, profile: Profile): Promise<AdStore[]> {
-  if (!profile || profile.role !== "owner" || profile.department) return [];
+  if (!adAccountOk(profile)) return [];
   const [{ data: stores }, { data: brands }] = await Promise.all([
     service.from("stores").select("id, name, brand_id, sort_order"),
     service.from("brands").select("id, sort_order"),
@@ -55,25 +71,25 @@ export async function adVisibleStores(service: SupabaseClient<Database>, profile
       return ba !== bb ? ba - bb : a.sort_order - b.sort_order;
     })
     .map(({ id, name, brand_id }) => ({ id, name, brand_id }));
-  if (!profile.store_id) return all; // 본사 마스터: 전 매장
-  const mine = all.find((s) => s.id === profile.store_id);
+  if (!profile!.store_id) return all; // 본사 마스터·마케팅팀: 전 매장
+  const mine = all.find((s) => s.id === profile!.store_id);
   if (!mine) return [];
   return all.filter((s) => s.brand_id === mine.brand_id); // 같은 브랜드 매장
 }
 
 /** 이 매장의 광고 데이터를 볼 수 있나 (마스터 전부, 지점장은 같은 브랜드). */
 export async function adCanView(service: SupabaseClient<Database>, profile: Profile, storeId: string): Promise<boolean> {
-  if (!profile || profile.role !== "owner" || profile.department) return false;
-  if (!profile.store_id) return true;
-  if (profile.store_id === storeId) return true;
+  if (!adAccountOk(profile)) return false;
+  if (!profile!.store_id) return true;
+  if (profile!.store_id === storeId) return true;
   const list = await adVisibleStores(service, profile);
   return list.some((s) => s.id === storeId);
 }
 
-/** 이 매장의 광고 설정을 바꿀 수 있나 (마스터 또는 자기 매장). */
+/** 이 매장의 광고 설정을 바꿀 수 있나 (본사 급 또는 자기 매장). */
 export function adCanEdit(profile: Profile, storeId: string): boolean {
-  if (!profile || profile.role !== "owner" || profile.department) return false;
-  return !profile.store_id || profile.store_id === storeId;
+  if (!adAccountOk(profile)) return false;
+  return !profile!.store_id || profile!.store_id === storeId;
 }
 
 export const AD_EDIT_DENIED = "다른 매장의 광고 설정은 그 매장 지점장이나 대표님만 바꿀 수 있어요.";

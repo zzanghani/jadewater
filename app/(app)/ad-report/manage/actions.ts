@@ -4,7 +4,7 @@
 // 7일이 지나면 전후 7일을 비교해 효과를 판정한다 (변동 ±34% 안이면 '판단 보류'). 실행 시간 제한은 page.tsx의 maxDuration을 따른다.
 
 import { createClient } from "@/lib/supabase/server";
-import { AD_EDIT_DENIED, adCanEdit, adCanView, adReportAllowedFor } from "@/lib/adAccess";
+import { AD_EDIT_DENIED, adAccountOk, adCanEdit, adCanView, adReportAllowedFor } from "@/lib/adAccess";
 import { createServiceClient } from "@/lib/supabase/service";
 import { addYmd, kstYmd } from "@/lib/adReport";
 import { callNaver, CAMPAIGN_TP_LABEL, listAdgroups, listCampaigns, parseTimeTarget, setAdgroupSchedule, setCampaignBudget, setCampaignLock, statsMap, type NaverAcct, type NaverCampaign, type WeekSchedule } from "@/lib/naverAds";
@@ -46,7 +46,7 @@ async function ctx(storeId: string, write = false): Promise<Ctx> {
   } = await supabase.auth.getUser();
   if (!user) return { error: "로그인이 필요합니다." };
   const { data: p } = await supabase.from("profiles").select("name, role, store_id, department, status").eq("id", user.id).maybeSingle();
-  if (!p || p.status !== "approved" || p.department || p.role !== "owner" || !(await adCanView(createServiceClient(), p, storeId))) {
+  if (!p || p.status !== "approved" || !adAccountOk(p) || !(await adCanView(createServiceClient(), p, storeId))) {
     return { error: "이 매장의 광고를 관리할 권한이 없어요." };
   }
   if (!(await adReportAllowedFor(supabase, p))) return { error: "광고 관리는 아직 시범 운영 중이라 이 계정에서는 쓸 수 없어요." };
