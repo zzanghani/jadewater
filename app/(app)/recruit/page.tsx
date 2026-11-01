@@ -27,7 +27,7 @@ export default async function RecruitPage() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-lg font-bold">체험단 검증</h1>
+        <h1 className="text-lg font-bold">리뷰노트 체험단</h1>
         <p className="mt-1 text-xs text-muted">리뷰노트 지원자 블로그를 자동으로 확인해 점수 순으로 보여드려요 · 맛집 비중 · 검색 노출 · 협찬 과다</p>
       </div>
       <RecruitClient stores={storeOptions} defaultStoreId={defaultStoreId} />
