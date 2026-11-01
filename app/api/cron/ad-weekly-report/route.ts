@@ -54,7 +54,7 @@ export async function GET(request: Request) {
       { onConflict: "store_id,week_start" }
     );
 
-    // 받는 사람: 그 매장 지점장 + 본사 마스터. 시범 운영 중엔 점장은 성수만 (lib/adAccess.ts)
+    // 받는 사람: 그 매장 지점장 + 본사 마스터 (공개 범위는 lib/adAccess.ts)
     const pilotOk = AD_PILOT_STORE_MATCH === null || (AD_PILOT_STORE_MATCH !== "" && (store?.name ?? "").includes(AD_PILOT_STORE_MATCH));
     const { data: owners } = pilotOk
       ? await supabase.from("profiles").select("id").eq("store_id", a.store_id).eq("role", "owner").is("department", null).eq("status", "approved")
