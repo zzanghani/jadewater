@@ -18,7 +18,7 @@ export default async function UpgradePage({
       </Link>
 
       <section className="rounded-2xl border border-border bg-card p-5">
-        <p className="text-xs font-semibold text-muted">추가 기능</p>
+        <p className="text-xs font-semibold text-muted">추가 기능(유료)</p>
         <h1 className="mt-1 text-xl font-bold">{info ? info.name : "아직 켜지지 않은 기능이에요"}</h1>
         <p className="mt-2 text-sm text-muted">
           {info

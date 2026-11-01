@@ -34,14 +34,14 @@ export default async function ModulesPage() {
       <div>
         <h1 className="text-lg font-bold">기능 구독</h1>
         <p className="mt-1 text-sm text-muted">
-          브랜드마다 어떤 추가 기능을 쓰는지 여기서 켜고 끕니다. 끄면 그 브랜드 매장 계정(지점장·직원)의
+          기본 기능은 누구나 무료이고, 추가 기능만 브랜드마다 여기서 켜고 끕니다. 끄면 그 브랜드 매장 계정(지점장·직원)의
           메뉴에서 바로 사라지고, 주소로 들어가도 안내 화면이 나와요. 본사 계정은 항상 전부 봅니다.
           결제 기능이 붙기 전까지는 이 화면이 결제 대신이에요.
         </p>
       </div>
 
       <section className="rounded-xl border border-border bg-card p-3 text-xs text-muted">
-        <p className="font-semibold text-foreground">기본 기능(기본 요금 포함)</p>
+        <p className="font-semibold text-foreground">기본 기능(무료)</p>
         <p className="mt-1">
           마감입력 · 입고 · 현장지출 · 입금요청 · 재고 · 스케줄러 · 매출 분석 · 매출 목표 · 게시판 · 메시지 ·
           주간보고 · 월간계획 · 포스(토스) 연동
