@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { pathAllowed, type ModuleKey } from "@/lib/modules";
 
 // 지점장 계정은 리뷰리포트를 빠른 메뉴로 옮기고 그 자리에 메시지를
 // 넣어 달라는 요청으로 매장/마스터 탭 구성이 서로 달라졌다.
@@ -43,14 +44,19 @@ export default function BottomNav({
   isEmployee = false,
   isTeam = false,
   hasUnreadMessages = false,
+  activeModules = null,
 }: {
   isMaster?: boolean;
   isEmployee?: boolean;
   isTeam?: boolean;
   hasUnreadMessages?: boolean;
+  /** 브랜드가 켠 기능 모듈(lib/modules.ts). null 이면 제한 없음(본사 계정). */
+  activeModules?: ModuleKey[] | null;
 }) {
   const pathname = usePathname();
-  const tabs = isTeam ? TEAM_TABS : isEmployee ? EMPLOYEE_TABS : isMaster ? MASTER_TABS : STORE_TABS;
+  const baseTabs = isTeam ? TEAM_TABS : isEmployee ? EMPLOYEE_TABS : isMaster ? MASTER_TABS : STORE_TABS;
+  // 꺼진 모듈의 화면(예: 월말정산)은 탭에서 뺀다.
+  const tabs = baseTabs.filter((t) => pathAllowed(t.href, activeModules));
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 pb-[env(safe-area-inset-bottom)]">

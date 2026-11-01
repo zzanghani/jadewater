@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { pathAllowed, type ModuleKey } from "@/lib/modules";
 
 const ALL_ITEMS = [
   { href: "/closing", label: "마감입력", icon: PencilIcon },
@@ -27,6 +28,8 @@ const PLAN_ITEM = { href: "/plan", label: "월간계획", icon: ScheduleIcon } a
 // 금전대차 상환표 — 본사 마스터만 (남의 원금·상환액이 담긴다).
 const LOAN_ITEM = { href: "/loans", label: "금전대차", icon: LoanIcon } as const;
 const ACCOUNTS_ITEM = { href: "/accounts", label: "가입승인", icon: HrIcon } as const;
+// 브랜드별 기능 모듈 켜고 끄기(결제 연동 전 수동 운영) — 본사 마스터만.
+const MODULES_ITEM = { href: "/modules", label: "기능 구독", icon: PuzzleIcon } as const;
 const INVENTORY_ITEM = { href: "/inventory", label: "재고관리", icon: BoxIcon } as const;
 // R&D팀 전용 보기 전용 항목(스케줄러·실시간 코스트·요일별 분석) — 입력 권한은
 // 없고 전 매장을 매장 선택 드롭다운으로 바꿔가며 조회만 한다.
@@ -68,7 +71,10 @@ export default function QuickMenu({
   showStoreOpsView = false,
   pendingAccountCount = 0,
   showAdReport = true,
+  activeModules = null,
 }: {
+  /** 브랜드가 켠 기능 모듈(lib/modules.ts). null 이면 제한 없음(본사 계정). */
+  activeModules?: ModuleKey[] | null;
   isMaster?: boolean;
   /** 광고 리포트 시범 운영: 성수 점장만 true (마스터는 항상) */
   showAdReport?: boolean;
@@ -80,7 +86,7 @@ export default function QuickMenu({
   pendingAccountCount?: number;
 }) {
   // 게시판·메시지는 이제 본사 팀 계정도 하단 탭으로 오가서 여기엔 안 넣는다.
-  const items = teamOnly
+  const allItems = teamOnly
     ? [
         PLAN_ITEM,
         ...TEAM_ITEMS,
@@ -92,8 +98,10 @@ export default function QuickMenu({
     : employeeOnly
       ? EMPLOYEE_ITEMS
       : isMaster
-        ? [PLAN_ITEM, ...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), ATTENDANCE_ITEM, AD_REPORT_ITEM, RECRUIT_ITEM, HR_ITEM, ACCOUNTS_ITEM, LOAN_ITEM]
+        ? [PLAN_ITEM, ...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), ATTENDANCE_ITEM, AD_REPORT_ITEM, RECRUIT_ITEM, HR_ITEM, ACCOUNTS_ITEM, LOAN_ITEM, MODULES_ITEM]
         : [ATTENDANCE_ITEM, ...ALL_ITEMS, REVIEW_REPORT_ITEM, ...(showAdReport ? [AD_REPORT_ITEM] : []), RECRUIT_ITEM, HR_ITEM, MY_REVIEW_ITEM];
+  // 브랜드가 끈 기능 모듈의 화면은 메뉴에서 뺀다(lib/modules.ts).
+  const items = allItems.filter((i) => pathAllowed(i.href, activeModules));
 
   return (
     <section>
@@ -249,6 +257,15 @@ function ClockPinIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="8" />
       <path d="M12 8v4l2.5 2" />
+    </svg>
+  );
+}
+
+// 기능 구독 — 퍼즐 조각.
+function PuzzleIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 3a2 2 0 0 1 2 2v1h3a1 1 0 0 1 1 1v3h1a2 2 0 1 1 0 4h-1v3a1 1 0 0 1-1 1h-3v1a2 2 0 1 1-4 0v-1H5a1 1 0 0 1-1-1v-3h1a2 2 0 1 0 0-4H4V7a1 1 0 0 1 1-1h3V5a2 2 0 0 1 2-2Z" />
     </svg>
   );
 }

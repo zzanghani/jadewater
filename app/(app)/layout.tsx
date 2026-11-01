@@ -14,6 +14,7 @@ import PullToRefresh from "@/components/PullToRefresh";
 import StorePicker from "@/components/StorePicker";
 import Avatar from "@/components/Avatar";
 import { fetchAvatarUrlById } from "@/lib/avatar";
+import { loadActiveModules, moduleForPath, type ModuleKey } from "@/lib/modules";
 
 // 매장 운영/재무 화면에는 접근을 주지 않는 본사 팀 계정(디자인/마케팅/운영/R&D)이
 // 다른 경로로 직접 들어와도 여기서 걸러진다. 실제 데이터 차단은 RLS
@@ -154,6 +155,19 @@ export default async function AppLayout({
     }
   }
 
+  // 기능 모듈 잠금(lib/modules.ts) — 매장 계정(지점장·직원)은 자기 매장 브랜드가
+  // 켠 모듈의 화면만 본다. 본사(마스터·팀)는 운영사라 제한 없음(null).
+  // 잠긴 화면으로 들어오면 안내 화면(/upgrade)으로 보낸다.
+  let activeModules: ModuleKey[] | null = null;
+  if (!isBestmateHq) {
+    activeModules = await loadActiveModules(supabase, storeContext.store?.brand_id);
+    const pathname = (await headers()).get("x-pathname") ?? "";
+    const locked = moduleForPath(pathname);
+    if (locked && !activeModules.includes(locked) && !pathname.startsWith("/upgrade")) {
+      redirect(`/upgrade?module=${locked}`);
+    }
+  }
+
   const name = isTeamAccount
     ? profile?.name ?? "팀 계정"
     : isMaster
@@ -223,6 +237,7 @@ export default async function AppLayout({
         isEmployee={isEmployee}
         isTeam={isTeamAccount}
         hasUnreadMessages={(unreadMessageCount ?? 0) > 0}
+        activeModules={activeModules}
       />
     </div>
   );

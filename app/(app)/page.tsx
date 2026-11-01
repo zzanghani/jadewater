@@ -16,6 +16,7 @@ import LiveStoreSalesGrid from "@/components/LiveStoreSalesGrid";
 import LiveSalesHero from "@/components/LiveSalesHero";
 import MonthlyTargetTable from "@/components/MonthlyTargetTable";
 import { adReportAllowed } from "@/lib/adAccess";
+import { loadActiveModules } from "@/lib/modules";
 import UpcomingPlansStrip from "@/components/UpcomingPlansStrip";
 import { loadHqProfiles, type HqProfile } from "@/lib/monthlyPlans";
 import PushSubscribeButton from "@/components/PushSubscribeButton";
@@ -53,6 +54,8 @@ export default async function DashboardPage() {
   const isMaster = stores.length > 1 && !isTeamAccount;
   const isHq = isMaster || isTeamAccount;
   const isEmployee = !isTeamAccount && !isMaster && profile?.role === "staff";
+  // 기능 모듈(lib/modules.ts) — 매장 계정은 브랜드가 켠 모듈의 메뉴만 본다. 본사는 제한 없음.
+  const activeModules = isHq ? null : await loadActiveModules(supabase, store?.brand_id);
 
   const { count: pendingAccountCount } = isMaster
     ? await supabase
@@ -290,6 +293,7 @@ if (isHq) {
         employeeOnly={isEmployee}
         pendingAccountCount={pendingAccountCount ?? 0}
         showAdReport={isMaster || adReportAllowed({ role: profile?.role ?? null, store_id: storeId ?? null, department: profile?.department ?? null }, store?.name)}
+        activeModules={activeModules}
       />
 
       {!isMaster && (

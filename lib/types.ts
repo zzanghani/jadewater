@@ -39,6 +39,18 @@ export type Brand = {
   created_at: string
 }
 
+// 브랜드별 기능 모듈 구독 — lib/modules.ts 의 모듈 키 기준.
+export type BrandModule = {
+  brand_id: string
+  module_key: string
+  status: 'active' | 'trial' | 'inactive'
+  trial_ends_at: string | null
+  activated_at: string
+  updated_at: string
+  updated_by: string | null
+  note: string | null
+}
+
 export type Store = {
   id: string
   name: string
@@ -876,6 +888,12 @@ export type Database = {
         Row: Brand
         Insert: Partial<Brand> & { name: string }
         Update: Partial<Brand>
+        Relationships: []
+      }
+      brand_modules: {
+        Row: BrandModule
+        Insert: Partial<BrandModule> & { brand_id: string; module_key: string }
+        Update: Partial<BrandModule>
         Relationships: []
       }
       stores: {
