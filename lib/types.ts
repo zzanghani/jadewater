@@ -1,6 +1,6 @@
 export type Role = 'owner' | 'staff'
 
-export type ProfileStatus = 'pending' | 'approved' | 'rejected'
+export type ProfileStatus = 'pending' | 'approved' | 'rejected' | 'deleted'
 
 export type Department = 'design' | 'marketing' | 'ops' | 'rnd'
 
@@ -21,6 +21,8 @@ export type Profile = {
   department: Department | null
   avatar_path: string | null
   created_at: string
+  /** 앱에서 계정 삭제(탈퇴)를 완료한 시각. 있으면 status = 'deleted', 개인정보는 익명화됨 */
+  deleted_at: string | null
 }
 
 // 브랜드 — 베스트메이트컴퍼니 아래의 사업 브랜드(제이드앤워터 / 정다미).

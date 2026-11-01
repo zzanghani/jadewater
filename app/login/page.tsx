@@ -50,6 +50,16 @@ export default function LoginPage() {
           가입하기
         </Link>
       </p>
+
+      <p className="mt-8 text-center text-xs text-muted">
+        <Link href="/terms" className="underline">
+          이용약관
+        </Link>
+        {" · "}
+        <Link href="/privacy" className="underline">
+          개인정보처리방침
+        </Link>
+      </p>
     </div>
   );
 }
@@ -58,6 +68,8 @@ function LoginForm() {
   const [state, formAction, pending] = useActionState(login, undefined);
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo") ?? "/";
+  // 프로필 화면에서 계정 삭제를 마치고 돌아온 경우 (app/actions/account.ts)
+  const justDeleted = searchParams.get("deleted") === "1";
   const emailRef = useRef<HTMLInputElement>(null);
   const [rememberEmail, setRememberEmail] = useState(false);
 
@@ -81,6 +93,12 @@ function LoginForm() {
   return (
     <form action={formAction} onSubmit={handleSubmit} className="flex flex-col gap-3">
       <input type="hidden" name="redirectTo" value={redirectTo} />
+
+      {justDeleted && (
+        <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+          계정이 삭제되었습니다. 이용해 주셔서 감사합니다.
+        </p>
+      )}
 
       <label className="flex flex-col gap-1.5 text-sm font-medium">
         이메일

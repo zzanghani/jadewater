@@ -78,6 +78,11 @@ export default async function AppLayout({
   if (profile?.status === "rejected") {
     return <RejectedScreen />;
   }
+  // 앱에서 계정 삭제(탈퇴)를 마친 계정 — 로그인 계정 잠금이 어떤 이유로 늦어졌어도
+  // 앱 화면은 보여주지 않는다 (app/actions/account.ts).
+  if (profile?.status === "deleted") {
+    return <DeletedScreen />;
+  }
 
   // 승인된 직원(role='staff') 계정이 아직 소속 매장을 고르지 않았으면
   // (store_id가 비어 있으면) 그 전에는 이 값만으로 "마스터"와 구분이 안
@@ -230,6 +235,23 @@ function PendingScreen() {
       <p className="text-sm text-muted">
         관리자가 가입을 승인하면 바로 이용할 수 있어요. 잠시만 기다려 주세요.
       </p>
+      <form action={logout}>
+        <button
+          type="submit"
+          className="mt-2 rounded-xl border border-border bg-card px-6 py-2.5 text-sm font-semibold text-muted"
+        >
+          로그인 화면으로
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function DeletedScreen() {
+  return (
+    <div className="flex min-h-dvh w-full flex-col items-center justify-center gap-4 px-6 py-10 text-center">
+      <h1 className="text-xl font-bold">삭제된 계정이에요</h1>
+      <p className="text-sm text-muted">이 계정은 탈퇴 처리되어 더 이상 사용할 수 없어요. 필요하면 새로 가입해 주세요.</p>
       <form action={logout}>
         <button
           type="submit"

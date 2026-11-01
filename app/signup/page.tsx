@@ -60,6 +60,18 @@ export default function SignupPage() {
           </p>
         )}
 
+        <p className="text-xs text-muted">
+          가입하면{" "}
+          <Link href="/terms" className="underline">
+            이용약관
+          </Link>
+          과{" "}
+          <Link href="/privacy" className="underline">
+            개인정보처리방침
+          </Link>
+          에 동의한 것으로 봅니다. 출퇴근 기록을 위해 매장 안에서 위치 정보를 사용해요.
+        </p>
+
         <button
           type="submit"
           disabled={pending}

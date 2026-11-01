@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAvatarUrlById } from "@/lib/avatar";
 import AvatarUploadForm from "@/components/AvatarUploadForm";
+import DeleteAccountForm from "@/components/DeleteAccountForm";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -11,10 +12,18 @@ export default async function ProfilePage() {
 
   const [{ data: profile }, avatarById] = await Promise.all([
     user
-      ? supabase.from("profiles").select("name").eq("id", user.id).single()
+      ? supabase
+          .from("profiles")
+          .select("name, email, role, store_id, department")
+          .eq("id", user.id)
+          .single()
       : Promise.resolve({ data: null }),
     user ? fetchAvatarUrlById(supabase, [user.id]) : Promise.resolve(new Map()),
   ]);
+
+  // 마스터(대표) = 매장·부서 없이 전 매장을 보는 owner. 지점장 = 매장이 배정된 owner.
+  const isMaster = profile?.role === "owner" && !profile.store_id && !profile.department;
+  const isManager = profile?.role === "owner" && !!profile.store_id;
 
   return (
     <div className="flex flex-col gap-6">
@@ -33,6 +42,29 @@ export default async function ProfilePage() {
         name={profile?.name ?? "-"}
         avatarUrl={user ? avatarById.get(user.id) ?? null : null}
       />
+
+      <section className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4 text-sm">
+        <h2 className="font-bold">내 계정</h2>
+        <div className="flex justify-between gap-4">
+          <span className="text-muted">이름</span>
+          <span className="font-medium">{profile?.name ?? "-"}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-muted">이메일</span>
+          <span className="truncate font-medium">{profile?.email ?? user?.email ?? "-"}</span>
+        </div>
+        <p className="pt-1 text-xs text-muted">
+          <Link href="/terms" className="underline">
+            이용약관
+          </Link>
+          {" · "}
+          <Link href="/privacy" className="underline">
+            개인정보처리방침
+          </Link>
+        </p>
+      </section>
+
+      <DeleteAccountForm isMaster={isMaster} isManager={isManager} />
     </div>
   );
 }
