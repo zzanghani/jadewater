@@ -106,7 +106,7 @@ export default function AttendanceClock({
 
   const showToast = useCallback((kind: "ok" | "warn" | "error", text: string) => {
     setToast({ kind, text });
-    setTimeout(() => setToast(null), 3500);
+    setTimeout(() => setToast(null), 4500);
   }, []);
 
   // 큐에 쌓인 기록을 순서대로 서버에 보낸다. 네트워크 실패(throw)는 큐에
@@ -132,7 +132,8 @@ export default function AttendanceClock({
           } else {
             const label = item.type === "IN" ? "출근" : "퇴근";
             const v = scheduleVerdict(item.type, res.diff_minutes);
-            const suffix = v.kind === "none" ? "" : ` · ${verdictLabel(v)}`;
+            const thanks = item.type === "OUT" ? " · 오늘도 고생많았습니다 🫡" : "";
+            const suffix = (v.kind === "none" ? "" : ` · ${verdictLabel(v)}`) + thanks;
             if (res.flagged) {
               showToast("warn", `${label} 기록됨 (매장에서 ${res.distance_m}m — 관리자 확인 표시)${suffix}`);
             } else if (v.kind === "late" || v.kind === "early_leave") {

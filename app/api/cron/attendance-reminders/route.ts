@@ -102,12 +102,12 @@ export async function GET(request: Request) {
       base === "start"
         ? {
             title: `${label} 출근 ${leadMin}분 전`,
-            body: `오늘 ${hm(shift.start_time)} 출근이에요. 매장에 도착하면 앱에서 출근을 찍어주세요.`,
+            body: `오늘 ${hm(shift.start_time)} 출근이에요.\n- 손톱 및 용모 단정한지 체크해 주세요.\n- 출근을 꼭 찍어 주세요.`,
             url: "/attendance",
           }
         : {
             title: `${label} 퇴근 ${leadMin}분 전`,
-            body: `${hm(shift.end_time)} 퇴근 예정이에요. 퇴근할 때 앱에서 퇴근을 꼭 찍어주세요.`,
+            body: `${hm(shift.end_time)} 퇴근 예정이에요.\n- 발주 / 마감 누락된 내용 없는지 체크해 주세요.\n- 퇴근을 꼭 찍어 주세요.`,
             url: "/attendance",
           };
 
