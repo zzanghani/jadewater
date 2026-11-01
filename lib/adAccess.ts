@@ -1,12 +1,12 @@
-// 광고 리포트·효율 분석·광고 관리 시범 운영 범위.
-// 대표님이 테스트를 끝낸 뒤 전 매장에 열기로 해서, 그때까지는 본사 마스터만 본다.
+// 광고 리포트·효율 분석·광고 관리 공개 범위.
+// 2026-11-01 시범 운영 끝 — 전 매장 지점장(매장 소속 owner)에게 열었다. 매장 키 설정 화면은 여전히 본사 마스터만.
 // - 특정 매장 점장에게만 열려면 AD_PILOT_STORE_MATCH 에 매장 이름 일부("성수" 등)
 // - 전 매장에 열려면 AD_PILOT_STORE_MATCH 를 null 로
 // - 마스터만 보게 하려면 "" (빈 문자열) — 어떤 매장 이름과도 안 맞음
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/types";
 
-export const AD_PILOT_STORE_MATCH: string | null = "";
+export const AD_PILOT_STORE_MATCH: string | null = null;
 
 type Profile = { role: string | null; store_id: string | null; department: string | null } | null | undefined;
 
