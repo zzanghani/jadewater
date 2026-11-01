@@ -13,7 +13,8 @@ const EFFECT = {
 } as const;
 const EFFECT_LABEL = { pending: "판정 대기", hold: "판단 보류", better: "좋아짐", worse: "나빠짐" } as const;
 
-export default function AdManageClient({ storeId }: { storeId: string }) {
+// canEdit=false 면 같은 브랜드 다른 매장을 보는 지점장: 캠페인·예산·노출 시간은 보기만.
+export default function AdManageClient({ storeId, canEdit = true }: { storeId: string; canEdit?: boolean }) {
   const [res, setRes] = useState<ManageResult | null>(null);
   const [loading, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
@@ -27,6 +28,7 @@ export default function AdManageClient({ storeId }: { storeId: string }) {
   }
 
   function onToggle(c: CampaignRow) {
+    if (!canEdit) return setErr("보기만 가능 — 설정 변경은 그 매장 지점장이나 대표님만 할 수 있어요.");
     const next = !c.on;
     if (!window.confirm(`'${c.name}' 캠페인을 ${next ? "켤까요" : "끌까요"}?\n${next ? "켜면 바로 광고가 다시 나가요." : "끄면 이 캠페인 광고가 바로 멈춰요."}`)) return;
     setErr(null);
@@ -76,12 +78,13 @@ export default function AdManageClient({ storeId }: { storeId: string }) {
           </a>
         </div>
       </section>
+      {!canEdit && <p className="rounded-xl bg-blue-50 px-4 py-2.5 text-xs text-blue-800">보기만 가능 — 설정 변경은 그 매장 지점장이나 대표님만 할 수 있어요.</p>}
       {err && <p className="rounded-xl bg-red-50 px-4 py-3 text-xs text-red-600">{err}</p>}
 
       <section className="flex flex-col gap-2">
         {res.campaigns.length === 0 && <p className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted">캠페인이 없어요.</p>}
         {res.campaigns.map((c) => (
-          <CampaignCard key={c.id} c={c} storeId={storeId} busy={loading} onToggle={() => onToggle(c)} onSaved={reload} onError={setErr} suggest={res.suggest} />
+          <CampaignCard key={c.id} c={c} storeId={storeId} busy={loading} readOnly={!canEdit} onToggle={() => onToggle(c)} onSaved={reload} onError={setErr} suggest={res.suggest} />
         ))}
       </section>
 
@@ -102,7 +105,7 @@ export default function AdManageClient({ storeId }: { storeId: string }) {
   );
 }
 
-function CampaignCard({ c, storeId, busy, onToggle, onSaved, onError, suggest }: { c: CampaignRow; storeId: string; busy: boolean; onToggle: () => void; onSaved: () => void; onError: (e: string | null) => void; suggest: { open: number[]; focus: number[] } }) {
+function CampaignCard({ c, storeId, busy, readOnly, onToggle, onSaved, onError, suggest }: { c: CampaignRow; storeId: string; busy: boolean; readOnly: boolean; onToggle: () => void; onSaved: () => void; onError: (e: string | null) => void; suggest: { open: number[]; focus: number[] } }) {
   const [budget, setBudgetInput] = useState(String(c.dailyBudget));
   const [saving, startSave] = useTransition();
   const changed = Number(budget) !== c.dailyBudget;
@@ -133,7 +136,7 @@ function CampaignCard({ c, storeId, busy, onToggle, onSaved, onError, suggest }:
           role="switch"
           aria-checked={c.on}
           onClick={onToggle}
-          disabled={busy}
+          disabled={busy || readOnly}
           className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-50 ${c.on ? "bg-green-500" : "bg-gray-300"}`}
           aria-label={c.on ? "끄기" : "켜기"}
         >
@@ -158,6 +161,9 @@ function CampaignCard({ c, storeId, busy, onToggle, onSaved, onError, suggest }:
           <p className="text-[13px] font-semibold tabular-nums">{won(cpc)}</p>
         </div>
       </div>
+      {readOnly ? (
+        <p className="mt-2 text-xs"><span className="text-muted">하루 예산</span> <span className="font-semibold tabular-nums">{c.dailyBudget ? won(c.dailyBudget) + "원" : "제한 없음"}</span></p>
+      ) : (
       <div className="mt-2 flex items-center gap-1.5 text-xs">
         <span className="shrink-0 text-muted">하루 예산</span>
         <input
@@ -174,11 +180,12 @@ function CampaignCard({ c, storeId, busy, onToggle, onSaved, onError, suggest }:
           {saving ? "저장 중" : "저장"}
         </button>
       </div>
-      {c.dailyBudget === 0 && <p className="mt-1 text-[11px] text-muted">0 = 제한 없음</p>}
+      )}
+      {!readOnly && c.dailyBudget === 0 && <p className="mt-1 text-[11px] text-muted">0 = 제한 없음</p>}
       {c.groups.length > 0 && (
         <div className="mt-2 flex flex-col gap-1.5">
           {c.groups.map((g) => (
-            <ScheduleBlock key={g.id} storeId={storeId} group={g} single={c.groups.length === 1} suggest={suggest} busy={busy} onSaved={onSaved} onError={onError} />
+            <ScheduleBlock key={g.id} storeId={storeId} group={g} single={c.groups.length === 1} suggest={suggest} busy={busy} readOnly={readOnly} onSaved={onSaved} onError={onError} />
           ))}
         </div>
       )}
@@ -187,7 +194,7 @@ function CampaignCard({ c, storeId, busy, onToggle, onSaved, onError, suggest }:
 }
 
 // 광고그룹 노출 시간: 요약 한 줄 + '수정'을 누르면 요일×시간 격자와 프리셋.
-function ScheduleBlock({ storeId, group, single, suggest, busy, onSaved, onError }: { storeId: string; group: CampaignRow["groups"][number]; single: boolean; suggest: { open: number[]; focus: number[] }; busy: boolean; onSaved: () => void; onError: (e: string | null) => void }) {
+function ScheduleBlock({ storeId, group, single, suggest, busy, readOnly, onSaved, onError }: { storeId: string; group: CampaignRow["groups"][number]; single: boolean; suggest: { open: number[]; focus: number[] }; busy: boolean; readOnly: boolean; onSaved: () => void; onError: (e: string | null) => void }) {
   const [edit, setEdit] = useState(false);
   const base = group.schedule ?? allOn();
   const [draft, setDraft] = useState<WeekSchedule>(base);
@@ -230,9 +237,11 @@ function ScheduleBlock({ storeId, group, single, suggest, busy, onSaved, onError
             {single && !group.on && <span className="ml-1 rounded bg-gray-100 px-1 text-[11px] text-gray-500">그룹 꺼짐</span>}
           </p>
         </div>
-        <button type="button" onClick={() => { setDraft(base); setEdit(!edit); }} className="shrink-0 rounded-lg border border-border bg-card px-2.5 py-1 text-[11px] font-semibold text-brand">
-          {edit ? "닫기" : "수정"}
-        </button>
+        {!readOnly && (
+          <button type="button" onClick={() => { setDraft(base); setEdit(!edit); }} className="shrink-0 rounded-lg border border-border bg-card px-2.5 py-1 text-[11px] font-semibold text-brand">
+            {edit ? "닫기" : "수정"}
+          </button>
+        )}
       </div>
       {edit && (
         <div className="mt-2 flex flex-col gap-2">

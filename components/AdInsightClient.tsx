@@ -25,7 +25,8 @@ function dCls(c: number | null, p: number | null, goodUp: boolean) {
   return (v > 0) === goodUp ? "text-green-700" : "text-red-600";
 }
 
-export default function AdInsightClient({ storeId }: { storeId: string }) {
+// canEdit=false 면 같은 브랜드 다른 매장을 보는 지점장: 원가율·특이일은 보기만.
+export default function AdInsightClient({ storeId, canEdit = true }: { storeId: string; canEdit?: boolean }) {
   const [res, setRes] = useState<InsightResult | null>(null);
   const [loading, start] = useTransition();
   const [syncing, startSync] = useTransition();
@@ -123,10 +124,10 @@ export default function AdInsightClient({ storeId }: { storeId: string }) {
       </section>
 
       {/* 특이일 — 차트 바로 아래에 둬서 이상한 날을 보자마자 적을 수 있게 */}
-      <SpecialDays storeId={storeId} days={x.specialDays} onChanged={() => start(async () => setRes(await loadAdInsight(storeId)))} />
+      <SpecialDays storeId={storeId} days={x.specialDays} readOnly={!canEdit} onChanged={() => start(async () => setRes(await loadAdInsight(storeId)))} />
 
       {/* 손익분기 */}
-      <BreakevenCard storeId={storeId} x={x} onSaved={() => start(async () => setRes(await loadAdInsight(storeId)))} />
+      <BreakevenCard storeId={storeId} x={x} readOnly={!canEdit} onSaved={() => start(async () => setRes(await loadAdInsight(storeId)))} />
 
       {/* 요일별 */}
       <section className="rounded-2xl border border-border bg-card p-4">
@@ -294,7 +295,7 @@ function StrategyMemo({ raw }: { raw: string }) {
 }
 
 // 광고 손익분기: 원가율을 넣으면 "광고비 1만원 늘릴 때 매출이 얼마나 따라와야 본전인지"가 나온다.
-function BreakevenCard({ storeId, x, onSaved }: { storeId: string; x: AdInsight; onSaved: () => void }) {
+function BreakevenCard({ storeId, x, readOnly, onSaved }: { storeId: string; x: AdInsight; readOnly: boolean; onSaved: () => void }) {
   const [rate, setRate] = useState(String(Math.round(x.breakeven.costRate * 100)));
   const [saving, startSave] = useTransition();
   const [err, setErr] = useState<string | null>(null);
@@ -312,6 +313,9 @@ function BreakevenCard({ storeId, x, onSaved }: { storeId: string; x: AdInsight;
   return (
     <section className="rounded-2xl border border-border bg-card p-4">
       <h2 className="mb-2 text-sm font-bold">광고 손익분기</h2>
+      {readOnly ? (
+        <p className="mb-2 rounded-xl bg-background px-3 py-2 text-xs text-muted">원가율 <span className="font-semibold text-foreground">{(b.costRate * 100).toFixed(b.source === "manual" ? 0 : 1)}%</span></p>
+      ) : (
       <label className="mb-2 flex items-center gap-1.5 rounded-xl bg-background px-3 py-2 text-xs text-muted">
         <span className="shrink-0">원가율</span>
         <input type="number" inputMode="numeric" min={0} max={94} value={rate} onChange={(e) => setRate(e.target.value)} className="w-16 rounded-lg border border-border bg-card px-2 py-1.5 text-right text-sm font-semibold text-foreground" />
@@ -326,6 +330,7 @@ function BreakevenCard({ storeId, x, onSaved }: { storeId: string; x: AdInsight;
           </button>
         )}
       </label>
+      )}
       <p className="mb-2 text-[11px] text-muted">
         {b.source === "auto" && <>원가율 {(b.costRate * 100).toFixed(1)}% = 앱의 실시간 코스트 자동 반영(최근 28일 식재료·음료 입고 ÷ 음식·음료·주류·배달 매출). 직접 넣으면 그 값이 우선해요.</>}
         {b.source === "manual" && <>직접 입력한 원가율 {(b.costRate * 100).toFixed(0)}%{b.autoRate != null && ` (앱 코스트 자동 계산은 ${(b.autoRate * 100).toFixed(1)}%)`}. &lsquo;자동으로&rsquo;를 누르면 코스트 기준으로 돌아가요.</>}
@@ -352,7 +357,7 @@ function BreakevenCard({ storeId, x, onSaved }: { storeId: string; x: AdInsight;
 }
 
 // 특이일: 행사·단체·휴무처럼 평소와 다른 날. 평소 대비 계산과 효과 판정에서 뺀다.
-function SpecialDays({ storeId, days, onChanged }: { storeId: string; days: { date: string; note: string }[]; onChanged: () => void }) {
+function SpecialDays({ storeId, days, readOnly, onChanged }: { storeId: string; days: { date: string; note: string }[]; readOnly: boolean; onChanged: () => void }) {
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
   const [busy, startBusy] = useTransition();
@@ -382,9 +387,11 @@ function SpecialDays({ storeId, days, onChanged }: { storeId: string; days: { da
     <section className="rounded-2xl border border-border bg-card p-4">
       <div className="mb-1 flex items-center justify-between gap-2">
         <h2 className="text-sm font-bold">특이일 <span className="font-normal text-muted">(비교에서 제외)</span></h2>
-        <button type="button" onClick={() => setOpen(!open)} className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-brand">
-          {open ? "닫기" : "+ 추가"}
-        </button>
+        {!readOnly && (
+          <button type="button" onClick={() => setOpen(!open)} className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-brand">
+            {open ? "닫기" : "+ 추가"}
+          </button>
+        )}
       </div>
       <p className="mb-2 text-[11px] text-muted">단체 예약·행사·임시 휴무처럼 평소와 다른 날. 평소 대비와 광고 효과 판정에서 빼요.</p>
       {open && (
@@ -406,9 +413,11 @@ function SpecialDays({ storeId, days, onChanged }: { storeId: string; days: { da
               <span>
                 <span className="tabular-nums text-muted">{s.date.slice(5).replace("-", "/")}</span> {s.note}
               </span>
-              <button type="button" onClick={() => remove(s.date)} disabled={busy} className="text-[11px] text-muted underline">
-                삭제
-              </button>
+              {!readOnly && (
+                <button type="button" onClick={() => remove(s.date)} disabled={busy} className="text-[11px] text-muted underline">
+                  삭제
+                </button>
+              )}
             </li>
           ))}
         </ul>

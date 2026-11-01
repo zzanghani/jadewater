@@ -4,7 +4,7 @@
 // 비어 있는 날은 그 자리에서 네이버·토스에서 받아 채운다. 오늘은 항상 실시간으로 다시 읽는다.
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { adReportAllowedFor } from "@/lib/adAccess";
+import { adReportAllowedFor, adVisibleStores } from "@/lib/adAccess";
 import { addYmd, kstYmd } from "@/lib/adReport";
 import { aggregate, MAX_RANGE_DAYS, periodRange, type PeriodAgg, type PeriodKey, type PeriodRange } from "@/lib/adPeriod";
 import { syncAdDaily, syncTossDaily } from "@/lib/adInsight";
@@ -41,10 +41,9 @@ export async function loadAdPeriod(key: PeriodKey, custom?: { from: string; to: 
   if (spanDays > MAX_RANGE_DAYS * 2) return { ok: false, error: `한 번에 ${MAX_RANGE_DAYS}일까지만 볼 수 있어요.` };
 
   const service = createServiceClient();
-  let sq = supabase.from("stores").select("id, name");
-  if (profile.store_id) sq = sq.eq("id", profile.store_id);
-  const [{ data: storeRows }, { data: accounts }, { data: merchants }, { data: toss }] = await Promise.all([
-    sq.order("name"),
+  // 마스터는 전 매장, 지점장은 같은 브랜드 매장 (lib/adAccess.ts)
+  const [storeRows, { data: accounts }, { data: merchants }, { data: toss }] = await Promise.all([
+    adVisibleStores(service, profile),
     service.from("store_ad_accounts").select("*").eq("enabled", true),
     service.from("store_toss_merchants").select("store_id, merchant_id"),
     service.from("toss_settings").select("access_key, access_secret").eq("id", 1).maybeSingle(),
@@ -53,7 +52,7 @@ export async function loadAdPeriod(key: PeriodKey, custom?: { from: string; to: 
   const merchantByStore = new Map((merchants ?? []).map((m) => [m.store_id, m.merchant_id]));
   const keys = toss ? { accessKey: toss.access_key, secretKey: toss.access_secret } : null;
   const targets = (storeRows ?? []).filter((s) => acctByStore.has(s.id) || merchantByStore.has(s.id));
-  if (!targets.length) return { ok: false, error: profile.store_id ? "이 매장은 아직 광고·토스가 연결되지 않았어요." : "연결된 매장이 없어요. 매장 키 설정에서 등록해 주세요." };
+  if (!targets.length) return { ok: false, error: profile.store_id ? "아직 광고·토스가 연결된 매장이 없어요." : "연결된 매장이 없어요. 매장 키 설정에서 등록해 주세요." };
 
   const from = range.cmpFrom;
   const to = range.to;

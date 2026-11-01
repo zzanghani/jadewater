@@ -4,7 +4,7 @@
 // 7일이 지나면 전후 7일을 비교해 효과를 판정한다 (변동 ±34% 안이면 '판단 보류'). 실행 시간 제한은 page.tsx의 maxDuration을 따른다.
 
 import { createClient } from "@/lib/supabase/server";
-import { adReportAllowedFor } from "@/lib/adAccess";
+import { AD_EDIT_DENIED, adCanEdit, adCanView, adReportAllowedFor } from "@/lib/adAccess";
 import { createServiceClient } from "@/lib/supabase/service";
 import { addYmd, kstYmd } from "@/lib/adReport";
 import { callNaver, CAMPAIGN_TP_LABEL, listAdgroups, listCampaigns, parseTimeTarget, setAdgroupSchedule, setCampaignBudget, setCampaignLock, statsMap, type NaverAcct, type NaverCampaign, type WeekSchedule } from "@/lib/naverAds";
@@ -38,17 +38,19 @@ export type ManageResult =
 
 type Ctx = { error: string } | { error?: undefined; userId: string; userName: string; acct: NaverAcct };
 
-async function ctx(storeId: string): Promise<Ctx> {
+// write=true 면 캠페인·예산·노출 시간을 바꾸는 호출: 마스터 또는 자기 매장만. 보기는 같은 브랜드 매장까지(lib/adAccess.ts).
+async function ctx(storeId: string, write = false): Promise<Ctx> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "로그인이 필요합니다." };
   const { data: p } = await supabase.from("profiles").select("name, role, store_id, department, status").eq("id", user.id).maybeSingle();
-  if (!p || p.status !== "approved" || p.department || p.role !== "owner" || (p.store_id && p.store_id !== storeId)) {
+  if (!p || p.status !== "approved" || p.department || p.role !== "owner" || !(await adCanView(createServiceClient(), p, storeId))) {
     return { error: "이 매장의 광고를 관리할 권한이 없어요." };
   }
   if (!(await adReportAllowedFor(supabase, p))) return { error: "광고 관리는 아직 시범 운영 중이라 이 계정에서는 쓸 수 없어요." };
+  if (write && !adCanEdit(p, storeId)) return { error: AD_EDIT_DENIED };
   const { data: a } = await createServiceClient().from("store_ad_accounts").select("*").eq("store_id", storeId).eq("enabled", true).maybeSingle();
   if (!a) return { error: "이 매장은 네이버 광고 계정이 아직 연결되지 않았어요. 광고 리포트 → 매장 키 설정에서 등록해 주세요." };
   return { userId: user.id, userName: p.name ?? "", acct: { customerId: a.naver_customer_id, apiKey: a.naver_api_key, secretKey: a.naver_secret_key } };
@@ -132,7 +134,7 @@ async function log(storeId: string, c: Exclude<Ctx, { error: string }>, camp: Na
 
 /** 광고그룹 노출 시간 변경. schedule=null 이면 항상 노출. */
 export async function setSchedule(storeId: string, adgroupId: string, adgroupName: string, schedule: WeekSchedule | null, beforeText: string, afterText: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  const c = await ctx(storeId);
+  const c = await ctx(storeId, true);
   if (c.error !== undefined) return { ok: false, error: c.error };
   if (schedule && Object.values(schedule).every((h) => !h.length)) return { ok: false, error: "모든 시간이 꺼져 있어요. 광고를 아예 멈추려면 캠페인을 끄세요." };
   try {
@@ -155,7 +157,7 @@ export async function setSchedule(storeId: string, adgroupId: string, adgroupNam
 }
 
 export async function toggleCampaign(storeId: string, campaignId: string, on: boolean): Promise<{ ok: true } | { ok: false; error: string }> {
-  const c = await ctx(storeId);
+  const c = await ctx(storeId, true);
   if (c.error !== undefined) return { ok: false, error: c.error };
   try {
     const before = (await listCampaigns(c.acct)).find((x) => x.nccCampaignId === campaignId);
@@ -169,7 +171,7 @@ export async function toggleCampaign(storeId: string, campaignId: string, on: bo
 }
 
 export async function setBudget(storeId: string, campaignId: string, dailyBudget: number): Promise<{ ok: true } | { ok: false; error: string }> {
-  const c = await ctx(storeId);
+  const c = await ctx(storeId, true);
   if (c.error !== undefined) return { ok: false, error: c.error };
   const budget = Math.round(Number(dailyBudget));
   if (!isFinite(budget) || budget < 0) return { ok: false, error: "예산은 0 이상 숫자로 넣어 주세요." };
