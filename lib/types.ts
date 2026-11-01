@@ -1066,6 +1066,12 @@ export type Database = {
         Update: Partial<{ store_id: string; terms: string[]; keywords: string[]; volumes: Record<string, number>; updated_by: string | null; updated_at: string; map_note: string | null; map_at: string | null }>
         Relationships: []
       }
+      ad_keyword_daily_stats: {
+        Row: { store_id: string; date: string; keyword_id: string; keyword: string; campaign_id: string; campaign_name: string; campaign_tp: string | null; adgroup_id: string; adgroup_name: string; imp: number; clk: number; cost: number; conv: number; avg_rank: number | null; bid_amt: number | null; use_group_bid: boolean; quality_index: number | null; user_lock: boolean; status: string | null; synced_at: string }
+        Insert: { store_id: string; date: string; keyword_id: string; keyword: string; campaign_id: string; campaign_name?: string; campaign_tp?: string | null; adgroup_id: string; adgroup_name?: string; imp?: number; clk?: number; cost?: number; conv?: number; avg_rank?: number | null; bid_amt?: number | null; use_group_bid?: boolean; quality_index?: number | null; user_lock?: boolean; status?: string | null; synced_at?: string }
+        Update: Partial<{ store_id: string; date: string; keyword_id: string; keyword: string; campaign_id: string; campaign_name: string; campaign_tp: string | null; adgroup_id: string; adgroup_name: string; imp: number; clk: number; cost: number; conv: number; avg_rank: number | null; bid_amt: number | null; use_group_bid: boolean; quality_index: number | null; user_lock: boolean; status: string | null; synced_at: string }>
+        Relationships: []
+      }
       search_rank_daily: {
         Row: { store_id: string; date: string; keyword: string; map_rank: number | null; blog_hits: number; blog_posts: Record<string, unknown>[]; checked_at: string; map_deep_rank: number | null; map_pos: number | null; map_checked: number | null; map_name: string | null; map_deep_at: string | null }
         Insert: { store_id: string; date: string; keyword: string; map_rank?: number | null; blog_hits?: number; blog_posts?: Record<string, unknown>[]; checked_at?: string; map_deep_rank?: number | null; map_pos?: number | null; map_checked?: number | null; map_name?: string | null; map_deep_at?: string | null }

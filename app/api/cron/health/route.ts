@@ -84,6 +84,7 @@ const FEATURE_CHECKS: FeatureCheck[] = [
   { label: "리뷰 수집", table: "review_platform_stats", column: "date", maxHours: 48, level: "problem", hint: "collect-reviews 크론·구글 Places 키 확인" },
   { label: "광고 일별 동기화", table: "ad_daily_stats", column: "synced_at", maxHours: 36, level: "problem", requires: "store_ad_accounts", hint: "네이버 광고 키·ad-insight-sync 확인" },
   { label: "광고 시간대 동기화", table: "ad_hourly_stats", column: "synced_at", maxHours: 36, level: "problem", requires: "store_ad_accounts", hint: "ad-insight-sync 크론 확인" },
+  { label: "광고 키워드 동기화", table: "ad_keyword_daily_stats", column: "synced_at", maxHours: 36, level: "problem", requires: "ad_keyword_daily_stats", hint: "ad-keyword-sync 크론(23:55) 확인" },
   { label: "날씨 수집", table: "weather_daily", column: "synced_at", maxHours: 36, level: "problem", requires: "store_ad_accounts", hint: "ad-insight-sync 크론 확인" },
   { label: "광고 주간 리포트", table: "ad_weekly_reports", column: "generated_at", maxHours: 8 * 24, level: "problem", requires: "store_ad_accounts", hint: "ad-weekly-report 크론(일요일) 확인" },
   { label: "토스 매출 동기화", table: "toss_daily_sales", column: "synced_at", maxHours: 36, level: "problem", requires: "store_toss_merchants", hint: "토스 연동 키 확인" },

@@ -29,6 +29,10 @@
       "schedule": "50 14 * * *"
     },
     {
+      "path": "/api/cron/ad-keyword-sync",
+      "schedule": "55 14 * * *"
+    },
+    {
       "path": "/api/cron/recruit-visit-digest",
       "schedule": "0 1 * * *"
     }

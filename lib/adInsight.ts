@@ -2,7 +2,7 @@
 // 동기화(sync*)는 서비스 키로 두 API에서 받아 테이블에 쌓고, 분석(analyze)은 쌓인 날짜 행만으로 계산한다.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/types";
-import { callNaver, pool, STAT_FIELDS, type NaverAcct, type NaverStatRow } from "@/lib/naverAds";
+import { callNaver, listAdgroups, listCampaigns, listKeywords, pool, STAT_FIELDS, type NaverAcct, type NaverStatRow } from "@/lib/naverAds";
 import { fetchTossClosing } from "@/lib/tossClosing";
 import type { TossKeys } from "@/lib/tossPlace";
 import { addYmd, HOLIDAYS, pctDelta, weekdayIndex, type SalesMap } from "@/lib/adReport";
@@ -139,6 +139,99 @@ export async function syncAdHourly(service: Service, storeId: string, acct: Nave
   });
   for (let i = 0; i < rows.length; i += 500) await service.from("ad_hourly_stats").upsert(rows.slice(i, i + 500), { onConflict: "store_id,date,hour" });
   return ok;
+}
+
+// 네이버: 키워드별 일 성과. 캠페인 → 광고그룹 → 키워드 목록을 읽고, 키워드 id 50개씩 stats(timeIncrement=1)로
+// 날짜별 노출·클릭·광고비·전환·평균순위를 받는다. 입찰가·품질지수·켜짐 상태는 '지금' 값이라 오늘 행(과 처음 쌓는 행)에만 쓰고,
+// 이미 있는 지난 날 행은 그 날 쌓인 값을 그대로 둔다 (성과 숫자만 다시 맞춘다).
+export async function syncAdKeywordDaily(service: Service, storeId: string, acct: NaverAcct, from: string, to: string): Promise<{ keywords: number; days: number }> {
+  const camps = await listCampaigns(acct);
+  const groups = (await pool(camps, 3, async (c) => (await listAdgroups(acct, c.nccCampaignId).catch(() => [])).map((g) => ({ c, g })))).flat();
+  const kws = (await pool(groups, 3, async ({ c, g }) => (await listKeywords(acct, g.nccAdgroupId).catch(() => [])).map((k) => ({ c, g, k })))).flat();
+  const days: string[] = [];
+  for (let d = from; d <= to; d = addYmd(d, 1)) days.push(d);
+  if (!kws.length || !days.length) return { keywords: 0, days: 0 };
+
+  // 키워드 id × 날짜 → 성과
+  const stat = new Map<string, NaverStatRow>();
+  const batches: string[][] = [];
+  const ids = kws.map((x) => x.k.nccKeywordId);
+  for (let i = 0; i < ids.length; i += 50) batches.push(ids.slice(i, i + 50));
+  let needDaily = false;
+  await pool(batches, 2, async (b) => {
+    const r = await callNaver<{ data?: NaverStatRow[] }>(acct, "/stats", {
+      ids: b.join(","),
+      fields: STAT_FIELDS,
+      timeRange: JSON.stringify({ since: from, until: to }),
+      timeIncrement: "1",
+    }).catch(() => null);
+    for (const row of r?.data ?? []) {
+      const d = String(row.dateStart ?? "").slice(0, 10);
+      if (!d) {
+        needDaily = true;
+        continue;
+      }
+      stat.set(`${row.id}|${d}`, row);
+    }
+  });
+  // 날짜가 안 붙어 오면(기간 합계만 준 경우) 하루씩 다시 받는다
+  if (needDaily) {
+    stat.clear();
+    await pool(days, 3, async (d) => {
+      for (const b of batches) {
+        const r = await callNaver<{ data?: NaverStatRow[] }>(acct, "/stats", {
+          ids: b.join(","),
+          fields: STAT_FIELDS,
+          timeRange: JSON.stringify({ since: d, until: d }),
+        }).catch(() => null);
+        for (const row of r?.data ?? []) stat.set(`${row.id}|${d}`, row);
+      }
+    });
+  }
+
+  const { data: have } = await service.from("ad_keyword_daily_stats").select("date, keyword_id").eq("store_id", storeId).gte("date", from).lt("date", to);
+  const haveSet = new Set((have ?? []).map((r) => `${r.keyword_id}|${r.date}`));
+  const now = new Date().toISOString();
+  type Base = Database["public"]["Tables"]["ad_keyword_daily_stats"]["Insert"];
+  const withBid: Base[] = [];
+  const metricsOnly: Base[] = [];
+  for (const d of days)
+    for (const { c, g, k } of kws) {
+      const s = stat.get(`${k.nccKeywordId}|${d}`);
+      const base: Base = {
+        store_id: storeId,
+        date: d,
+        keyword_id: k.nccKeywordId,
+        keyword: k.keyword,
+        campaign_id: c.nccCampaignId,
+        campaign_name: c.name ?? "",
+        campaign_tp: c.campaignTp ?? null,
+        adgroup_id: g.nccAdgroupId,
+        adgroup_name: g.name ?? "",
+        imp: s?.impCnt ?? 0,
+        clk: s?.clkCnt ?? 0,
+        cost: Math.round(s?.salesAmt ?? 0),
+        conv: s?.ccnt ?? 0,
+        avg_rank: s?.avgRnk != null && Number.isFinite(Number(s.avgRnk)) && Number(s.avgRnk) > 0 ? Math.round(Number(s.avgRnk) * 100) / 100 : null,
+        synced_at: now,
+      };
+      if (d === to || !haveSet.has(`${k.nccKeywordId}|${d}`)) {
+        withBid.push({
+          ...base,
+          bid_amt: k.useGroupBidAmt ? (g.bidAmt ?? null) : (k.bidAmt ?? null),
+          use_group_bid: !!k.useGroupBidAmt,
+          quality_index: k.nccQi?.qiGrade ?? null,
+          user_lock: !!k.userLock,
+          status: k.status ?? null,
+        });
+      } else metricsOnly.push(base);
+    }
+  for (const rows of [withBid, metricsOnly])
+    for (let i = 0; i < rows.length; i += 500) {
+      const { error } = await service.from("ad_keyword_daily_stats").upsert(rows.slice(i, i + 500), { onConflict: "store_id,date,keyword_id" });
+      if (error) throw new Error(error.message);
+    }
+  return { keywords: kws.length, days: days.length };
 }
 
 /* ---------- 분석 ---------- */

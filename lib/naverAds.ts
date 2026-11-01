@@ -212,6 +212,7 @@ export type NaverAdgroup = {
   name: string;
   status?: string;
   userLock?: boolean;
+  bidAmt?: number; // 그룹 기본 입찰가(원)
   targets?: NaverTarget[];
 };
 export type WeekSchedule = Record<number, number[]>; // 0=일 … 6=토 → 켜진 시간(0~23)
@@ -321,12 +322,14 @@ export async function keywordTool(acct: NaverAcct, hints: string[]): Promise<Key
 export type NaverKeyword = {
   nccKeywordId: string;
   nccAdgroupId: string;
+  nccCampaignId?: string;
   keyword: string;
   bidAmt?: number;
   useGroupBidAmt?: boolean;
   userLock?: boolean;
   status?: string;
   statusReason?: string;
+  nccQi?: { qiGrade?: number }; // 품질지수 1~7
 };
 export const normKeyword = (k: string) => k.replace(/\s+/g, "").toLowerCase();
 
