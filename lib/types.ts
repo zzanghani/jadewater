@@ -1413,6 +1413,26 @@ export type Database = {
         }
         Returns: { date: string; store_id: string; grand_total: number }[]
       }
+      // 체험단 오늘 방문 (migration_recruit_today_visits.sql) — 매장 소속이면 직원도 읽음
+      recruit_visits_between: {
+        Args: {
+          p_store_id: string
+          p_from: string
+          p_to: string
+        }
+        Returns: {
+          id: string
+          applicant_name: string | null
+          blog_id: string
+          visit_at: string
+          visit_party: number | null
+          visit_note: string | null
+          visited_at: string | null
+          no_show: boolean
+          visit_source: string | null
+          campaign_title: string | null
+        }[]
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
