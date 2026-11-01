@@ -66,6 +66,79 @@ function daysSince(dateStr: string | null | undefined): number | null {
   return Math.floor((Date.now() - t) / 86400000);
 }
 
+// 기능별 결과 테이블과 "이 시간 넘게 새 기록이 없으면 멈춘 것" 기준.
+// - level problem: 자동 작업이라 끊기면 바로 고쳐야 함(푸시). warning: 사람 입력이라 쉬는 날일 수도 있음.
+// - requires: 이 테이블에 행이 하나도 없으면 아직 안 쓰는 기능으로 보고 건너뜀(연동 전 매장 등).
+// - 크론 주기(vercel.json·pg_cron)보다 넉넉하게 잡아 하루 한 번 도는 작업은 36시간, 주 1회는 8일.
+type FeatureCheck = {
+  label: string;
+  table: string;
+  column: string;
+  maxHours: number;
+  level: "problem" | "warning";
+  requires?: string;
+  hint?: string;
+};
+
+const FEATURE_CHECKS: FeatureCheck[] = [
+  { label: "리뷰 수집", table: "review_platform_stats", column: "date", maxHours: 48, level: "problem", hint: "collect-reviews 크론·구글 Places 키 확인" },
+  { label: "광고 일별 동기화", table: "ad_daily_stats", column: "synced_at", maxHours: 36, level: "problem", requires: "store_ad_accounts", hint: "네이버 광고 키·ad-insight-sync 확인" },
+  { label: "광고 시간대 동기화", table: "ad_hourly_stats", column: "synced_at", maxHours: 36, level: "problem", requires: "store_ad_accounts", hint: "ad-insight-sync 크론 확인" },
+  { label: "날씨 수집", table: "weather_daily", column: "synced_at", maxHours: 36, level: "problem", requires: "store_ad_accounts", hint: "ad-insight-sync 크론 확인" },
+  { label: "광고 주간 리포트", table: "ad_weekly_reports", column: "generated_at", maxHours: 8 * 24, level: "problem", requires: "store_ad_accounts", hint: "ad-weekly-report 크론(일요일) 확인" },
+  { label: "토스 매출 동기화", table: "toss_daily_sales", column: "synced_at", maxHours: 36, level: "problem", requires: "store_toss_merchants", hint: "토스 연동 키 확인" },
+  { label: "토스 결제 수신(웹훅)", table: "toss_webhook_events", column: "received_at", maxHours: 30, level: "warning", requires: "store_toss_merchants", hint: "토스 웹훅 주소 확인" },
+  { label: "출퇴근 알림 발송", table: "attendance_reminders", column: "sent_at", maxHours: 48, level: "warning", requires: "schedule_shifts", hint: "attendance-reminders pg_cron 확인" },
+  { label: "주간보고 보관", table: "weekly_reports", column: "archived_at", maxHours: 8 * 24, level: "warning", requires: "weekly_reports", hint: "weekly-report-archive 크론 확인" },
+  { label: "검색 노출 순위", table: "search_rank_daily", column: "checked_at", maxHours: 48, level: "warning", requires: "search_rank_daily", hint: "맥미니 작업기 확인" },
+  { label: "출퇴근 기록", table: "attendance_records", column: "recorded_at", maxHours: 72, level: "warning" },
+  { label: "마감입력", table: "daily_closings", column: "updated_at", maxHours: 72, level: "warning" },
+  { label: "입금요청", table: "payment_requests", column: "created_at", maxHours: 7 * 24, level: "warning" },
+  { label: "영수증", table: "receipts", column: "created_at", maxHours: 7 * 24, level: "warning" },
+  { label: "재고 입력", table: "inventory_counts", column: "updated_at", maxHours: 7 * 24, level: "warning" },
+  { label: "스케줄", table: "schedule_shifts", column: "updated_at", maxHours: 7 * 24, level: "warning" },
+  { label: "게시판", table: "board_posts", column: "created_at", maxHours: 14 * 24, level: "warning" },
+];
+
+type FeatureResult = {
+  label: string;
+  last: string | null;
+  hoursAgo: number | null;
+  status: "정상" | "멈춤" | "미사용" | "조회 실패";
+  level: "problem" | "warning";
+  hint?: string;
+  error?: string;
+};
+
+async function checkFeatureFreshness(supabase: ReturnType<typeof createServiceClient>): Promise<FeatureResult[]> {
+  const requiredTables = [...new Set(FEATURE_CHECKS.map((f) => f.requires).filter((t): t is string => !!t))];
+  const inUse = new Map<string, boolean>();
+  await Promise.all(
+    requiredTables.map(async (t) => {
+      const { count, error } = await supabase.from(t).select("*", { count: "exact", head: true });
+      inUse.set(t, !error && (count ?? 0) > 0);
+    })
+  );
+  return Promise.all(
+    FEATURE_CHECKS.map(async (f): Promise<FeatureResult> => {
+      const base = { label: f.label, level: f.level, hint: f.hint };
+      if (f.requires && !inUse.get(f.requires)) return { ...base, last: null, hoursAgo: null, status: "미사용" };
+      const { data, error } = await supabase
+        .from(f.table)
+        .select(f.column)
+        .not(f.column, "is", null)
+        .order(f.column, { ascending: false })
+        .limit(1);
+      if (error) return { ...base, last: null, hoursAgo: null, status: "조회 실패", error: error.message };
+      const last = ((data?.[0] as Record<string, string> | undefined)?.[f.column] ?? null) as string | null;
+      const min = minutesSince(last);
+      const hoursAgo = min === null ? null : Math.round((min / 60) * 10) / 10;
+      const stale = hoursAgo === null || hoursAgo > f.maxHours;
+      return { ...base, last, hoursAgo, status: stale ? "멈춤" : "정상" };
+    })
+  );
+}
+
 function envLabel(): string {
   if (process.env.VERCEL_ENV === "production") return "블루";
   if (process.env.VERCEL_GIT_COMMIT_REF === "staging") return "그린";
@@ -187,22 +260,58 @@ export async function GET(request: Request) {
       info.lastClosing = lastClosing;
       info.lastAttendance = lastAttendance;
       info.lastReviewCollect = lastReviewCollect;
-      // 운영(블루)에서만 "입력이 끊겼다"를 경고한다. 그린은 시험 데이터라 비어 있어도 정상.
+      // 마감·출퇴근·리뷰 수집이 끊겼는지는 아래 3-0 기능별 점검(FEATURE_CHECKS)이 함께 본다.
+    } catch (e) {
+      problems.push(`핵심 테이블 점검 실패: ${errMsg(e)}`);
+    }
+
+    // 3-0) 기능별 "마지막으로 결과가 쌓인 시각" — 자동 작업이 200을 돌려주고도 실제로는 아무것도
+    //      못 쌓는 경우(리뷰 수집 11일 누락)를 잡기 위해 기능마다 결과 테이블을 직접 본다.
+    //      결과는 info.features 표로 항상 돌려주고, 기준 시간을 넘긴 항목은 블루에서만 문제/경고로 올린다.
+    try {
+      const features = await withTimeout(checkFeatureFreshness(supabase), DB_TIMEOUT_MS, "기능별 점검");
+      info.features = features.map((f) => ({ 기능: f.label, 마지막: f.last, 시간전: f.hoursAgo, 상태: f.status }));
       if (env === "블루") {
-        const cd = daysSince(lastClosing);
-        if (cd !== null && cd >= 3) warnings.push(`마감입력이 ${cd}일째 없음 (마지막 ${lastClosing})`);
-        const ad = daysSince(lastAttendance);
-        if (ad !== null && ad >= 3) warnings.push(`출퇴근 기록이 ${ad}일째 없음`);
-        // 리뷰 수집(매일 06시 Vercel 크론 collect-reviews)은 성공하면 매장마다 그날 행이 생긴다.
-        // 이틀 이상 비면 구글 키·결제 문제 등으로 수집이 멈춘 것이므로 '이상'으로 올려 푸시한다.
-        // (2026-10-21부터 열흘간 조용히 멈춰 있던 걸 사람이 먼저 알아챈 적이 있어서 추가.)
-        const rd = daysSince(lastReviewCollect);
-        if (rd !== null && rd >= 2) {
-          problems.push(`리뷰 수집이 ${rd}일째 안 됨 (마지막 ${lastReviewCollect}) — 구글 Places 키·결제 확인`);
+        for (const f of features) {
+          if (f.status === "멈춤") {
+            const msg = `${f.label} ${f.hoursAgo === null ? "기록 없음" : `${Math.round(f.hoursAgo)}시간째 안 됨`}${f.hint ? ` — ${f.hint}` : ""}`;
+            if (f.level === "problem") problems.push(msg);
+            else warnings.push(msg);
+          } else if (f.status === "조회 실패") {
+            warnings.push(`${f.label} 조회 실패: ${f.error}`);
+          }
         }
       }
     } catch (e) {
-      problems.push(`핵심 테이블 점검 실패: ${errMsg(e)}`);
+      warnings.push(`기능별 점검 실패: ${errMsg(e)}`);
+    }
+
+    // 3-0-1) 매장별 마감입력 — 한 매장만 며칠째 마감을 안 쓰는 경우는 전체 최신 날짜로는 안 보인다.
+    if (env === "블루") {
+      try {
+        const since = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+        const [{ data: storeRows }, { data: recent }] = await withTimeout(
+          Promise.all([
+            supabase.from("stores").select("id, name"),
+            supabase.from("daily_closings").select("store_id, date").gte("date", since),
+          ]),
+          DB_TIMEOUT_MS,
+          "매장별 마감"
+        );
+        const lastByStore = new Map<string, string>();
+        for (const r of recent ?? []) {
+          const prev = lastByStore.get(r.store_id);
+          if (!prev || r.date > prev) lastByStore.set(r.store_id, r.date);
+        }
+        // 최근 7일 동안 한 번이라도 마감을 쓴 매장만 본다(아직 앱을 안 쓰는 매장은 제외).
+        for (const s of storeRows ?? []) {
+          const last = lastByStore.get(s.id);
+          const d = daysSince(last);
+          if (last && d !== null && d >= 3) warnings.push(`${s.name} 마감입력 ${d}일째 없음 (마지막 ${last})`);
+        }
+      } catch (e) {
+        warnings.push(`매장별 마감 점검 실패: ${errMsg(e)}`);
+      }
     }
 
     // 3-1) 구글 Places 실제 조회 — 리뷰 수집(collect-reviews)이 쓰는 것과 같은 요청을 매장 한 곳에 보내
