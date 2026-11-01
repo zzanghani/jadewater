@@ -5,6 +5,14 @@ import { classifyPostsByStore, fetchNaverBlogPosts, type NaverBlogPost } from "@
 import { generateReviewSummary } from "@/lib/claude";
 import { kstDateString } from "@/lib/date";
 
+function daysBetween(fromDate: string | null, toDate: string): number {
+  if (!fromDate) return 0;
+  const a = Date.parse(`${fromDate}T00:00:00Z`);
+  const b = Date.parse(`${toDate}T00:00:00Z`);
+  if (Number.isNaN(a) || Number.isNaN(b)) return 0;
+  return Math.round((b - a) / 86400000);
+}
+
 // Vercel Cron이 매일 KST 06:00에 호출한다 (vercel.json 참고).
 // CRON_SECRET이 설정되어 있으면 Vercel이 Authorization 헤더에 자동으로 실어 보낸다.
 export async function GET(request: Request) {
@@ -23,7 +31,6 @@ export async function GET(request: Request) {
 
   const supabase = createServiceClient();
   const today = kstDateString(0);
-  const yesterday = kstDateString(1);
 
   const [{ data: stores, error: storesError }, { data: brands, error: brandsError }] =
     await Promise.all([
@@ -53,7 +60,19 @@ export async function GET(request: Request) {
   // 잡히는 경우가 있는데, 그러면 실제로는 오래된 글인데도 "오늘 새로 발견"으로
   // 저장돼서 리포트에 "새로 달린 후기"처럼 보이는 문제가 있었다. 그래서 실제
   // 작성일(postedAt)이 최근 7일 이내인 글만 저장 대상으로 남긴다.
-  const sevenDaysAgo = kstDateString(7);
+  //
+  // 수집이 며칠 멈췄다가 다시 돌면(2026-10-21~11-01 구글 키 만료처럼) 그 사이 올라온 글을
+  // 놓치지 않도록, 마지막으로 성공한 수집일 다음 날부터 오늘까지로 창을 자동으로 넓힌다
+  // (최소 7일, 최대 30일). 평소엔 7일 그대로.
+  const { data: lastStat } = await supabase
+    .from("review_platform_stats")
+    .select("date")
+    .lt("date", today)
+    .order("date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const lookbackDays = Math.min(30, Math.max(7, daysBetween(lastStat?.date ?? null, today)));
+  const sinceDate = kstDateString(lookbackDays);
   const postsByStore: Record<string, NaverBlogPost[]> = {};
   if (naverClientId && naverClientSecret) {
     for (const brand of brands ?? []) {
@@ -66,7 +85,7 @@ export async function GET(request: Request) {
         naverClientId,
         naverClientSecret
       );
-      const recentPosts = allPosts.filter((p) => p.postedAt >= sevenDaysAgo);
+      const recentPosts = allPosts.filter((p) => p.postedAt >= sinceDate);
       Object.assign(
         postsByStore,
         classifyPostsByStore(recentPosts, brand.blog_match_token, brandStores)
@@ -91,17 +110,19 @@ export async function GET(request: Request) {
     }
     const snapshot = placeResult.snapshot;
 
-    const { data: yesterdayStat } = await supabase
+    // 증가 건수는 "직전에 성공한 수집" 대비로 센다. 어제 행이 없으면(며칠 멈췄던 경우)
+    // 그 전 마지막 행과 비교해서 멈춘 기간 동안 늘어난 리뷰 수가 그대로 보이게 한다.
+    const { data: prevStat } = await supabase
       .from("review_platform_stats")
       .select("review_count")
       .eq("store_id", store.id)
-      .eq("date", yesterday)
       .eq("platform", "구글")
+      .lt("date", today)
+      .order("date", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
-    const changeCount = yesterdayStat
-      ? snapshot.reviewCount - yesterdayStat.review_count
-      : 0;
+    const changeCount = prevStat ? snapshot.reviewCount - prevStat.review_count : 0;
 
     await supabase.from("review_platform_stats").upsert(
       {
@@ -227,7 +248,7 @@ export async function GET(request: Request) {
     );
   }
   return NextResponse.json(
-    { ok: !allFailed, date: today, googleFailures, results },
+    { ok: !allFailed, date: today, since: sinceDate, lookbackDays, googleFailures, results },
     { status: allFailed ? 502 : 200 }
   );
 }
