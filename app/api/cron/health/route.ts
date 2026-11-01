@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendPush, webPushStatus } from "@/lib/webpush";
+import { fetchGooglePlaceSnapshot } from "@/lib/googlePlaces";
 
 // 앱 자동 점검(헬스체크).
 // - 매일 아침 루틴(클라우드 에이전트)과 pg_cron(점심, supabase/migration_health_check.sql)이 호출한다.
@@ -202,6 +203,41 @@ export async function GET(request: Request) {
       }
     } catch (e) {
       problems.push(`핵심 테이블 점검 실패: ${errMsg(e)}`);
+    }
+
+    // 3-1) 구글 Places 실제 조회 — 리뷰 수집(collect-reviews)이 쓰는 것과 같은 요청을 매장 한 곳에 보내
+    //      키·결제·API 사용 설정 문제를 바로 드러낸다(2026-10-21부터 조용히 실패했던 원인 추적용).
+    //      하루 두 번(아침 루틴·점심 pg_cron) 한 건이라 비용은 무시할 수준.
+    const placesKey = process.env.GOOGLE_PLACES_API_KEY;
+    if (!placesKey) {
+      warnings.push("GOOGLE_PLACES_API_KEY 없음 — 리뷰 수집 불가");
+      info.googlePlaces = "키 없음";
+    } else {
+      try {
+        const { data: sample } = await withTimeout(
+          supabase.from("stores").select("name, google_place_id").not("google_place_id", "is", null).limit(1),
+          DB_TIMEOUT_MS,
+          "place_id 조회"
+        );
+        const target = sample?.[0];
+        if (!target?.google_place_id) {
+          info.googlePlaces = "place_id 있는 매장 없음";
+        } else {
+          const r = await withTimeout(
+            fetchGooglePlaceSnapshot(target.google_place_id, placesKey),
+            DB_TIMEOUT_MS,
+            "구글 Places"
+          );
+          if (r.ok) {
+            info.googlePlaces = `정상 (${target.name} 평점 ${r.snapshot.rating}, 리뷰 ${r.snapshot.reviewCount}건)`;
+          } else {
+            info.googlePlaces = r.error;
+            problems.push(`구글 Places 조회 실패 (${r.error}) — 리뷰 수집이 멈춤`);
+          }
+        }
+      } catch (e) {
+        problems.push(`구글 Places 조회 실패: ${errMsg(e)}`);
+      }
     }
   }
 
