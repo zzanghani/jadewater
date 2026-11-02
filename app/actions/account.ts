@@ -21,6 +21,7 @@ export type DeleteAccountState = { error: string } | undefined;
 //      영구 차단(ban). 원래 이메일로 다시 가입할 수 있게 된다.
 // 로 처리한다. 이용자 입장에서는 개인정보가 모두 사라지고 다시 로그인할 수
 // 없으므로 '삭제'이고, 회사 기록에는 '탈퇴한 사용자'가 쓴 것으로만 남는다.
+// 1)~3)은 DB RPC 한 번(한 트랜잭션)으로 처리해, 중간에 실패하면 아무것도 안 바뀐다.
 //
 // 서비스 롤 클라이언트는 원칙적으로 사용자 요청에서 쓰지 않지만(lib/supabase/service.ts),
 // auth.users 변경은 서비스 키가 아니면 불가능하고, 여기서는 "본인이 비밀번호를
@@ -67,7 +68,7 @@ export async function deleteMyAccount(
   const service = createServiceClient();
   const { data: profile } = await service
     .from("profiles")
-    .select("role, store_id, department, status, avatar_path")
+    .select("role, store_id, department, status")
     .eq("id", user.id)
     .single();
   if (!profile) {
@@ -90,45 +91,20 @@ export async function deleteMyAccount(
 
   const anonymizedEmail = `deleted-${user.id.slice(0, 8)}-${Date.now().toString(36)}@deleted.invalid`;
 
-  // 1) 개인 설정 삭제 — 알림이 더 가지 않게, 채팅방·팔로우 목록에서 빠지게.
-  const cleanups = await Promise.all([
-    service.from("push_subscriptions").delete().eq("user_id", user.id),
-    service.from("attendance_reminders").delete().eq("user_id", user.id),
-    service.from("board_post_followers").delete().eq("user_id", user.id),
-    service.from("monthly_plan_followers").delete().eq("user_id", user.id),
-    service.from("chat_room_members").delete().eq("user_id", user.id),
-  ]);
-  for (const { error } of cleanups) {
-    if (error) console.error(`[deleteMyAccount] 개인 설정 삭제 실패 (user_id=${user.id})`, error);
+  // 1) DB 정리 + 프로필 익명화 — RPC 하나(한 트랜잭션). 중간에 실패하면 아무것도
+  //    안 바뀐다. (supabase/migration_account_deletion.sql 의 delete_account_data)
+  //    서비스 롤이므로 prevent_profile_privilege_escalation 트리거의 auth.uid()
+  //    검사에 걸리지 않는다.
+  const { data: oldAvatar, error: rpcError } = await service.rpc("delete_account_data", {
+    target_user: user.id,
+    anonymized_email: anonymizedEmail,
+  });
+  if (rpcError) {
+    console.error(`[deleteMyAccount] 탈퇴 처리 실패 (user_id=${user.id})`, rpcError);
+    return { error: "계정 삭제 처리 중 오류가 발생했습니다. 잠시 후 다시 시도하거나 관리자에게 문의해 주세요." };
   }
 
-  // 2) 프로필 사진 파일 삭제
-  if (profile.avatar_path) {
-    const { error } = await service.storage.from("avatars").remove([profile.avatar_path]);
-    if (error) console.error(`[deleteMyAccount] 사진 삭제 실패 (user_id=${user.id})`, error);
-  }
-
-  // 3) 프로필 익명화 (서비스 롤이므로 prevent_profile_privilege_escalation 트리거의
-  //    auth.uid() 검사에 걸리지 않는다)
-  const { error: profileError } = await service
-    .from("profiles")
-    .update({
-      name: "탈퇴한 사용자",
-      email: anonymizedEmail,
-      avatar_path: null,
-      store_id: null,
-      department: null,
-      role: "staff",
-      status: "deleted",
-      deleted_at: new Date().toISOString(),
-    })
-    .eq("id", user.id);
-  if (profileError) {
-    console.error(`[deleteMyAccount] 프로필 익명화 실패 (user_id=${user.id})`, profileError);
-    return { error: "계정 삭제 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
-  }
-
-  // 4) 로그인 계정 잠금 + 개인정보 제거. 실패해도 프로필은 이미 'deleted'라
+  // 2) 로그인 계정 잠금 + 개인정보 제거. 실패해도 프로필은 이미 'deleted'라
   //    레이아웃이 앱 화면을 막는다(app/(app)/layout.tsx의 DeletedScreen).
   const { error: authError } = await service.auth.admin.updateUserById(user.id, {
     email: anonymizedEmail,
@@ -139,6 +115,12 @@ export async function deleteMyAccount(
   });
   if (authError) {
     console.error(`[deleteMyAccount] 로그인 계정 잠금 실패 (user_id=${user.id})`, authError);
+  }
+
+  // 3) 프로필 사진 파일 삭제 (실패해도 치명적이지 않다 — 경로는 이미 프로필에서 지워졌다)
+  if (oldAvatar) {
+    const { error } = await service.storage.from("avatars").remove([oldAvatar]);
+    if (error) console.error(`[deleteMyAccount] 사진 삭제 실패 (user_id=${user.id})`, error);
   }
 
   await supabase.auth.signOut();

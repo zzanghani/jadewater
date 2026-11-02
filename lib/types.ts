@@ -1405,6 +1405,7 @@ export type Database = {
     Views: Record<string, never>
     Functions: {
       attendance_cron_token: { Args: Record<string, never>; Returns: string | null }
+      delete_account_data: { Args: { target_user: string; anonymized_email: string }; Returns: string | null }
       health_snapshot: { Args: Record<string, never>; Returns: Record<string, unknown> | null }
       store_ad_account_status: {
         Args: { target_store_id: string }
