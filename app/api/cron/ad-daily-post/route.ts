@@ -13,12 +13,15 @@ import { generateAdDailyComment } from "@/lib/claude";
 // 광고·토스가 연결된 매장마다 어제 성과를 다시 받아 "성과 확인 게시판" 글을 올리고,
 // 그 매장 지점장과 본사 마스터에게 푸시를 보낸다.
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const authHeader = request.headers.get("authorization") ?? "";
+  const service = createServiceClient();
+  // 호출 토큰: Vercel CRON_SECRET 또는 Supabase Vault의 cron_secret (출퇴근 알림 크론과 같은 방식 — 수동으로 다시 돌릴 때 DB에서 부른다).
+  const { data: dbToken } = await service.rpc("attendance_cron_token");
+  const accepted = [process.env.CRON_SECRET, dbToken].filter((t): t is string => typeof t === "string" && t.length > 0);
+  if (accepted.length === 0 || !accepted.some((t) => authHeader === `Bearer ${t}`)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const started = Date.now();
-  const service = createServiceClient();
   const today = kstYmd(0);
   const y = addYmd(today, -1);
   const [{ data: accounts }, { data: merchants }, { data: toss }, { data: storeRows }, { data: masters }] = await Promise.all([
