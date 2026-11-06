@@ -6,7 +6,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { sendPush } from "@/lib/webpush";
 import { addYmd, kstYmd } from "@/lib/adReport";
 import { syncAdDaily, syncTossDaily } from "@/lib/adInsight";
-import { adDailyPostPushBody, adDailyPostToText, buildAdDailyPost } from "@/lib/adDailyPost";
+import { adDailyAllPushBody, adDailyPostPushBody, adDailyPostToText, buildAdDailyPost, combineAdDailyPosts, type AdDailyPost } from "@/lib/adDailyPost";
 import { generateAdDailyComment } from "@/lib/claude";
 
 // Vercel Cron이 매일 아침 08:00 KST(23:00 UTC)에 호출한다.
@@ -38,6 +38,25 @@ export async function GET(request: Request) {
   const masterIds = (masters ?? []).filter((m) => (m.role === "owner" && !m.department) || m.department === "marketing").map((m) => m.id);
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const results: Record<string, string> = {};
+  const built: { storeId: string; name: string; post: AdDailyPost }[] = [];
+
+  async function pushTo(userIds: string[], payload: { title: string; body: string; url: string }): Promise<number> {
+    let sent = 0;
+    for (const userId of Array.from(new Set(userIds))) {
+      const { data: subs } = await service.from("push_subscriptions").select("*").eq("user_id", userId);
+      if (!subs?.length) continue;
+      const expired: string[] = [];
+      await Promise.all(
+        subs.map(async (s) => {
+          const { expired: ex } = await sendPush({ endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth }, payload);
+          if (ex) expired.push(s.id);
+          else sent++;
+        })
+      );
+      if (expired.length) await service.from("push_subscriptions").delete().in("id", expired);
+    }
+    return sent;
+  }
 
   await Promise.all(
     storeIds.map(async (storeId) => {
@@ -74,24 +93,13 @@ export async function GET(request: Request) {
         }
         await service.from("ad_daily_posts").upsert({ store_id: storeId, date: y, post: post as unknown as Record<string, unknown>, generated_at: new Date().toISOString() }, { onConflict: "store_id,date" });
 
-        // 푸시: 그 매장 지점장 + 본사 마스터
+        built.push({ storeId, name, post });
+        // 푸시: 그 매장 지점장에게 매장 글 (본사에는 아래에서 전체 합계 한 통)
         const { data: owners } = await service.from("profiles").select("id").eq("store_id", storeId).eq("role", "owner").is("department", null).eq("status", "approved");
-        const targets = Array.from(new Set([...(owners ?? []).map((o) => o.id), ...masterIds]));
-        const payload = { title: `${store?.short_label ?? name} 어제 광고 성과`, body: adDailyPostPushBody(post), url: "/ad-report/board" };
-        let sent = 0;
-        for (const userId of targets) {
-          const { data: subs } = await service.from("push_subscriptions").select("*").eq("user_id", userId);
-          if (!subs?.length) continue;
-          const expired: string[] = [];
-          await Promise.all(
-            subs.map(async (s) => {
-              const { expired: ex } = await sendPush({ endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth }, payload);
-              if (ex) expired.push(s.id);
-              else sent++;
-            })
-          );
-          if (expired.length) await service.from("push_subscriptions").delete().in("id", expired);
-        }
+        const sent = await pushTo(
+          (owners ?? []).map((o) => o.id),
+          { title: `${store?.short_label ?? name} 어제 광고 성과`, body: adDailyPostPushBody(post), url: "/ad-report/board" }
+        );
         results[name] = `게시 완료 · 푸시 ${sent}건${post.comment ? " · AI 한마디" : ""}${notes.length ? ` · ${notes.join(", ")}` : ""}`;
       } catch (e) {
         results[name] = `실패: ${(e as Error).message}`;
@@ -99,6 +107,12 @@ export async function GET(request: Request) {
       }
     })
   );
+  // 본사(대표님·마케팅팀): 전체 매장 합계 한 통
+  if (built.length) {
+    const all = combineAdDailyPosts(y, built);
+    const sent = await pushTo(masterIds, { title: "어제 광고 성과 (전체 매장)", body: adDailyAllPushBody(all), url: "/ad-report/board?view=all" });
+    results["전체"] = `본사 푸시 ${sent}건`;
+  }
   console.log("[ad-daily-post]", y, results);
   return NextResponse.json({ ok: true, date: y, results });
 }

@@ -130,3 +130,83 @@ export function adDailyPostPushBody(p: AdDailyPost): string {
   const first = p.flags.find((f) => f.sev === "bad") ?? p.flags.find((f) => f.sev === "warn") ?? p.flags[0];
   return first ? `${head}\n${first.text}` : head;
 }
+
+/* ---------- 전체 매장 합계 글 ---------- */
+export type AdDailyAllPost = {
+  date: string;
+  stores: { storeId: string; name: string; post: AdDailyPost; worst: AdFlag["sev"] }[];
+  y: AdDay;
+  lastWeek: AdDay | null;
+  w7: AdAgg;
+  p7: AdAgg;
+  mtd: AdDailyPost["mtd"];
+  /** 매장별 급한 진단(bad·warn)만 모아 매장 이름을 붙인 것 */
+  flags: (AdFlag & { store: string })[];
+};
+
+const SEV_ORDER: Record<AdFlag["sev"], number> = { bad: 0, warn: 1, good: 2, info: 3 };
+export function worstSev(flags: AdFlag[]): AdFlag["sev"] {
+  return flags.reduce<AdFlag["sev"]>((w, f) => (SEV_ORDER[f.sev] < SEV_ORDER[w] ? f.sev : w), "info");
+}
+
+function sumDay(date: string, days: (AdDay | null)[]): AdDay {
+  const xs = days.filter((d): d is AdDay => !!d);
+  const withSales = xs.filter((d) => d.sales != null);
+  const withOrders = xs.filter((d) => d.orders != null);
+  return {
+    date,
+    imp: xs.reduce((a, d) => a + d.imp, 0),
+    clk: xs.reduce((a, d) => a + d.clk, 0),
+    cost: xs.reduce((a, d) => a + d.cost, 0),
+    conv: xs.reduce((a, d) => a + d.conv, 0),
+    sales: withSales.length ? withSales.reduce((a, d) => a + (d.sales ?? 0), 0) : null,
+    orders: withOrders.length ? withOrders.reduce((a, d) => a + (d.orders ?? 0), 0) : null,
+  };
+}
+function sumAgg(aggs: AdAgg[]): AdAgg {
+  const withSales = aggs.filter((a) => a.sales != null);
+  return {
+    cost: aggs.reduce((a, x) => a + x.cost, 0),
+    clk: aggs.reduce((a, x) => a + x.clk, 0),
+    conv: aggs.reduce((a, x) => a + x.conv, 0),
+    sales: withSales.length ? withSales.reduce((a, x) => a + (x.sales ?? 0), 0) : null,
+    salesDays: Math.max(0, ...aggs.map((a) => a.salesDays)),
+    days: Math.max(0, ...aggs.map((a) => a.days)),
+  };
+}
+
+// 같은 날짜의 매장 글들을 하나로 합친다 (본사 "전체 매장" 보기·푸시용). 숫자는 단순 합계.
+export function combineAdDailyPosts(date: string, items: { storeId: string; name: string; post: AdDailyPost }[]): AdDailyAllPost {
+  const posts = items.map((i) => i.post);
+  const budgets = posts.map((p) => p.mtd.budget).filter((b): b is number => b != null && b > 0);
+  const lw = posts.map((p) => p.lastWeek);
+  const flags: AdDailyAllPost["flags"] = [];
+  for (const i of items) for (const f of i.post.flags) if (f.sev === "bad" || f.sev === "warn") flags.push({ ...f, store: i.name });
+  flags.sort((a, b) => SEV_ORDER[a.sev] - SEV_ORDER[b.sev]);
+  return {
+    date,
+    stores: items.map((i) => ({ ...i, worst: worstSev(i.post.flags) })),
+    y: sumDay(date, posts.map((p) => p.y)),
+    lastWeek: lw.some((d) => d) ? sumDay(addYmd(date, -7), lw) : null,
+    w7: sumAgg(posts.map((p) => p.w7)),
+    p7: sumAgg(posts.map((p) => p.p7)),
+    mtd: {
+      cost: posts.reduce((a, p) => a + p.mtd.cost, 0),
+      sales: posts.some((p) => p.mtd.sales != null) ? posts.reduce((a, p) => a + (p.mtd.sales ?? 0), 0) : null,
+      budget: budgets.length ? budgets.reduce((a, b) => a + b, 0) : null,
+      day: posts[0]?.mtd.day ?? Number(date.slice(8, 10)),
+      monthDays: posts[0]?.mtd.monthDays ?? 30,
+    },
+    flags,
+  };
+}
+
+// 본사용 푸시 한 줄: 전체 합계 + 급한 매장 수.
+export function adDailyAllPushBody(all: AdDailyAllPost): string {
+  const r = roasPerMan(all.y.sales, all.y.cost);
+  const bad = new Set(all.flags.filter((f) => f.sev === "bad").map((f) => f.store)).size;
+  const warn = new Set(all.flags.filter((f) => f.sev === "warn").map((f) => f.store)).size;
+  const head = `${all.stores.length}개 매장 · 광고비 ${man(all.y.cost)} · 매출 ${all.y.sales == null ? "-" : man(all.y.sales)}${r != null ? ` · 1만원당 ${r.toFixed(1)}만원` : ""}`;
+  const tail = bad || warn ? `조치 필요 ${bad}곳 · 점검 ${warn}곳` : "급한 매장 없음";
+  return `${head}\n${tail}`;
+}
