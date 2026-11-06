@@ -1,5 +1,5 @@
 import AdPageHeader from "@/components/AdPageHeader";
-import AdStoreSelect from "@/components/AdStoreSelect";
+import BoardStoreSelect from "@/components/BoardStoreSelect";
 import AdDailyBoard, { type AllPostRow, type BoardPostRow } from "@/components/AdDailyBoard";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -7,15 +7,35 @@ import { resolveAdPageScope } from "@/lib/adPage";
 import { combineAdDailyPosts, type AdDailyPost } from "@/lib/adDailyPost";
 
 // 성과 확인 게시판 — 매일 아침 자동으로 올라오는 "어제 광고 성과" 글.
-// "전체 매장" 탭은 볼 수 있는 매장(마스터 전부·지점장 같은 브랜드)의 글을 날짜별로 합쳐 보여주고,
-// "매장별" 탭은 머리글에서 고른 매장 글. 확인 버튼은 자기 매장(또는 본사)만.
-export default async function AdDailyBoardPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
-  const [{ storeId, stores, canEdit, isHqMaster }, { view }] = await Promise.all([resolveAdPageScope(), searchParams]);
+// 점장도 전 매장 글을 다 본다(대표님 지시 2026-11-06): "전체 매장" 탭은 모든 매장 글을 날짜별로 합쳐 보여주고,
+// "매장별" 탭은 머리글에서 고른 매장 글(처음엔 자기 매장). 확인 버튼은 자기 매장 점장만.
+export default async function AdDailyBoardPage({ searchParams }: { searchParams: Promise<{ view?: string; store?: string }> }) {
+  const [scope, { view, store: storeParam }] = await Promise.all([resolveAdPageScope(), searchParams]);
+  const { isHqMaster } = scope;
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const service = createServiceClient();
+  // 전 매장 (브랜드 → 매장 순)
+  const [{ data: storeRows }, { data: brandRows }, { data: profile }] = await Promise.all([
+    service.from("stores").select("id, name, brand_id, sort_order"),
+    service.from("brands").select("id, sort_order"),
+    user ? supabase.from("profiles").select("store_id").eq("id", user.id).maybeSingle() : Promise.resolve({ data: null }),
+  ]);
+  const brandOrder = new Map((brandRows ?? []).map((b) => [b.id, b.sort_order]));
+  const stores = (storeRows ?? [])
+    .slice()
+    .sort((a, b) => {
+      const ba = brandOrder.get(a.brand_id) ?? Number.MAX_SAFE_INTEGER;
+      const bb = brandOrder.get(b.brand_id) ?? Number.MAX_SAFE_INTEGER;
+      return ba !== bb ? ba - bb : a.sort_order - b.sort_order;
+    })
+    .map(({ id, name, brand_id }) => ({ id, name, brand_id }));
+  const ownStoreId = profile?.store_id ?? null;
+  const storeId =
+    storeParam && stores.some((s) => s.id === storeParam) ? storeParam : ownStoreId && stores.some((s) => s.id === ownStoreId) ? ownStoreId : stores.some((s) => s.id === scope.storeId) ? scope.storeId : (stores[0]?.id ?? scope.storeId);
+  const canEdit = !!ownStoreId && ownStoreId === storeId;
   const storeName = stores.find((s) => s.id === storeId)?.name ?? "";
   const nameOf = new Map(stores.map((s) => [s.id, s.name]));
   const storeIds = stores.map((s) => s.id);
@@ -58,12 +78,13 @@ export default async function AdDailyBoardPage({ searchParams }: { searchParams:
         })
       : null;
 
+  // 처음 열면: 본사는 전체 매장, 점장은 자기 매장. 주소의 view 값이 있으면 그대로.
   const defaultView: "all" | "store" = view === "all" ? "all" : view === "store" ? "store" : isHqMaster && allRows ? "all" : "store";
 
   return (
     <div className="flex flex-col gap-4">
-      <AdPageHeader back="/ad-report" backLabel="광고 리포트" title="성과 확인" desc={`${storeName} · 매일 아침 8시 어제 성과 자동 게시`} action={<AdStoreSelect stores={stores} current={storeId} />} />
-      <AdDailyBoard key={storeId} storeId={storeId} rows={rows} allRows={allRows} defaultView={defaultView} currentUserId={user?.id ?? ""} canConfirm={canEdit && !isHqMaster} showReads={isHqMaster} />
+      <AdPageHeader back="/ad-report" backLabel="광고 리포트" title="성과 확인" desc={`${storeName} · 매일 아침 8시 어제 성과 자동 게시`} action={<BoardStoreSelect stores={stores} current={storeId} />} />
+      <AdDailyBoard key={storeId} storeId={storeId} rows={rows} allRows={allRows} defaultView={defaultView} currentUserId={user?.id ?? ""} canConfirm={canEdit} showReads={isHqMaster} />
     </div>
   );
 }

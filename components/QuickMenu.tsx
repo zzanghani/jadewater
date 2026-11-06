@@ -101,7 +101,7 @@ export default function QuickMenu({
       ? EMPLOYEE_ITEMS
       : isMaster
         ? [PLAN_ITEM, ...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), ATTENDANCE_ITEM, AD_REPORT_ITEM, AD_BOARD_ITEM, RECRUIT_ITEM, HR_ITEM, ACCOUNTS_ITEM, LOAN_ITEM, MODULES_ITEM]
-        : [ATTENDANCE_ITEM, ...ALL_ITEMS, REVIEW_REPORT_ITEM, ...(showAdReport ? [AD_REPORT_ITEM, AD_BOARD_ITEM] : []), RECRUIT_ITEM, HR_ITEM, MY_REVIEW_ITEM];
+        : [ATTENDANCE_ITEM, ...ALL_ITEMS, REVIEW_REPORT_ITEM, ...(showAdReport ? [AD_REPORT_ITEM] : []), AD_BOARD_ITEM, RECRUIT_ITEM, HR_ITEM, MY_REVIEW_ITEM];
   // 브랜드가 끈 기능 모듈의 화면은 메뉴에서 뺀다(lib/modules.ts).
   const items = allItems.filter((i) => pathAllowed(i.href, activeModules));
 
