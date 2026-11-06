@@ -71,6 +71,13 @@ export default async function AdReportPage() {
         <MenuTile href="/ad-report/hours" title="시간·요일 분석" sub="매출 피크 vs 광고 나가는 시간" />
         <MenuTile href="/ad-report/search" title="검색 노출" sub="지도 순위 · 블로그 우리 글" />
       </div>
+      <Link href="/ad-report/board" className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 text-sm font-semibold">
+        <span>
+          성과 확인 게시판
+          <span className="ml-2 text-[11px] font-normal text-muted">매일 아침 8시 자동 게시</span>
+        </span>
+        <span aria-hidden className="text-muted">→</span>
+      </Link>
       <AdReportShell initial={initial} />
     </div>
   );

@@ -87,6 +87,7 @@ const FEATURE_CHECKS: FeatureCheck[] = [
   { label: "광고 키워드 동기화", table: "ad_keyword_daily_stats", column: "synced_at", maxHours: 36, level: "problem", requires: "ad_keyword_daily_stats", hint: "ad-keyword-sync 크론(23:55) 확인" },
   { label: "날씨 수집", table: "weather_daily", column: "synced_at", maxHours: 36, level: "problem", requires: "store_ad_accounts", hint: "ad-insight-sync 크론 확인" },
   { label: "광고 주간 리포트", table: "ad_weekly_reports", column: "generated_at", maxHours: 8 * 24, level: "problem", requires: "store_ad_accounts", hint: "ad-weekly-report 크론(일요일) 확인" },
+  { label: "성과 확인 게시판(아침 글)", table: "ad_daily_posts", column: "generated_at", maxHours: 30, level: "warning", requires: "store_ad_accounts", hint: "ad-daily-post 크론(08:00) 확인" },
   { label: "토스 매출 동기화", table: "toss_daily_sales", column: "synced_at", maxHours: 36, level: "problem", requires: "store_toss_merchants", hint: "토스 연동 키 확인" },
   { label: "토스 결제 수신(웹훅)", table: "toss_webhook_events", column: "received_at", maxHours: 30, level: "warning", requires: "store_toss_merchants", hint: "토스 웹훅 주소 확인" },
   { label: "출퇴근 알림 발송", table: "attendance_reminders", column: "sent_at", maxHours: 48, level: "warning", requires: "schedule_shifts", hint: "attendance-reminders pg_cron 확인" },

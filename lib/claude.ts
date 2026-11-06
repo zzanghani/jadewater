@@ -223,3 +223,25 @@ ${prevText || "(없음)"}
     return null;
   }
 }
+
+// 성과 확인 게시판의 "오늘의 한마디" — 어제 광고 성과 숫자를 보고 점장에게 두세 문장.
+// 숫자에 없는 건 지어내지 않게 하고, 폰에서 읽히게 짧게.
+export async function generateAdDailyComment(dataText: string, apiKey: string): Promise<string | null> {
+  const prompt = `너는 레스토랑 체인의 네이버 검색광고를 운영하는 퍼포먼스 마케터야. 아래는 한 매장의 어제 광고 성과와 매출이야.
+
+${dataText}
+
+점장이 아침에 폰으로 읽는 글이야. 위 숫자만 근거로, 한국어로 2~3문장(전체 150자 안)만 써줘.
+- 첫 문장: 어제 광고가 매출로 이어졌는지 한 줄 평가.
+- 다음 문장: 오늘 당장 할 일 한 가지 (없으면 "오늘은 그대로 두세요").
+- 금액은 만원 단위, 전문 용어(CPC, ROAS) 대신 쉬운 말. 머리말·따옴표·목록 기호 없이 문장만.`;
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 300, thinking: { type: "disabled" }, messages: [{ role: "user", content: prompt }] }),
+  });
+  if (!res.ok) return null;
+  const data = (await res.json()) as { content?: { type: string; text?: string }[] };
+  const text = data.content?.find((c) => c.type === "text")?.text?.trim();
+  return text ? text.slice(0, 400) : null;
+}

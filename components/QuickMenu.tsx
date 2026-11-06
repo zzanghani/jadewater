@@ -48,6 +48,8 @@ const REVIEW_REPORT_ITEM = { href: "/review-report", label: "리뷰리포트", i
 const ATTENDANCE_ITEM = { href: "/attendance", label: "출퇴근", icon: ClockPinIcon } as const;
 // 네이버 검색광고 주간 리포트 — 지점장(자기 매장)·마스터(전 매장).
 const AD_REPORT_ITEM = { href: "/ad-report", label: "광고 리포트", icon: MegaphoneIcon } as const;
+// 성과 확인 게시판 — 매일 아침 자동으로 올라오는 어제 광고 성과. 모든 지점장·마스터 (시범 범위와 무관).
+const AD_BOARD_ITEM = { href: "/ad-report/board", label: "성과 확인", icon: ClipboardCheckIcon } as const;
 // 체험단 검증 — 리뷰노트 지원자 블로그 자동 확인. 지점장(자기 매장)·마스터(전 매장).
 const RECRUIT_ITEM = { href: "/recruit", label: "리뷰노트 체험단", icon: StarIcon } as const;
 
@@ -98,8 +100,8 @@ export default function QuickMenu({
     : employeeOnly
       ? EMPLOYEE_ITEMS
       : isMaster
-        ? [PLAN_ITEM, ...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), ATTENDANCE_ITEM, AD_REPORT_ITEM, RECRUIT_ITEM, HR_ITEM, ACCOUNTS_ITEM, LOAN_ITEM, MODULES_ITEM]
-        : [ATTENDANCE_ITEM, ...ALL_ITEMS, REVIEW_REPORT_ITEM, ...(showAdReport ? [AD_REPORT_ITEM] : []), RECRUIT_ITEM, HR_ITEM, MY_REVIEW_ITEM];
+        ? [PLAN_ITEM, ...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), ATTENDANCE_ITEM, AD_REPORT_ITEM, AD_BOARD_ITEM, RECRUIT_ITEM, HR_ITEM, ACCOUNTS_ITEM, LOAN_ITEM, MODULES_ITEM]
+        : [ATTENDANCE_ITEM, ...ALL_ITEMS, REVIEW_REPORT_ITEM, ...(showAdReport ? [AD_REPORT_ITEM, AD_BOARD_ITEM] : []), RECRUIT_ITEM, HR_ITEM, MY_REVIEW_ITEM];
   // 브랜드가 끈 기능 모듈의 화면은 메뉴에서 뺀다(lib/modules.ts).
   const items = allItems.filter((i) => pathAllowed(i.href, activeModules));
 
@@ -239,6 +241,16 @@ function HrIcon() {
       <circle cx="9" cy="8" r="3" />
       <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
       <path d="M17 8h4M19 6v4" />
+    </svg>
+  );
+}
+
+function ClipboardCheckIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="5" y="4" width="14" height="17" rx="2" />
+      <path d="M9 4V3h6v1" />
+      <path d="M9 13l2 2 4-4" />
     </svg>
   );
 }

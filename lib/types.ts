@@ -1108,6 +1108,18 @@ export type Database = {
         Update: Partial<{ store_id: string; date: string; memo: string; generated_at: string }>
         Relationships: []
       }
+      ad_daily_posts: {
+        Row: { store_id: string; date: string; post: Record<string, unknown>; generated_at: string }
+        Insert: { store_id: string; date: string; post: Record<string, unknown>; generated_at?: string }
+        Update: Partial<{ store_id: string; date: string; post: Record<string, unknown>; generated_at: string }>
+        Relationships: []
+      }
+      ad_daily_post_reads: {
+        Row: { store_id: string; date: string; user_id: string; read_at: string }
+        Insert: { store_id: string; date: string; user_id: string; read_at?: string }
+        Update: Partial<{ store_id: string; date: string; user_id: string; read_at: string }>
+        Relationships: []
+      }
       recruit_rounds: {
         Row: RecruitRound
         Insert: Partial<RecruitRound> & { store_id: string }
