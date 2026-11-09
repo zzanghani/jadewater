@@ -124,6 +124,8 @@ export default function SettlementForm({
     deliveryPlatformFee +
     autoDiscountTotal;
   const netProfit = totalSales - totalExpense;
+  // 지점장 정산금액 = 당기순이익의 20% (손실이면 0). 대표님 지시 2026-11-10.
+  const managerShare = managerSettlementAmount(netProfit);
   const corpReserve =
     pensionReserve + vatReserve + corpTaxReserve + reserveCarryover - reserveDeduction;
 
@@ -308,6 +310,7 @@ export default function SettlementForm({
               </span>
             </span>
           </div>
+          <SummaryRow label="지점장 정산금액 (당기순이익의 20%)" value={managerShare} percent={formatPercent(managerShare, totalSales)} />
           <SummaryRow
             label="법인유보금"
             value={corpReserve}
@@ -680,6 +683,12 @@ function AutoSummary({
         tone="profit"
       />
       <BigStatCard
+        label="지점장 정산금액 (당기순이익의 20%)"
+        value={managerSettlementAmount(netProfit)}
+        percent={formatPercent(managerSettlementAmount(netProfit), totalSales)}
+        tone="neutral"
+      />
+      <BigStatCard
         label="이번달 할인금액 (자동집계)"
         value={autoDiscountTotal}
         percent={formatPercent(autoDiscountTotal, totalSales)}
@@ -990,6 +999,10 @@ const SettlementReport = forwardRef<HTMLDivElement, ReportProps>(function Settle
           highlight
         />
       </div>
+      <div className="flex items-center justify-between rounded-xl bg-[#f5faf8] px-3 py-2 text-sm">
+        <span className="text-muted">지점장 정산금액 <span className="text-[11px]">(당기순이익의 20%)</span></span>
+        <span className="font-bold text-brand-dark">{formatWon(managerSettlementAmount(netProfit))}</span>
+      </div>
 
       <ReportSection
         title="카테고리별 매출"
@@ -1273,4 +1286,9 @@ function ReportStat({
       <p className="text-[10px] text-muted">{percent}</p>
     </div>
   );
+}
+
+// 지점장 정산금액: 당기순이익의 20%, 손실 달은 0.
+function managerSettlementAmount(netProfit: number): number {
+  return netProfit > 0 ? Math.round(netProfit * 0.2) : 0;
 }
