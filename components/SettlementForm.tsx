@@ -311,6 +311,7 @@ export default function SettlementForm({
             </span>
           </div>
           <SummaryRow label="지점장 정산금액 (당기순이익의 20%)" value={managerShare} percent={formatPercent(managerShare, totalSales)} />
+          {netProfit < 0 && <p className="-mt-1 text-right text-[11px] text-red-600">손실차액 {formatWon(-netProfit)}은 대표님 급여 상계처리</p>}
           <SummaryRow
             label="법인유보금"
             value={corpReserve}
@@ -687,6 +688,7 @@ function AutoSummary({
         value={managerSettlementAmount(netProfit)}
         percent={formatPercent(managerSettlementAmount(netProfit), totalSales)}
         tone="neutral"
+        note={netProfit < 0 ? `손실차액 ${formatWon(-netProfit)}은 대표님 급여 상계처리` : undefined}
       />
       <BigStatCard
         label="이번달 할인금액 (자동집계)"
@@ -869,11 +871,14 @@ function BigStatCard({
   value,
   percent,
   tone,
+  note,
 }: {
   label: string;
   value: number;
   percent?: string;
   tone: "brand" | "neutral" | "profit";
+  /** 값 아래 붉은 한 줄 (예: 손실 달 상계 안내) */
+  note?: string;
 }) {
   if (tone === "brand") {
     return (
@@ -892,6 +897,7 @@ function BigStatCard({
       <p className="text-sm text-muted">{label}</p>
       <p className={`mt-1 text-2xl font-bold ${valueColor}`}>{formatWon(value)}</p>
       {percent && <p className="mt-0.5 text-xs text-muted">{percent}</p>}
+      {note && <p className="mt-1 text-xs font-medium text-red-600">{note}</p>}
     </div>
   );
 }
@@ -999,9 +1005,12 @@ const SettlementReport = forwardRef<HTMLDivElement, ReportProps>(function Settle
           highlight
         />
       </div>
-      <div className="flex items-center justify-between rounded-xl bg-[#f5faf8] px-3 py-2 text-sm">
-        <span className="text-muted">지점장 정산금액 <span className="text-[11px]">(당기순이익의 20%)</span></span>
-        <span className="font-bold text-brand-dark">{formatWon(managerSettlementAmount(netProfit))}</span>
+      <div className="rounded-xl bg-[#f5faf8] px-3 py-2 text-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-muted">지점장 정산금액 <span className="text-[11px]">(당기순이익의 20%)</span></span>
+          <span className="font-bold text-brand-dark">{formatWon(managerSettlementAmount(netProfit))}</span>
+        </div>
+        {netProfit < 0 && <p className="mt-0.5 text-right text-[11px] text-red-600">손실차액 {formatWon(-netProfit)}은 대표님 급여 상계처리</p>}
       </div>
 
       <ReportSection
