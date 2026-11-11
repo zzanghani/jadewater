@@ -3,6 +3,7 @@
 import { useState, type CSSProperties } from "react";
 import { sendReviewReportEmail } from "@/app/(app)/review-report/actions";
 import type { ReviewReportsByDate } from "@/lib/reviewReport";
+import ReviewSummaryCard from "@/components/ReviewSummaryCard";
 
 type StoreInfo = { id: string; name: string; color: string };
 type DateEntry = { date: string; tabLabel: string; titleLabel: string };
@@ -235,12 +236,7 @@ export default function ReviewReportClient({
                   })()}
 
                   {/* AI 분석 */}
-                  {data?.analysis ? (
-                    <div style={s.aiBox}>
-                      <div style={s.aiTitle}>🤖 AI 요약 &amp; 제안</div>
-                      {data.analysis}
-                    </div>
-                  ) : null}
+                  {data?.analysis ? <ReviewSummaryCard raw={data.analysis} /> : null}
             </div>
           </div>
         )}
@@ -369,8 +365,6 @@ const s: Record<string, CSSProperties> = {
     cursor: "pointer",
   },
 
-  aiBox: { background: "#f0f4ff", borderRadius: 8, padding: "12px 14px", fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-line" },
-  aiTitle: { fontWeight: 700, marginBottom: 6, fontSize: 13 },
 
   fixedBottom: { position: "fixed", bottom: 65, left: 0, right: 0, padding: "0 16px" },
   cta: {

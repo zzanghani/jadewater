@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { parseReviewSummary } from "@/lib/reviewSummary";
 import { getStoreContext } from "@/lib/store";
 import { fetchReviewReports } from "@/lib/reviewReport";
 import { sendEmail } from "@/lib/email";
@@ -84,11 +85,7 @@ export async function sendReviewReportEmail(
           .join("")}</ul>`
       : `<p style="margin:0 0 10px;font-size:13px;color:#9ca3af">새 블로그 후기 없음</p>`;
 
-    const aiHtml = r?.analysis
-      ? `<div style="background:#f3f4f6;border-radius:8px;padding:10px 12px;font-size:13px;color:#374151;white-space:pre-wrap">🤖 ${escapeHtml(
-          r.analysis
-        )}</div>`
-      : "";
+    const aiHtml = r?.analysis ? summaryHtml(r.analysis) : "";
 
     return `<div style="margin:0 0 22px;padding:0 0 18px;border-bottom:1px solid #e5e7eb">
   <h3 style="margin:0 0 6px;font-size:15px">${escapeHtml(store.name)}</h3>
@@ -115,4 +112,43 @@ export async function sendReviewReportEmail(
   });
   if (error) return { error };
   return { success: true };
+}
+
+// 메일용 AI 요약: 화면과 같은 구조(한 줄 요약 → 긍정 녹색 → 부정 적색 → 오늘 할 일). 못 풀면 글 그대로.
+function summaryHtml(raw: string): string {
+  const m = parseReviewSummary(raw);
+  if (!m) {
+    return `<div style="background:#f3f4f6;border-radius:8px;padding:10px 12px;font-size:13px;color:#374151;white-space:pre-wrap">${escapeHtml(
+      raw.replace(/^#+\s*/gm, "").replace(/\*\*/g, "")
+    )}</div>`;
+  }
+  const panel = (title: string, items: { point: string; detail: string }[], color: string, bg: string, empty: string) => {
+    const has = items.length > 0;
+    const c = has ? color : "#9ca3af";
+    const body = has
+      ? `<ul style="margin:0;padding:8px 12px 8px 28px;background:${bg}">${items
+          .map(
+            (it) =>
+              `<li style="font-size:13px;margin-bottom:5px;color:${color}"><b>${escapeHtml(it.point)}</b>${
+                it.detail ? `<br><span style="font-size:12px;color:#374151">${escapeHtml(it.detail)}</span>` : ""
+              }</li>`
+          )
+          .join("")}</ul>`
+      : `<p style="margin:0;padding:8px 12px;font-size:12px;color:#6b7280;background:#f9fafb">${empty}</p>`;
+    return `<div style="margin:0 0 8px;border:2px solid ${c};border-radius:8px;overflow:hidden"><div style="background:${c};color:#fff;font-size:12px;font-weight:700;padding:5px 12px">${title} ${items.length}</div>${body}</div>`;
+  };
+  const actions = m.actions.length
+    ? `<div style="border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px"><div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:4px">오늘 할 일</div><ol style="margin:0;padding-left:18px">${m.actions
+        .map((a) => `<li style="font-size:13px;margin-bottom:3px">${escapeHtml(a)}</li>`)
+        .join("")}</ol></div>`
+    : "";
+  return `${
+    m.headline ? `<div style="margin:0 0 8px;background:#111827;color:#fff;border-radius:8px;padding:9px 12px;font-size:13px;font-weight:600">${escapeHtml(m.headline)}</div>` : ""
+  }${panel("▲ 긍정 · 손님이 칭찬한 점", m.positives, "#15803d", "#f0fdf4", "오늘 눈에 띄는 칭찬은 없었어요.")}${panel(
+    "▼ 부정 · 불만과 아쉬운 점",
+    m.negatives,
+    "#dc2626",
+    "#fef2f2",
+    "오늘 접수된 불만은 없어요."
+  )}${actions}`;
 }

@@ -5,10 +5,13 @@ export type ReviewSummaryInput = {
   blogPosts: { title: string; body: string | null }[];
 };
 
+import { parseReviewSummary } from "@/lib/reviewSummary";
+
 const CLAUDE_MODEL = "claude-sonnet-5";
 
-// 오늘 수집된 리뷰/블로그 데이터를 근거로 "칭찬한 점 / 불만·개선할 점 / 오늘 실천 제안"
-// 형식의 한국어 요약을 생성한다. 데이터가 근거 없이 지어내지 않도록 프롬프트에서 제한한다.
+// 오늘 수집된 리뷰/블로그 데이터를 근거로 "한 줄 요약 / 긍정 / 부정 / 오늘 할 일" 요약을 만든다.
+// 화면에서 긍정=녹색·부정=적색 카드로 나눠 보여주려고 JSON으로 받고(lib/reviewSummary.ts),
+// 데이터에 없는 건 지어내지 않게 프롬프트에서 제한한다.
 export async function generateReviewSummary(
   input: ReviewSummaryInput,
   apiKey: string
@@ -39,18 +42,21 @@ ${reviewLines || "(없음)"}
 [오늘 새로 발견된 블로그 후기]
 ${blogLines || "(없음)"}
 
-위 데이터만 근거로, 아래 형식을 정확히 지켜서 한국어로 요약해줘. 데이터에 없는 내용은 추측해서 쓰지 마.
+위 데이터만 근거로, 손님 반응을 긍정과 부정으로 나눠서 한국어로 정리해줘. 점장이 아침에 폰으로 읽는 화면이야.
+- positives: 손님이 실제로 칭찬한 것만. negatives: 손님이 실제로 불만·아쉬움을 말한 것만.
+- "새 리뷰가 없다", "자료가 부족하다", "구체적 피드백이 없다" 같은 말은 긍정도 부정도 아니니 어디에도 넣지 마. 해당하는 게 없으면 빈 배열([])로 둬.
+- point 는 무엇이 좋았는지/나빴는지 15자 안팎의 짧은 말 (예: "라자냐·봉골레 맛 호평", "음식이 늦게 나옴").
+- detail 은 근거 한 문장, 50자 안팎. 어느 플랫폼(구글 리뷰·블로그)에서 나온 말인지 넣어.
+- actions 는 오늘 매장에서 바로 할 수 있는 일 1~3개, 각 한 문장. 부정이 있으면 그것부터.
+- 데이터에 없는 내용은 추측해서 쓰지 마.
 
-1) [한 줄 헤드라인]
-
-2) 칭찬한 점
-– ...
-
-3) 불만/개선할 점
-– ...
-
-4) 오늘 실천 제안
-– ...`;
+아래 JSON 형식 그대로만 출력해. 설명이나 코드 블록, 머리말 없이 JSON만:
+{
+  "headline": "오늘 손님 반응을 한 문장으로",
+  "positives": [{ "point": "...", "detail": "..." }],
+  "negatives": [{ "point": "...", "detail": "..." }],
+  "actions": ["...", "..."]
+}`;
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -61,7 +67,7 @@ ${blogLines || "(없음)"}
     },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
-      max_tokens: 1024,
+      max_tokens: 1500,
       thinking: { type: "disabled" },
       messages: [{ role: "user", content: prompt }],
     }),
@@ -75,7 +81,11 @@ ${blogLines || "(없음)"}
     content?: { type: string; text?: string }[];
   };
 
-  return data.content?.find((c) => c.type === "text")?.text?.trim() || null;
+  const text = data.content?.find((c) => c.type === "text")?.text?.trim() || null;
+  if (!text) return null;
+  // 구조가 맞으면 정리된 JSON으로, 깨져 왔으면 원문 그대로 저장한다 (화면이 글로라도 보여준다).
+  const parsed = parseReviewSummary(text);
+  return parsed ? JSON.stringify(parsed) : text;
 }
 
 // 사건 기록 한 줄을 읽고 어느 평가 문항에 해당하는지 골라준다.
