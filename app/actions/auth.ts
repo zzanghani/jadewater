@@ -56,6 +56,10 @@ export async function signup(
   if (password.length < 6) {
     return { error: "비밀번호는 6자 이상이어야 합니다." };
   }
+  // 가입 화면의 "비밀번호 확인" 칸과 다르면 가입시키지 않는다 (오타로 만들어진 비밀번호 방지).
+  if (password !== String(formData.get("password_confirm") ?? "")) {
+    return { error: "비밀번호와 비밀번호 확인이 서로 달라요. 다시 입력해 주세요." };
+  }
 
   const supabase = await createClient();
   // role/status는 여기서 정하지 않는다 — DB의 handle_new_user() 트리거가

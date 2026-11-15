@@ -1,11 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { signup } from "@/app/actions/auth";
 
 export default function SignupPage() {
   const [state, formAction, pending] = useActionState(signup, undefined);
+  // 비밀번호를 두 번 받아 오타로 가입되는 일을 막는다 (직원들이 가입 직후 "비밀번호가 안 맞는다"고 하는 원인).
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const mismatch = confirm.length > 0 && password !== confirm;
+  const matched = confirm.length > 0 && password === confirm;
 
   return (
     <div className="flex min-h-dvh w-full flex-col justify-center px-6 py-10">
@@ -50,8 +55,30 @@ export default function SignupPage() {
             minLength={6}
             autoComplete="new-password"
             placeholder="6자 이상"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             className="rounded-xl border border-border bg-card px-4 py-3 outline-none ring-brand/30 placeholder:text-muted focus:ring-2"
           />
+        </label>
+
+        <label className="flex flex-col gap-1.5 text-sm font-medium">
+          비밀번호 확인
+          <input
+            type="password"
+            name="password_confirm"
+            required
+            minLength={6}
+            autoComplete="new-password"
+            placeholder="비밀번호를 한 번 더 입력"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            aria-invalid={mismatch}
+            className={`rounded-xl border bg-card px-4 py-3 outline-none placeholder:text-muted focus:ring-2 ${
+              mismatch ? "border-red-500 ring-red-200" : matched ? "border-green-600 ring-green-200" : "border-border ring-brand/30"
+            }`}
+          />
+          {mismatch && <span className="text-xs font-medium text-red-600">비밀번호가 서로 달라요. 다시 확인해 주세요.</span>}
+          {matched && <span className="text-xs font-medium text-green-700">비밀번호가 일치해요.</span>}
         </label>
 
         {state?.error && (
@@ -74,7 +101,7 @@ export default function SignupPage() {
 
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || mismatch}
           className="mt-2 rounded-xl bg-brand py-3 text-sm font-semibold text-white shadow-md shadow-brand/30 transition-opacity disabled:opacity-60"
         >
           {pending ? "가입 중..." : "회원가입"}
