@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { fetchBlogMetrics, scoreBlog, type ReviewnoteInfo } from "@/lib/blogCheck";
+import { sendPush } from "@/lib/webpush";
 
 // 맥미니 체험단 작업기가 부르는 API.
 //   GET  → 할 일 목록: 리뷰노트에 올릴 회차(confirmed), 지원자를 가져올 회차(registered/selecting),
@@ -104,6 +105,28 @@ export async function GET(request: Request) {
 }
 
 type IncomingApplicant = { blogId: string; name?: string | null; rn?: (ReviewnoteInfo & { applyId?: number | string }) | null };
+
+// 본사 대표 계정(매장 소속 없는 owner, 팀 소속 아님)에 푸시. 체험단 작업이 사람 손을 기다릴 때 쓴다.
+async function notifyHqMasters(supabase: Supa, payload: { title: string; body: string; url: string }) {
+  const { data: masters } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("role", "owner")
+    .is("store_id", null)
+    .is("department", null)
+    .eq("status", "approved");
+  const ids = (masters ?? []).map((m) => m.id);
+  if (ids.length === 0) return;
+  const { data: subs } = await supabase.from("push_subscriptions").select("*").in("user_id", ids);
+  const expired: string[] = [];
+  await Promise.all(
+    (subs ?? []).map(async (s) => {
+      const r = await sendPush({ endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth }, payload);
+      if (r.expired) expired.push(s.id);
+    })
+  );
+  if (expired.length) await supabase.from("push_subscriptions").delete().in("id", expired);
+}
 
 // 리뷰노트 캠페인 내용(제공 내역·키워드·모집글 본문·방문 가능 요일/시간·영업 안내)으로
 // 회차의 "비어 있는" 칸만 채운다. 앱에서 쓴 글은 덮어쓰지 않는다 — 리뷰노트에서
@@ -290,7 +313,9 @@ export async function POST(request: Request) {
         }
       }
       const reviewed = items.filter((it) => it.reviewUrl).length;
-      const becomesDone = round.status === "approved" && items.length > 0;
+      // 리뷰노트에 진행 목록이 있으면 선정은 이미 끝난 것. 앱에서 승인(approved)했든,
+      // 앱 밖(리뷰노트)에서 직접 선정했든(selecting/registered 그대로인 경우) done으로 맞춘다.
+      const becomesDone = ["approved", "selecting", "registered"].includes(round.status) && items.length > 0;
       const { error } = await supabase
         .from("recruit_rounds")
         .update({
@@ -342,10 +367,25 @@ export async function POST(request: Request) {
     }
 
     // 실패 메모 (상태는 안 바꾼다 — 다음 주기에 다시 시도)
+    // 리뷰노트 로그인이 풀린 경우는 사람이 맥미니에서 다시 로그인해야만 풀리므로,
+    // 처음 감지됐을 때(그리고 하루 넘게 계속되면 하루 한 번) 본사 대표 계정에 푸시로 알린다.
     case "error": {
       if (!round) return NextResponse.json({ error: "회차 없음" }, { status: 404 });
       const message = String(body.message ?? "알 수 없는 오류");
+      const loginLost = message.includes("로그인 풀림");
+      const prevNote = (round as { macmini_note?: string | null }).macmini_note ?? "";
+      const prevAt = (round as { macmini_at?: string | null }).macmini_at;
+      const prevWasSame = prevNote.includes("로그인 풀림");
+      const prevAgeMs = prevAt ? Date.now() - new Date(prevAt).getTime() : Infinity;
       await supabase.from("recruit_rounds").update(note(`오류: ${message}`)).eq("id", round.id);
+      if (loginLost && (!prevWasSame || prevAgeMs > 24 * 3600_000)) {
+        const { data: storeRow } = await supabase.from("stores").select("name").eq("id", round.store_id).maybeSingle();
+        await notifyHqMasters(supabase, {
+          title: `리뷰노트 로그인 풀림 · ${storeRow?.name ?? ""}`.trim(),
+          body: "맥미니에서 이 매장 리뷰노트에 다시 로그인해야 체험단 작업이 이어져요. 풀릴 때까지 30분마다 건너뜁니다.",
+          url: "/recruit",
+        });
+      }
       return NextResponse.json({ ok: true });
     }
 
