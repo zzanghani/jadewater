@@ -1066,6 +1066,18 @@ export type Database = {
         Update: Partial<{ store_id: string; terms: string[]; keywords: string[]; volumes: Record<string, number>; updated_by: string | null; updated_at: string; map_note: string | null; map_at: string | null }>
         Relationships: []
       }
+      stability_reports: {
+        Row: { date: string; verdict: string; summary: string; fixed: string | null; todo: string | null; detail: string | null; created_at: string; updated_at: string; checked_at: string | null; checked_by: string | null }
+        Insert: { date: string; verdict?: string; summary: string; fixed?: string | null; todo?: string | null; detail?: string | null; created_at?: string; updated_at?: string; checked_at?: string | null; checked_by?: string | null }
+        Update: Partial<{ date: string; verdict: string; summary: string; fixed: string | null; todo: string | null; detail: string | null; created_at: string; updated_at: string; checked_at: string | null; checked_by: string | null }>
+        Relationships: []
+      }
+      stability_feedback: {
+        Row: { id: string; report_date: string | null; body: string; created_by: string | null; created_at: string; status: string; reply: string | null; replied_at: string | null }
+        Insert: { id?: string; report_date?: string | null; body: string; created_by?: string | null; created_at?: string; status?: string; reply?: string | null; replied_at?: string | null }
+        Update: Partial<{ id: string; report_date: string | null; body: string; created_by: string | null; created_at: string; status: string; reply: string | null; replied_at: string | null }>
+        Relationships: []
+      }
       ad_keyword_daily_stats: {
         Row: { store_id: string; date: string; keyword_id: string; keyword: string; campaign_id: string; campaign_name: string; campaign_tp: string | null; adgroup_id: string; adgroup_name: string; imp: number; clk: number; cost: number; conv: number; avg_rank: number | null; bid_amt: number | null; use_group_bid: boolean; quality_index: number | null; user_lock: boolean; status: string | null; synced_at: string }
         Insert: { store_id: string; date: string; keyword_id: string; keyword: string; campaign_id: string; campaign_name?: string; campaign_tp?: string | null; adgroup_id: string; adgroup_name?: string; imp?: number; clk?: number; cost?: number; conv?: number; avg_rank?: number | null; bid_amt?: number | null; use_group_bid?: boolean; quality_index?: number | null; user_lock?: boolean; status?: string | null; synced_at?: string }

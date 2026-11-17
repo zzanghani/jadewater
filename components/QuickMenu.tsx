@@ -31,6 +31,8 @@ const ACCOUNTS_ITEM = { href: "/accounts", label: "가입승인", icon: HrIcon }
 // 브랜드별 기능 모듈 켜고 끄기(결제 연동 전 수동 운영) — 본사 마스터만.
 const MODULES_ITEM = { href: "/modules", label: "기능 구독", icon: PuzzleIcon } as const;
 const INVENTORY_ITEM = { href: "/inventory", label: "재고관리", icon: BoxIcon } as const;
+// 앱 점검 — 매일 06시 자동 점검 결과를 보고 확인·피드백을 남기는 화면. 본사 마스터만.
+const STABILITY_ITEM = { href: "/stability", label: "앱 점검", icon: ShieldCheckIcon } as const;
 // R&D팀 전용 보기 전용 항목(스케줄러·실시간 코스트·요일별 분석) — 입력 권한은
 // 없고 전 매장을 매장 선택 드롭다운으로 바꿔가며 조회만 한다.
 const RND_VIEW_ITEMS = [
@@ -100,7 +102,7 @@ export default function QuickMenu({
     : employeeOnly
       ? EMPLOYEE_ITEMS
       : isMaster
-        ? [PLAN_ITEM, ...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), ATTENDANCE_ITEM, AD_REPORT_ITEM, AD_BOARD_ITEM, RECRUIT_ITEM, HR_ITEM, ACCOUNTS_ITEM, LOAN_ITEM, MODULES_ITEM]
+        ? [PLAN_ITEM, ...ALL_ITEMS.filter((i) => !MASTER_EXCLUDED_HREFS.includes(i.href)), ATTENDANCE_ITEM, AD_REPORT_ITEM, AD_BOARD_ITEM, RECRUIT_ITEM, HR_ITEM, ACCOUNTS_ITEM, LOAN_ITEM, MODULES_ITEM, STABILITY_ITEM]
         : [ATTENDANCE_ITEM, ...ALL_ITEMS, REVIEW_REPORT_ITEM, ...(showAdReport ? [AD_REPORT_ITEM] : []), AD_BOARD_ITEM, RECRUIT_ITEM, HR_ITEM, MY_REVIEW_ITEM];
   // 브랜드가 끈 기능 모듈의 화면은 메뉴에서 뺀다(lib/modules.ts).
   const items = allItems.filter((i) => pathAllowed(i.href, activeModules));
@@ -288,6 +290,15 @@ function GaugeIcon() {
       <path d="M4 14a8 8 0 1 1 16 0" />
       <path d="M12 14 16 9" />
       <path d="M12 17.5h.01" />
+    </svg>
+  );
+}
+
+function ShieldCheckIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3 4.5 6v5.5c0 4.4 3.2 8 7.5 9.5 4.3-1.5 7.5-5.1 7.5-9.5V6L12 3Z" />
+      <path d="m9 12 2 2 4-4" />
     </svg>
   );
 }
