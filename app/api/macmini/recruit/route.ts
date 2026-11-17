@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { fetchBlogMetrics, scoreBlog, type ReviewnoteInfo } from "@/lib/blogCheck";
 import { sendPush } from "@/lib/webpush";
+import type { RecruitRoundStatus } from "@/lib/types";
 
 // 맥미니 체험단 작업기가 부르는 API.
 //   GET  → 할 일 목록: 리뷰노트에 올릴 회차(confirmed), 지원자를 가져올 회차(registered/selecting),
@@ -364,6 +365,73 @@ export async function POST(request: Request) {
           .eq("id", round.id);
       }
       return NextResponse.json({ ok: true, sent, failed });
+    }
+
+    // 리뷰노트 계정에 있는 캠페인 목록을 작업기가 보내온다 → 앱에 없는 캠페인은 회차로 만들거나,
+    // 앱에서 확정만 해 둔(리뷰노트 번호 없는) 회차에 연결한다. 점장이 리뷰노트에 직접 올려도
+    // 앱이 알아서 따라오게 하는 길. 오래된 캠페인은 작업기 쪽에서 걸러서 보낸다.
+    case "discover": {
+      const storeId = typeof body.storeId === "string" ? body.storeId : null;
+      if (!storeId) return NextResponse.json({ error: "storeId" }, { status: 400 });
+      const campaigns = (Array.isArray(body.campaigns) ? body.campaigns : []) as (Record<string, unknown> & {
+        id: string | number;
+        status?: string | null;
+        createdAt?: string | null;
+        reviewEndAt?: string | null;
+      })[];
+      const appStatusFor = (rnStatus: string | null | undefined): RecruitRoundStatus =>
+        rnStatus === "PROGRESS" || rnStatus === "COMPLETE" ? "done" : "registered";
+      let linked = 0;
+      let created = 0;
+      for (const c of campaigns) {
+        const campaignId = String(c.id ?? "");
+        if (!/^\d+$/.test(campaignId)) continue;
+        const { data: existing } = await supabase
+          .from("recruit_rounds")
+          .select("id")
+          .eq("store_id", storeId)
+          .eq("campaign_id", campaignId)
+          .maybeSingle();
+        if (existing) continue;
+        const status = appStatusFor(c.status);
+        const common = {
+          campaign_id: campaignId,
+          status,
+          ...(typeof c.reviewEndAt === "string" ? { review_end_at: c.reviewEndAt } : {}),
+          confirmed_at: now,
+          ...note(`리뷰노트 캠페인 ${campaignId} 발견 → 자동 연결 (${c.status ?? "?"})`),
+        };
+        // 1) 앱에서 확정했지만 아직 번호가 없는 회차(가장 오래된 것부터) → 연결. 없으면 2) 쓰다 만 글(draft)이
+        //    캠페인보다 먼저 만들어진 것 → 연결. 둘 다 없으면 3) 새 회차.
+        const { data: waiting } = await supabase
+          .from("recruit_rounds")
+          .select("id, status, title, offer, keywords, information, possible_days, possible_time, schedule_information, inf_num, created_at")
+          .eq("store_id", storeId)
+          .is("campaign_id", null)
+          .in("status", ["confirmed", "draft"])
+          .order("created_at");
+        const createdAtMs = typeof c.createdAt === "string" ? new Date(c.createdAt).getTime() : Date.now();
+        const target =
+          (waiting ?? []).find((r) => r.status === "confirmed") ??
+          (waiting ?? []).find((r) => r.status === "draft" && new Date(r.created_at).getTime() <= createdAtMs);
+        if (target) {
+          const { error } = await supabase
+            .from("recruit_rounds")
+            .update({ ...common, ...fillFromCampaign(target as unknown as Record<string, unknown>, c) })
+            .eq("id", target.id);
+          if (!error) linked++;
+        } else {
+          const fields = fillFromCampaign({}, c);
+          const { error } = await supabase.from("recruit_rounds").insert({
+            store_id: storeId,
+            ...fields,
+            ...(fields.inf_num ? {} : { inf_num: 20 }),
+            ...common,
+          });
+          if (!error) created++;
+        }
+      }
+      return NextResponse.json({ ok: true, linked, created });
     }
 
     // 실패 메모 (상태는 안 바꾼다 — 다음 주기에 다시 시도)
