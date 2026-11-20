@@ -335,6 +335,44 @@ export async function completePaymentRequest(id: string): Promise<void> {
   }
 }
 
+// 실수로 "요청완료"를 누른 걸 되돌린다 — 완료 표시만 지워서 진행중 목록으로 돌려보낸다.
+// 마스터 계정만 할 수 있다 (완료 처리와 같은 사람).
+export async function reopenPaymentRequest(id: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "로그인이 필요합니다." };
+
+  const { stores } = await getStoreContext(supabase);
+  const { data: profile } = await supabase.from("profiles").select("department").eq("id", user.id).maybeSingle();
+  if (stores.length <= 1 || profile?.department) {
+    return { error: "마스터 계정만 되돌릴 수 있습니다." };
+  }
+
+  const { data: updated, error } = await supabase
+    .from("payment_requests")
+    .update({ completed_at: null })
+    .eq("id", id)
+    .not("completed_at", "is", null)
+    .select()
+    .maybeSingle();
+  revalidatePath("/payment");
+  if (error) {
+    console.error("[reopenPaymentRequest] 되돌리기 실패", error);
+    return { error: "되돌리는 중 오류가 발생했습니다." };
+  }
+  if (!updated) return { error: "이미 진행중이거나 보관된 요청이에요." };
+
+  // 매장에는 이미 "완료" 알림이 갔으므로, 취소됐다는 것도 같은 사람들에게 알린다. 실패해도 되돌리기는 끝난 상태.
+  try {
+    await notifyStoreOfCompletion(supabase, updated, "reopened");
+  } catch (err) {
+    console.error("[reopenPaymentRequest] 알림 발송 중 오류", err);
+  }
+  return {};
+}
+
 async function notifyStoreOfCompletion(
   supabase: Awaited<ReturnType<typeof createClient>>,
   updated: {
@@ -343,7 +381,8 @@ async function notifyStoreOfCompletion(
     vendor_name: string;
     amount: number;
     is_payroll: boolean;
-  }
+  },
+  kind: "completed" | "reopened" = "completed"
 ) {
   // 매장 요청은 그 매장 지점장(owner) 계정과 요청을 올린 본인에게만 알린다.
   // 예전엔 매장에 알림을 켠 모든 계정(직원 포함)에게 보내서, 급여 요청이
@@ -370,12 +409,14 @@ async function notifyStoreOfCompletion(
 
   if (!subs?.length) return;
 
+  const what = updated.is_payroll ? "급여 입금요청" : `${updated.vendor_name} 입금요청`;
   const payload = {
-    title: "입금요청 완료",
+    title: kind === "reopened" ? "입금요청 완료 취소" : "입금요청 완료",
     // 잠금화면에 뜨는 글이라 금액은 빼고, 자세한 건 앱에서 확인하게 한다.
-    body: updated.is_payroll
-      ? "급여 입금요청이 완료 처리됐습니다."
-      : `${updated.vendor_name} 입금요청이 완료 처리됐습니다.`,
+    body:
+      kind === "reopened"
+        ? `${what}의 완료 처리가 취소됐습니다. 아직 입금 전이에요.`
+        : `${what}이 완료 처리됐습니다.`,
     url: "/payment?tab=confirm",
   };
 

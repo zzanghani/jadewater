@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { completePaymentRequest } from "@/app/(app)/payment/actions";
+import { completePaymentRequest, reopenPaymentRequest } from "@/app/(app)/payment/actions";
 import { formatWon } from "@/lib/format";
 import { kstDateString } from "@/lib/date";
 import { storeColorSoft } from "@/lib/storeColors";
@@ -52,6 +52,7 @@ export default function PaymentRequestList({
 }) {
   const [selected, setSelected] = useState<Row | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [reopenError, setReopenError] = useState<{ id: string; message: string } | null>(null);
   const [, startTransition] = useTransition();
   const router = useRouter();
 
@@ -67,6 +68,21 @@ export default function PaymentRequestList({
       router.refresh();
       setPendingId(null);
       setSelected((s) => (s?.id === id ? null : s));
+    });
+  }
+
+  // 실수로 완료 처리한 요청을 진행중으로 되돌린다 (마스터, 완료 목록에서만).
+  function handleReopen(r: Row, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!window.confirm(`${r.vendor_name} ${formatWon(r.amount)} 요청을 '진행중'으로 되돌릴까요?\n아직 입금하지 않은 경우에만 눌러 주세요.`)) return;
+    setReopenError(null);
+    setPendingId(r.id);
+    startTransition(async () => {
+      const res = await reopenPaymentRequest(r.id);
+      if (res.error) setReopenError({ id: r.id, message: res.error });
+      router.refresh();
+      setPendingId(null);
+      if (!res.error) setSelected((s) => (s?.id === r.id ? null : s));
     });
   }
 
@@ -128,7 +144,20 @@ export default function PaymentRequestList({
                 </p>
               </button>
               {isUrgent && <UrgentBadge />}
-              {isMaster && showDone && <PaymentArchiveButton requestId={r.id} />}
+              {isMaster && showDone && (
+                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  <button
+                    type="button"
+                    onClick={(e) => handleReopen(r, e)}
+                    disabled={pendingId === r.id}
+                    className="rounded-full border border-amber-500 bg-amber-50 px-2.5 py-1.5 text-[11px] font-semibold text-amber-700 transition-opacity disabled:opacity-50"
+                  >
+                    {pendingId === r.id ? "되돌리는 중..." : "↩ 진행중으로 되돌리기"}
+                  </button>
+                  <PaymentArchiveButton requestId={r.id} />
+                  {reopenError?.id === r.id && <p className="max-w-[150px] text-right text-[10px] text-red-600">{reopenError.message}</p>}
+                </div>
+              )}
               {isMaster && !showDone && (
                 <button
                   type="button"
@@ -215,6 +244,18 @@ export default function PaymentRequestList({
                 {daysSinceRequest(selected.created_at)}일 경과했습니다
               </div>
             )}
+
+            {isMaster && showDone && (
+              <button
+                type="button"
+                onClick={(e) => handleReopen(selected, e)}
+                disabled={pendingId === selected.id}
+                className="rounded-xl border border-amber-500 bg-amber-50 py-3 text-sm font-semibold text-amber-700 transition-opacity disabled:opacity-60"
+              >
+                {pendingId === selected.id ? "되돌리는 중..." : "↩ 진행중으로 되돌리기 (입금 전)"}
+              </button>
+            )}
+            {isMaster && showDone && reopenError?.id === selected.id && <p className="text-xs text-red-600">{reopenError.message}</p>}
 
             {isMaster && !showDone && (
               <button
