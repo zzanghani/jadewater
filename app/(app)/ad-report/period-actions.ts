@@ -9,6 +9,7 @@ import { addYmd, kstYmd } from "@/lib/adReport";
 import { aggregate, MAX_RANGE_DAYS, periodRange, type PeriodAgg, type PeriodKey, type PeriodRange } from "@/lib/adPeriod";
 import { syncAdDaily, syncTossDaily } from "@/lib/adInsight";
 import { fetchTossClosing } from "@/lib/tossClosing";
+import { merchantFor } from "@/lib/tossPlace";
 
 export type PeriodStore = {
   storeId: string;
@@ -45,11 +46,11 @@ export async function loadAdPeriod(key: PeriodKey, custom?: { from: string; to: 
   const [storeRows, { data: accounts }, { data: merchants }, { data: toss }] = await Promise.all([
     adVisibleStores(service, profile),
     service.from("store_ad_accounts").select("*").eq("enabled", true),
-    service.from("store_toss_merchants").select("store_id, merchant_id"),
+    service.from("store_toss_merchants").select("store_id, merchant_id, prev_merchant_id, prev_until"),
     service.from("toss_settings").select("access_key, access_secret").eq("id", 1).maybeSingle(),
   ]);
   const acctByStore = new Map((accounts ?? []).map((a) => [a.store_id, a]));
-  const merchantByStore = new Map((merchants ?? []).map((m) => [m.store_id, m.merchant_id]));
+  const merchantByStore = new Map((merchants ?? []).map((m) => [m.store_id, m]));
   const keys = toss ? { accessKey: toss.access_key, secretKey: toss.access_secret } : null;
   const targets = (storeRows ?? []).filter((s) => acctByStore.has(s.id) || merchantByStore.has(s.id));
   if (!targets.length) return { ok: false, error: profile.store_id ? "아직 광고·토스가 연결된 매장이 없어요." : "연결된 매장이 없어요. 매장 키 설정에서 등록해 주세요." };
@@ -89,7 +90,7 @@ export async function loadAdPeriod(key: PeriodKey, custom?: { from: string; to: 
     let todaySales: number | null = null;
     if (keys && merchant && to === today) {
       try {
-        todaySales = (await fetchTossClosing(keys, merchant, today)).paid;
+        todaySales = (await fetchTossClosing(keys, merchantFor(merchant, today), today)).paid;
       } catch {
         todaySales = null;
       }

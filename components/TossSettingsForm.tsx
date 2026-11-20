@@ -155,6 +155,11 @@ function MerchantForm({
       <label className="flex items-center gap-2 text-[11px] text-muted">
         <input type="checkbox" name="is_test" defaultChecked={merchant?.is_test ?? false} /> 테스트 가맹점
       </label>
+      {merchant?.prev_merchant_id && merchant.prev_until && (
+        <p className="rounded-lg bg-background px-3 py-2 text-[11px] text-muted">
+          옛 번호 <b className="text-foreground">{merchant.prev_merchant_id}</b> · {merchant.prev_until}까지 매출은 이 번호로 읽어요 (사업자 전환 등으로 번호가 바뀐 경우).
+        </p>
+      )}
       {state?.error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{state.error}</p>}
       {state?.success && <p className="rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700">{state.info}</p>}
     </form>

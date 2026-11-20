@@ -20,10 +20,10 @@ export async function GET(request: Request) {
   const from = addYmd(today, -7);
   const [{ data: accounts }, { data: merchants }, { data: toss }] = await Promise.all([
     service.from("store_ad_accounts").select("*").eq("enabled", true),
-    service.from("store_toss_merchants").select("store_id, merchant_id"),
+    service.from("store_toss_merchants").select("store_id, merchant_id, prev_merchant_id, prev_until"),
     service.from("toss_settings").select("access_key, access_secret").eq("id", 1).maybeSingle(),
   ]);
-  const merchantByStore = new Map((merchants ?? []).map((m) => [m.store_id, m.merchant_id]));
+  const merchantByStore = new Map((merchants ?? []).map((m) => [m.store_id, m]));
   const results: Record<string, string> = {};
   for (const a of accounts ?? []) {
     try {
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
   for (const m of merchants ?? []) {
     if (results[m.store_id] || !toss) continue;
     try {
-      const t = await syncTossDaily(service, m.store_id, { accessKey: toss.access_key, secretKey: toss.access_secret }, m.merchant_id, from, today);
+      const t = await syncTossDaily(service, m.store_id, { accessKey: toss.access_key, secretKey: toss.access_secret }, m, from, today);
       results[m.store_id] = `토스 ${t}일`;
     } catch (e) {
       results[m.store_id] = `실패: ${(e as Error).message}`;

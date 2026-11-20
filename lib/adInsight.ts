@@ -4,8 +4,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/types";
 import { callNaver, listAdgroups, listCampaigns, listKeywords, pool, STAT_FIELDS, type NaverAcct, type NaverStatRow } from "@/lib/naverAds";
 import { fetchTossClosing } from "@/lib/tossClosing";
-import type { TossKeys } from "@/lib/tossPlace";
-import { addYmd, HOLIDAYS, pctDelta, weekdayIndex, type SalesMap } from "@/lib/adReport";
+import { merchantFor, type TossKeys, type TossMerchantLink } from "@/lib/tossPlace";
+import { addYmd, HOLIDAYS, kstYmd, pctDelta, weekdayIndex, type SalesMap } from "@/lib/adReport";
 import { HEAVY_RAIN_MM, RAIN_MM } from "@/lib/weather";
 
 type Service = SupabaseClient<Database>;
@@ -31,21 +31,25 @@ export async function syncTossDaily(
   service: Service,
   storeId: string,
   keys: TossKeys,
-  merchantId: string,
+  merchant: TossMerchantLink | string,
   from: string,
   to: string,
   { force = false, maxDays = 35 } = {}
 ): Promise<number> {
-  // 시간대(by_hour)가 아직 없는 옛 행은 다시 받아 채운다 (마감 추정에 필요).
-  const { data: have } = await service.from("toss_daily_sales").select("date, by_hour").eq("store_id", storeId).gte("date", from).lte("date", to);
-  const haveSet = new Set((have ?? []).filter((r) => r.by_hour != null).map((r) => r.date));
+  // 시간대(by_hour)가 아직 없는 옛 행과 0원/0건으로만 남은 행은 다시 받아 채운다 (마감 추정에 필요·상점 번호가 바뀐 날 복구).
+  const { data: have } = await service.from("toss_daily_sales").select("date, by_hour, sales, orders").eq("store_id", storeId).gte("date", from).lte("date", to);
+  const haveSet = new Set((have ?? []).filter((r) => r.by_hour != null && (r.sales > 0 || r.orders > 0)).map((r) => r.date));
+  const hadSales = new Set((have ?? []).filter((r) => r.sales > 0).map((r) => r.date));
+  const today = kstYmd(0);
   let days: string[] = [];
   for (let d = from; d <= to; d = addYmd(d, 1)) if (force || !haveSet.has(d) || d >= addYmd(to, -1)) days.push(d);
   // 한 번에 너무 많으면(옛 자료 다시 받기) 최근 날짜부터 maxDays만 — 나머지는 다음 동기화·크론이 채운다
   if (days.length > maxDays) days = days.slice(-maxDays);
   let n = 0;
   await pool(days, 3, async (d) => {
-    const c = await fetchTossClosing(keys, merchantId, d);
+    const c = await fetchTossClosing(keys, merchantFor(merchant, d), d);
+    // 지난 날인데 토스가 빈 하루를 돌려주면(상점 번호가 바뀌었거나 일시 장애) 이미 있는 매출을 0으로 덮지 않는다.
+    if (d < today && c.paid === 0 && c.orders === 0 && hadSales.has(d)) return;
     await service.from("toss_daily_sales").upsert(
       {
         store_id: storeId,

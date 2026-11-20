@@ -440,6 +440,9 @@ export type StoreTossMerchant = {
   is_test: boolean
   updated_by: string | null
   updated_at: string
+  /** 번호가 바뀌기 전 상점 번호 (prev_until까지의 매출은 이 번호로 읽는다) */
+  prev_merchant_id: string | null
+  prev_until: string | null
 }
 
 /** ad_weekly_reports.report 컬럼 — lib/adReport의 AdStoreReport를 JSON으로 저장한 것 */
@@ -1164,7 +1167,7 @@ export type Database = {
       }
       store_toss_merchants: {
         Row: StoreTossMerchant
-        Insert: Omit<StoreTossMerchant, 'updated_at' | 'updated_by' | 'merchant_name' | 'is_test'> & { merchant_name?: string | null; is_test?: boolean; updated_by?: string | null; updated_at?: string }
+        Insert: Omit<StoreTossMerchant, 'updated_at' | 'updated_by' | 'merchant_name' | 'is_test' | 'prev_merchant_id' | 'prev_until'> & { merchant_name?: string | null; is_test?: boolean; updated_by?: string | null; updated_at?: string; prev_merchant_id?: string | null; prev_until?: string | null }
         Update: Partial<StoreTossMerchant>
         Relationships: []
       }

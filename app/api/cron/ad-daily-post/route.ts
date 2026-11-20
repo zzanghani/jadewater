@@ -26,13 +26,13 @@ export async function GET(request: Request) {
   const y = addYmd(today, -1);
   const [{ data: accounts }, { data: merchants }, { data: toss }, { data: storeRows }, { data: masters }] = await Promise.all([
     service.from("store_ad_accounts").select("*").eq("enabled", true),
-    service.from("store_toss_merchants").select("store_id, merchant_id"),
+    service.from("store_toss_merchants").select("store_id, merchant_id, prev_merchant_id, prev_until"),
     service.from("toss_settings").select("access_key, access_secret").eq("id", 1).maybeSingle(),
     service.from("stores").select("id, name, short_label"),
     service.from("profiles").select("id, role, department").is("store_id", null).eq("status", "approved"),
   ]);
   const acctByStore = new Map((accounts ?? []).map((a) => [a.store_id, a]));
-  const merchantByStore = new Map((merchants ?? []).map((m) => [m.store_id, m.merchant_id]));
+  const merchantByStore = new Map((merchants ?? []).map((m) => [m.store_id, m]));
   const storeIds = Array.from(new Set([...acctByStore.keys(), ...merchantByStore.keys()]));
   // 본사 급: 대표님(owner, 부서 없음) + 마케팅팀
   const masterIds = (masters ?? []).filter((m) => (m.role === "owner" && !m.department) || m.department === "marketing").map((m) => m.id);

@@ -85,6 +85,7 @@ export async function saveClosing(
 // ---------------------------------------------------------------------------
 import { createServiceClient } from "@/lib/supabase/service";
 import { fetchTossClosing, tossClosingToForm, type TossClosing } from "@/lib/tossClosing";
+import { merchantFor } from "@/lib/tossPlace";
 
 export type TossClosingResult =
   | { ok: true; fields: ReturnType<typeof tossClosingToForm>; summary: TossClosing; isTest: boolean }
@@ -105,14 +106,14 @@ export async function loadTossClosing(storeId: string, date: string): Promise<To
 
   const service = createServiceClient();
   const [{ data: merchant }, { data: keys }] = await Promise.all([
-    service.from("store_toss_merchants").select("merchant_id, is_test").eq("store_id", storeId).maybeSingle(),
+    service.from("store_toss_merchants").select("merchant_id, is_test, prev_merchant_id, prev_until").eq("store_id", storeId).maybeSingle(),
     service.from("toss_settings").select("access_key, access_secret").eq("id", 1).maybeSingle(),
   ]);
   if (!merchant) return { ok: false, error: "이 매장은 아직 토스포스와 연결되지 않았어요." };
   if (!keys) return { ok: false, error: "토스 앱 키가 등록되지 않았어요. 대표님께 요청해 주세요." };
 
   try {
-    const summary = await fetchTossClosing({ accessKey: keys.access_key, secretKey: keys.access_secret }, merchant.merchant_id, date);
+    const summary = await fetchTossClosing({ accessKey: keys.access_key, secretKey: keys.access_secret }, merchantFor(merchant, date), date);
     return { ok: true, fields: tossClosingToForm(summary), summary, isTest: merchant.is_test };
   } catch (e) {
     return { ok: false, error: `토스에서 읽지 못했어요: ${(e as Error).message}` };

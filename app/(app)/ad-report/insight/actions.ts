@@ -7,6 +7,7 @@ import { generateAdStrategy } from "@/lib/claude";
 import { addYmd, kstYmd, type SalesMap } from "@/lib/adReport";
 import { analyze, insightToPrompt, syncAdDaily, syncAdHourly, syncTossDaily, type AdInsight, type DailyRow } from "@/lib/adInsight";
 import { fetchTossClosing } from "@/lib/tossClosing";
+import { merchantFor } from "@/lib/tossPlace";
 import { syncWeather } from "@/lib/weather";
 import { syncSearchRanks, type BlogPost } from "@/lib/searchRank";
 import { addKeywords, deleteKeywords, keywordTool, listAdgroups, listCampaigns, listKeywords, normKeyword, setKeywordLock, type KeywordIdea } from "@/lib/naverAds";
@@ -59,7 +60,7 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean | "a
 
   const [{ data: store }, { data: merchant }, { data: tossKeys }, { data: adAcct }] = await Promise.all([
     supabase.from("stores").select("name").eq("id", storeId).maybeSingle(),
-    service.from("store_toss_merchants").select("merchant_id, is_test").eq("store_id", storeId).maybeSingle(),
+    service.from("store_toss_merchants").select("merchant_id, is_test, prev_merchant_id, prev_until").eq("store_id", storeId).maybeSingle(),
     service.from("toss_settings").select("access_key, access_secret").eq("id", 1).maybeSingle(),
     service.from("store_ad_accounts").select("*").eq("store_id", storeId).eq("enabled", true).maybeSingle(),
   ]);
@@ -111,7 +112,7 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean | "a
     }
     if (keys && merchant) {
       try {
-        synced.toss = await syncTossDaily(service, storeId, keys, merchant.merchant_id, mode === "full" ? from : recentFrom, addYmd(today, -1));
+        synced.toss = await syncTossDaily(service, storeId, keys, merchant, mode === "full" ? from : recentFrom, addYmd(today, -1));
       } catch (e) {
         return { ok: false, error: `토스 매출을 못 읽었어요: ${(e as Error).message}` };
       }
@@ -183,7 +184,7 @@ export async function loadAdInsight(storeId: string, opts: { sync?: boolean | "a
   let todayLive = { sales: null as number | null, orders: null as number | null, lastPayAt: null as string | null };
   if (keys && merchant) {
     try {
-      const c = await fetchTossClosing(keys, merchant.merchant_id, today);
+      const c = await fetchTossClosing(keys, merchantFor(merchant, today), today);
       todayLive = { sales: c.paid, orders: c.orders, lastPayAt: c.lastPayAt };
     } catch {
       // 오늘 값만 비워 두고 나머지는 보여준다

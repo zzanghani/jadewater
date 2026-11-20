@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { testTossMerchant } from "@/lib/tossPlace";
+import { kstYmd } from "@/lib/adReport";
 import type { Database } from "@/lib/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -79,11 +80,16 @@ export async function saveTossMerchant(_prev: TossFormState, formData: FormData)
     info = `연결 확인됨${merchantName ? ` · ${merchantName}` : ""}`;
   }
 
+  // 상점 번호가 바뀌면(개인→법인 전환 등) 옛 번호를 '어제까지'로 기억해 둔다. 지난 날 매출은 옛 번호로, 오늘부터는 새 번호로 읽는다.
+  const { data: cur } = await supabase.from("store_toss_merchants").select("merchant_id, prev_merchant_id, prev_until").eq("store_id", storeId).maybeSingle();
+  const changed = !!cur && cur.merchant_id !== merchantId;
+  const prev = changed ? { prev_merchant_id: cur!.merchant_id, prev_until: kstYmd(-1) } : { prev_merchant_id: cur?.prev_merchant_id ?? null, prev_until: cur?.prev_until ?? null };
   const { error } = await supabase.from("store_toss_merchants").upsert(
-    { store_id: storeId, merchant_id: merchantId, merchant_name: merchantName, is_test: isTest, updated_by: user.id, updated_at: new Date().toISOString() },
+    { store_id: storeId, merchant_id: merchantId, merchant_name: merchantName, is_test: isTest, updated_by: user.id, updated_at: new Date().toISOString(), ...prev },
     { onConflict: "store_id" }
   );
   if (error) return { error: "저장에 실패했어요." };
+  if (changed) info += ` · 옛 번호 ${cur!.merchant_id}는 ${kstYmd(-1)}까지 매출에 계속 씁니다`;
   revalidatePath("/toss/settings");
   return { success: true, info };
 }

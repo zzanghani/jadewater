@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { addYmd, kstYmd } from "@/lib/adReport";
 import { fetchTossClosing } from "@/lib/tossClosing";
+import { merchantFor } from "@/lib/tossPlace";
 
 export type LiveSales = {
   sales: number; // 결제 완료 + 미결제
@@ -34,7 +35,7 @@ export async function loadLiveSales(): Promise<Record<string, LiveSales>> {
   const service = createServiceClient();
   const [{ data: toss }, { data: merchants }] = await Promise.all([
     service.from("toss_settings").select("access_key, access_secret").eq("id", 1).maybeSingle(),
-    service.from("store_toss_merchants").select("store_id, merchant_id, is_test"),
+    service.from("store_toss_merchants").select("store_id, merchant_id, is_test, prev_merchant_id, prev_until"),
   ]);
   if (!toss || !merchants?.length) return {};
   const keys = { accessKey: toss.access_key, secretKey: toss.access_secret };
@@ -51,7 +52,7 @@ export async function loadLiveSales(): Promise<Record<string, LiveSales>> {
   await Promise.all(
     targets.map(async (m) => {
       try {
-        const c = await fetchTossClosing(keys, m.merchant_id, today);
+        const c = await fetchTossClosing(keys, merchantFor(m, today), today);
         const r = lwByStore.get(m.store_id);
         let lastWeekSameTime: number | null = null;
         let estimate: number | null = null;

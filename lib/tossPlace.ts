@@ -4,6 +4,15 @@ const BASE = "https://open-api.tossplace.com/api-public/openapi/v1";
 
 export type TossKeys = { accessKey: string; secretKey: string };
 
+/** 매장 ↔ 상점 번호 연결. 사업자 전환 등으로 번호가 바뀌면 옛 번호를 prev_merchant_id에, 옛 번호가 유효한 마지막 날을 prev_until에 둔다. */
+export type TossMerchantLink = { merchant_id: string; prev_merchant_id?: string | null; prev_until?: string | null };
+/** 그 날짜의 매출을 어느 상점 번호로 읽어야 하는지. prev_until까지는 옛 번호, 그 뒤는 새 번호. */
+export function merchantFor(link: TossMerchantLink | string, ymd: string): string {
+  if (typeof link === "string") return link;
+  if (link.prev_merchant_id && link.prev_until && ymd <= link.prev_until) return link.prev_merchant_id;
+  return link.merchant_id;
+}
+
 export class TossApiError extends Error {
   status: number;
   constructor(message: string, status: number) {
